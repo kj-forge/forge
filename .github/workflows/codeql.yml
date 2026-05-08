@@ -1,10 +1,29 @@
 name: CodeQL
 
+# Path filters skip the workflow until the repo actually contains JS/TS source.
+# Once Phase 0 scaffolds the TanStack Start app, every push/PR touching code
+# will trigger a CodeQL scan. The weekly schedule still runs unconditionally.
 on:
   push:
     branches: [main]
+    paths:
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.mjs"
+      - "**/*.cjs"
+      - ".github/workflows/codeql.yml"
   pull_request:
     branches: [main]
+    paths:
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.mjs"
+      - "**/*.cjs"
+      - ".github/workflows/codeql.yml"
   schedule:
     - cron: "0 6 * * 1"
 
@@ -23,9 +42,9 @@ jobs:
         language: [javascript-typescript]
     steps:
       - uses: actions/checkout@v6
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
