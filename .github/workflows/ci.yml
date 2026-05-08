@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, staging, production]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (Biome)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # Skipped until the app is scaffolded — uncomment once package.json exists.
+      # - run: bun install --frozen-lockfile
+      # - run: bun run lint
+      - run: echo "Skipping lint — app not yet scaffolded."
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # - run: bun install --frozen-lockfile
+      # - run: bun run typecheck
+      - run: echo "Skipping typecheck — app not yet scaffolded."
+
+  unit:
+    name: Unit tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # - run: bun install --frozen-lockfile
+      # - run: bun run test
+      - run: echo "Skipping unit tests — app not yet scaffolded."
+
+  e2e:
+    name: E2E tests (Playwright, mobile viewports)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # - run: bun install --frozen-lockfile
+      # - run: bunx playwright install --with-deps
+      # - run: bun run test:e2e
+      - run: echo "Skipping E2E — app not yet scaffolded."
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      # - run: bun install --frozen-lockfile
+      # - run: bun run build
+      - run: echo "Skipping build — app not yet scaffolded."

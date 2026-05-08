@@ -1,0 +1,84 @@
+name: Linear Release
+
+on:
+  push:
+    branches: [main, staging, production]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Manual action: sync | update | complete"
+        required: true
+        default: sync
+        type: choice
+        options: [sync, update, complete]
+
+permissions:
+  contents: read
+
+# Pattern adapted from Gigaverse's release pipeline:
+#   https://linear.app/gigaverse/document/linear-release-process-main-staging-production-b411d31239e4
+#
+# Stages in the Linear pipeline "Forge Web":
+#   Planned → Started → In dev → In staging (frozen) → Released
+#
+# Triggers:
+#   push main       → linear-release sync (issues to "In dev")
+#   push staging    → linear-release sync + update --stage "In staging" (freezes the release)
+#   push production → linear-release complete (issues to "Released")
+#
+# Setup needed before this workflow can run:
+#   1. Create the "Forge Web" pipeline in Linear: Settings → Releases → New pipeline
+#   2. Stage names: keep "Started" / "Released" as system stages; create "In dev" and "In staging"
+#      with the exact strings used below.
+#   3. Generate a pipeline access key in Linear and add it as repo secret LINEAR_ACCESS_KEY.
+#   4. After cutting a release (push to staging), manually rename the auto-generated
+#      "Release N" in Linear UI to "Release {current_cycle_number}" to keep naming consistent.
+
+jobs:
+  release:
+    name: Sync Linear release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Skipped until the Linear pipeline + LINEAR_ACCESS_KEY secret are configured.
+      # Uncomment the steps below once setup is done.
+
+      # - name: Determine action
+      #   id: action
+      #   run: |
+      #     if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+      #       echo "action=${{ inputs.action }}" >> $GITHUB_OUTPUT
+      #     elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+      #       echo "action=sync" >> $GITHUB_OUTPUT
+      #     elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
+      #       echo "action=staging" >> $GITHUB_OUTPUT
+      #     elif [ "${{ github.ref }}" = "refs/heads/production" ]; then
+      #       echo "action=complete" >> $GITHUB_OUTPUT
+      #     fi
+      #
+      # - name: Sync (main → In dev)
+      #   if: steps.action.outputs.action == 'sync'
+      #   run: npx --yes @linear/release sync
+      #   env:
+      #     LINEAR_ACCESS_KEY: ${{ secrets.LINEAR_ACCESS_KEY }}
+      #
+      # - name: Sync + update stage (staging → In staging, frozen)
+      #   if: steps.action.outputs.action == 'staging'
+      #   run: |
+      #     npx --yes @linear/release sync
+      #     npx --yes @linear/release update --stage "In staging"
+      #   env:
+      #     LINEAR_ACCESS_KEY: ${{ secrets.LINEAR_ACCESS_KEY }}
+      #
+      # - name: Complete (production → Released)
+      #   if: steps.action.outputs.action == 'complete'
+      #   run: npx --yes @linear/release complete
+      #   env:
+      #     LINEAR_ACCESS_KEY: ${{ secrets.LINEAR_ACCESS_KEY }}
+
+      - name: Placeholder
+        run: echo "Linear release pipeline not yet configured. See workflow comments for setup steps."

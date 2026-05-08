@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    groups:
+      tanstack:
+        patterns:
+          - "@tanstack/*"
+      drizzle:
+        patterns:
+          - "drizzle*"
+      ai:
+        patterns:
+          - "@anthropic-ai/*"
+          - "ai"
+          - "@ai-sdk/*"
+      dev-deps:
+        dependency-type: "development"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    labels:
+      - dependencies
+      - github-actions

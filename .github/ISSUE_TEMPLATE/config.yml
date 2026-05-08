@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Linear (preferred)
+    url: https://linear.app/kj-forge
+    about: Day-to-day work is tracked in Linear under the Forge initiative. Use GitHub Issues for repo-specific concerns (CI, infra, security).
