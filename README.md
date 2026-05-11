@@ -41,11 +41,22 @@ Release flow: `main` (DEV) → `staging` (STG) → `production` (PROD), automate
 
 ## Getting started
 
-> Scaffolding in progress — this section will be filled in once the TanStack Start app is set up.
+Requirements: [Bun](https://bun.sh) ≥ 1.3 and Node ≥ 22.
 
 ```bash
 bun install
 bun dev
+```
+
+The dev server runs at [http://localhost:3000](http://localhost:3000). The root route shows a demo of the TanStack Start server-function pattern (an in-memory counter — to be replaced with Postgres in a later PR).
+
+### Useful scripts
+
+```bash
+bun dev          # start dev server (Vite + TanStack Start)
+bun build        # production build
+bun start        # serve the production build
+bun run typecheck  # tsc --noEmit
 ```
 
 ## Contributing
