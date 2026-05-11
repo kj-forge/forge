@@ -7,6 +7,8 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 
+import appCss from "../styles.css?url";
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
@@ -17,6 +19,7 @@ export const Route = createRootRoute({
       },
       { title: "Forge — hybrid strength, forged daily" },
     ],
+    links: [{ rel: "stylesheet", href: appCss }],
   }),
   component: RootComponent,
   notFoundComponent: NotFound,
@@ -46,9 +49,11 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 
 function NotFound() {
   return (
-    <main>
-      <h1>404 — Not found</h1>
-      <p>The page you were looking for doesn't exist.</p>
+    <main className="flex min-h-svh flex-col items-center justify-center gap-2 p-6 text-center">
+      <h1 className="text-4xl font-bold tracking-tight">404</h1>
+      <p className="text-muted-foreground">
+        The page you were looking for doesn't exist.
+      </p>
     </main>
   );
 }
