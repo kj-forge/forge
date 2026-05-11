@@ -1,6 +1,8 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 
+import { Button } from "@/components/ui/button";
+
 // In-memory counter — purely a demo of the server-function pattern.
 // Resets on server restart and won't survive horizontal scaling.
 // To be replaced with Postgres + Drizzle (FRG-* in a later PR).
@@ -24,12 +26,16 @@ function Home() {
   const value = Route.useLoaderData();
 
   return (
-    <main>
-      <h1>Forge</h1>
-      <p>Hybrid strength, forged daily.</p>
-      <p>Server-function demo (in-memory, to be replaced with Postgres):</p>
-      <button
-        type="button"
+    <main className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 text-center">
+      <header className="space-y-2">
+        <h1 className="text-4xl font-bold tracking-tight">Forge</h1>
+        <p className="text-muted-foreground">Hybrid strength, forged daily.</p>
+      </header>
+      <p className="text-sm text-muted-foreground">
+        Server-function demo (in-memory, to be replaced with Postgres):
+      </p>
+      <Button
+        size="lg"
         onClick={() => {
           updateCount({ data: 1 }).then(() => {
             router.invalidate();
@@ -37,7 +43,7 @@ function Home() {
         }}
       >
         Add 1 to {value}
-      </button>
+      </Button>
     </main>
   );
 }

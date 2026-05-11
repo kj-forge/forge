@@ -48,7 +48,7 @@ bun install
 bun dev
 ```
 
-The dev server runs at [http://localhost:3000](http://localhost:3000). The root route shows a demo of the TanStack Start server-function pattern (an in-memory counter — to be replaced with Postgres in a later PR).
+The dev server runs at [http://localhost:3000](http://localhost:3000). The root route shows a demo of the TanStack Start server-function pattern (an in-memory counter — to be replaced with Postgres in a later PR), styled with **Tailwind v4** + **shadcn/ui**.
 
 ### Useful scripts
 
