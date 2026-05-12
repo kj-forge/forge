@@ -54,7 +54,10 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        enabled: false,
+        // Serve manifest.webmanifest in `bun dev` so DevTools doesn't
+        // report a 404 when previewing the PWA locally. Without this the
+        // manifest is generated only at build time.
+        enabled: true,
       },
     }),
     tanstackStart(),
