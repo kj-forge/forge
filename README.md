@@ -50,6 +50,8 @@ bun dev
 
 The dev server runs at [http://localhost:3000](http://localhost:3000). The root route shows a demo of the TanStack Start server-function pattern (an in-memory counter — to be replaced with Postgres in a later PR), styled with **Tailwind v4** + **shadcn/ui**.
 
+The app exposes a Web App Manifest, so it's installable to the phone home screen ("Add to Home Screen"). The full offline shell (service worker + Workbox precache) is deferred until the Electric SQL local-first work — see [docs/adr/ADR-0002-electric-sql-local-first.md](docs/adr/ADR-0002-electric-sql-local-first.md).
+
 ### Useful scripts
 
 ```bash
