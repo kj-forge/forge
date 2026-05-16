@@ -1,11 +1,7 @@
 /// <reference types="vite/client" />
+
+import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import {
-  Outlet,
-  createRootRoute,
-  HeadContent,
-  Scripts,
-} from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
 
@@ -68,10 +64,8 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
 function NotFound() {
   return (
     <main className="flex min-h-svh flex-col items-center justify-center gap-2 p-6 text-center">
-      <h1 className="text-4xl font-bold tracking-tight">404</h1>
-      <p className="text-muted-foreground">
-        The page you were looking for doesn't exist.
-      </p>
+      <h1 className="font-bold text-4xl tracking-tight">404</h1>
+      <p className="text-muted-foreground">The page you were looking for doesn't exist.</p>
     </main>
   );
 }

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignoreExportsUsedInFile": true,
+  "bun": true,
+  "biome": true,
+  "typescript": true,
+  "github-actions": true,
+  "husky": true,
+  "commitlint": true,
+  "tailwind": true,
+  "vite": true,
+  "entry": ["src/router.tsx", "src/routes/**/*.{ts,tsx}", "src/styles.css"],
+  "ignoreDependencies": ["lucide-react", "vaul"]
+}
