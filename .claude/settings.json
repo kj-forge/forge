@@ -22,6 +22,18 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "^(Write|Edit|MultiEdit)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=\"$TOOL_INPUT_file_path\"; if echo \"$file\" | grep -qE '\\.(ts|tsx|js|jsx|json|css)$'; then bunx biome check --write --unsafe \"$file\" 2>/dev/null; fi; exit 0",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
     "Notification": [
       {
         "hooks": [

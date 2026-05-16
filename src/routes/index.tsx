@@ -28,12 +28,10 @@ function Home() {
   return (
     <main className="flex min-h-svh flex-col items-center justify-center gap-6 p-6 text-center">
       <header className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">Forge</h1>
+        <h1 className="font-bold text-4xl tracking-tight">Forge</h1>
         <p className="text-muted-foreground">Hybrid strength, forged daily.</p>
       </header>
-      <p className="text-sm text-muted-foreground">
-        Server-function demo (in-memory, to be replaced with Postgres):
-      </p>
+      <p className="text-muted-foreground text-sm">Server-function demo (in-memory, to be replaced with Postgres):</p>
       <Button
         size="lg"
         onClick={() => {
