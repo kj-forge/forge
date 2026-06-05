@@ -16,8 +16,10 @@
     "typecheck": "tsc --noEmit",
     "format": "bunx --bun biome check --write .",
     "lint": "bunx --bun biome check",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
     "knip": "bunx knip",
-    "check": "bun run lint && bun run typecheck && bun run knip",
+    "check": "bun run lint && bun run typecheck && bun run test && bun run knip",
     "prepare": "husky"
   },
   "dependencies": {
@@ -41,6 +43,11 @@
     "@biomejs/biome": "2.4.15",
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.1",
+    "@happy-dom/global-registrator": "^20.10.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/bun": "^1.3.14",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
