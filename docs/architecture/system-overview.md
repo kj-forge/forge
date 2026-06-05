@@ -1,6 +1,8 @@
 # System overview
 
 > Living document. Updated as the system evolves.
+>
+> **Scope (post-audit 2026-05-16):** Forge is a **Hyrox athlete journal** with rehab tracking, daily wellness metrics (Sleep/HRV/HR Rest), AI-driven weekly summaries, and athlete↔coach sharing (P1+). Multi-tenant schema from day 1 (single-user UI in P0). For the data model see [data-model.md](data-model.md); for the re-framed scope rationale see [ADR-0009](../adr/ADR-0009-hyrox-data-model-rehab-tracking.md) and [ADR-0010](../adr/ADR-0010-multi-tenant-schema.md).
 
 ## Context (C4 level 1)
 

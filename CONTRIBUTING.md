@@ -2,22 +2,34 @@
 
 Solo project, but processes are set up as if it weren't — to practice good engineering and product habits.
 
-## Linear ↔ GitHub flow
+## Workflow — hybrid (since 2026-05-16, ADR-0011)
 
-Work is tracked in Linear under the `Forge` initiative. The team key is **`FRG`**, so issues look like `FRG-123`.
+There are **two tracks** depending on the size of the change.
 
-Every commit and PR should be traceable back to a Linear issue.
+### Track 1 — Small changes (no Linear ceremony)
 
-### Branch naming
+For typos, single-file tooling tweaks, doc fixes < ~10 lines, small `.claude/` updates: just open a PR with a descriptive non-Linear branch like `fix/biome-typo` or `chore/bump-knip-ignores`. No Linear issue required. Conventional commits still enforced via husky/commitlint.
+
+Branch protection on `main` / `staging` / `production` still requires a PR — but the PR is lightweight.
+
+### Track 2 — Epic-level work (Linear + PR + self-review)
+
+For features, ADRs, migrations, or anything ≥ 2 hours / ≥ 5 files:
+
+1. Create **one Linear issue per epic** (not per micro-task) under the `Forge` initiative. Team key is **`FRG`**.
+2. Branch: `feat/frg-N-<short-scope>` (e.g. `feat/frg-9-hyrox-data-model`). The `frg-N` identifier is sacred for Linear linkback; the descriptive tail can (and usually should) be shortened from Linear's auto-generated title.
+3. Multiple commits per branch is fine — encouraged for granular self-review history.
+4. PR title in Conventional Commits format. PR body uses the standard template with `Closes FRG-N`.
+5. Self-review the diff cold before merge, walk through the test plan.
 
 ```
-feat/frg-123-quick-log-strength
+feat/frg-9-hyrox-data-model
 fix/frg-145-rest-timer-resets
 chore/frg-150-bump-vite-pwa
-docs/frg-151-add-sync-architecture-diagram
+docs/frg-151-sync-architecture-diagram
 ```
 
-The `frg-XXX` part is what Linear uses to auto-link the branch to the issue. Linear's `gitBranchName` field on each issue gives you the right format — copy it from the issue UI.
+The Linear `gitBranchName` is `identifier-title` (no username prefix). Copy and shorten the tail.
 
 ### PR template
 
