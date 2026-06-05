@@ -21,7 +21,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun run lint
 
   typecheck:
@@ -32,7 +32,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun run typecheck
 
   unit:
@@ -43,7 +43,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun run test
 
   e2e:
@@ -55,7 +55,7 @@ jobs:
         with:
           bun-version: latest
       # Skipped until Playwright is added (planned: a later PR after MVP).
-      # - run: bun install --frozen-lockfile
+      # - run: bun install
       # - run: bunx playwright install --with-deps
       # - run: bun run test:e2e
       - run: echo "Skipping E2E — Playwright will be added after MVP."
@@ -68,5 +68,5 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - run: bun install --frozen-lockfile
+      - run: bun install
       - run: bun run build
