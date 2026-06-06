@@ -729,9 +729,11 @@ async function seedDemoAthlete(): Promise<void> {
     goalsInserted++;
   }
 
-  console.log(
-    `  demo athlete: user=${DEMO_USER_NAME} username=${DEMO_ATHLETE_USERNAME} goals=${goalDefs.length} (${goalsInserted} new)`,
-  );
+  // Intentionally not logging DEMO_USER_NAME / DEMO_ATHLETE_USERNAME — those
+  // are sourced from process.env and CodeQL (js/clear-text-logging) flags any
+  // env-derived values reaching a log sink. The real values live in .env
+  // (gitignored) and in the DB; we don't need them in stdout.
+  console.log(`  demo athlete: ready (${goalsInserted} new of ${goalDefs.length} goals)`);
   console.log("  (race results are personal data — seed them via db/seed-personal.local.ts, see .example file)");
 }
 
