@@ -9,6 +9,13 @@
   "commitlint": true,
   "tailwind": true,
   "vite": true,
-  "entry": ["src/router.tsx", "src/routes/**/*.{ts,tsx}", "src/styles.css"],
+  "drizzle": true,
+  "entry": [
+    "src/router.tsx",
+    "src/routes/**/*.{ts,tsx}",
+    "src/styles.css",
+    "db/client.ts",
+    "db/seed-personal.local.example.ts"
+  ],
   "ignoreDependencies": ["lucide-react", "vaul"]
 }
