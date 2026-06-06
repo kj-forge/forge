@@ -55,28 +55,69 @@ Release flow: `main` (DEV) → `staging` (STG) → `production` (PROD), automate
 
 Requirements: [Bun](https://bun.sh) ≥ 1.3 and Node ≥ 22.
 
+### 1. Install dependencies
+
 ```bash
 bun install
+```
+
+### 2. Set up the database (Neon Postgres)
+
+Forge uses [Neon](https://neon.tech) as managed Postgres. Sign up (Google OAuth is fastest), create a project called `forge`, and copy the **pooled** connection string from the Connection Details panel.
+
+Then create a local `.env` (gitignored) from `.env.example` and paste the connection string:
+
+```bash
+cp .env.example .env
+# Edit .env, set DATABASE_URL to your Neon connection string.
+```
+
+Run the initial migration + catalogue seed (Hyrox stations, exercises with PL aliases, rehab protocols, demo athlete, long-term goals):
+
+```bash
+bun run db:migrate    # applies db/migrations/*.sql to the DB
+bun run db:seed       # idempotent — seeds catalogue + demo athlete
+```
+
+To seed under your own identity instead of the placeholder "demo athlete", set in `.env`:
+
+```bash
+SEED_DEMO_EMAIL="you@example.com"
+SEED_DEMO_NAME="Your Name"
+SEED_DEMO_USERNAME="your-handle"
+```
+
+Personal race results (Hyrox splits with real times) are seeded separately via the gitignored `db/seed-personal.local.ts` — copy `db/seed-personal.local.example.ts` to that filename and fill in your data. Public repo never sees real race data.
+
+### 3. Start the dev server
+
+```bash
 bun dev
 ```
 
-The dev server runs at [http://localhost:3000](http://localhost:3000). The root route currently shows a TanStack Start server-function demo counter (placeholder; will be replaced by the real Quick Log UI in the next product PR). Styled with **Tailwind v4** + **shadcn/ui** (radix-nova preset).
+Dev server runs at [http://localhost:3000](http://localhost:3000). The root route currently shows a TanStack Start server-function demo counter (placeholder; will be replaced by the real Quick Log UI in the next product PR). Styled with **Tailwind v4** + **shadcn/ui** (radix-nova preset).
 
 The app exposes a Web App Manifest, so it's installable to the phone home screen ("Add to Home Screen"). The full offline shell (service worker + Workbox precache + offline mutation queue) is bundled with the Electric SQL local-first work — see [ADR-0002](docs/adr/ADR-0002-electric-sql-local-first.md).
 
 ### Useful scripts
 
 ```bash
-bun dev           # start dev server (Vite + TanStack Start)
-bun build         # production build
-bun start         # serve the production build
-bun test          # run unit tests (Bun test + happy-dom + Testing Library)
-bun test:watch    # watch mode
-bun run typecheck # tsc --noEmit
-bun run lint      # Biome
-bun run format    # Biome --write
-bun run knip      # detect unused exports / deps / files
-bun run check     # lint + typecheck + test + knip (full pre-PR gate)
+bun dev               # start dev server (Vite + TanStack Start)
+bun build             # production build
+bun start             # serve the production build
+bun test              # run unit tests (Bun test + happy-dom + Testing Library)
+bun test:watch        # watch mode
+bun run typecheck     # tsc --noEmit
+bun run lint          # Biome
+bun run format        # Biome --write
+bun run knip          # detect unused exports / deps / files
+bun run check         # lint + typecheck + test + knip (full pre-PR gate)
+
+bun run db:generate   # generate SQL migration from db/schema.ts diff
+bun run db:migrate    # apply pending migrations to DATABASE_URL
+bun run db:push       # sync schema directly without migration (DEV ONLY — destructive)
+bun run db:studio     # open Drizzle Studio (GUI at https://local.drizzle.studio)
+bun run db:seed       # seed catalogue + demo athlete (idempotent)
 ```
 
 ## Contributing

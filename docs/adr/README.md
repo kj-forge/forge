@@ -19,6 +19,9 @@ ADRs are immutable once accepted. To change a decision, write a new ADR that sup
 | [ADR-0009](ADR-0009-hyrox-data-model-rehab-tracking.md) | Hyrox-specific data model + rehab tracking as first-class domain | Accepted |
 | [ADR-0010](ADR-0010-multi-tenant-schema.md) | Multi-tenant schema from day 1 (single-user UI in P0) | Accepted |
 | [ADR-0011](ADR-0011-hybrid-workflow.md) | Hybrid workflow — small changes fast-track, epics through Linear + PR | Accepted |
+| [ADR-0012](ADR-0012-drizzle-conventions.md) | Drizzle ORM conventions (snake_case casing, UUID PKs, athlete_id denormalization, no soft delete) | Accepted |
+| [ADR-0013](ADR-0013-monetization-ready-schema.md) | Monetization-ready schema additions (locale/timezone/subscription/public profile/audit log/consent/referrals) | Accepted |
+| [ADR-0014](ADR-0014-observability-and-llm-gateway.md) | Observability stack + OpenRouter as LLM gateway (Sentry/PostHog/Axiom/Better Stack/Discord + ai_usage table) | Accepted |
 
 ## How to add an ADR
 
