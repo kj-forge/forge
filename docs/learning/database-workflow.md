@@ -197,6 +197,36 @@ When the app actually ships to Cloudflare Workers:
 | Drizzle Studio shows "no connection" | DATABASE_URL is missing or pointing at an unreachable host | Re-check `.env`. Try `bun run db:studio` again. |
 | You broke your dev branch and want to start over | Schema is corrupted, data is bogus, doesn't matter | In Neon UI: delete the `dev` branch, create a new one from `main`, then `bun run db:migrate && bun run db:seed`. Takes 30 seconds. |
 | You see a CI failure on a CodeQL check after a PR | CodeQL scanned new code and raised a security alert | Open the PR → Checks → CodeQL → view the annotation. Fix the flagged code, push, CI re-runs. |
+| `bun run db:migrate` shows `[⣯] applying migrations...error: script "db:migrate" exited with code 1` with no actual error message | `bunx --bun drizzle-kit migrate` runs drizzle-kit under Bun runtime; drizzle-kit's migration internals do something Node-specific that fails silently under Bun. The connection itself is fine — only drizzle-kit's `migrate`/`push`/`studio` commands hit it. | Our package.json `db:*` scripts use plain `bunx` (which defaults to Node) instead of `bunx --bun`. If you ever see this error, double-check the script doesn't have `--bun`. The connection-test snippet under "How to verify the DB connection separately from drizzle-kit" below confirms it's not the URL. |
+| `[⣯] applying migrations...error` even with plain `bunx` | `@neondatabase/serverless` needs a Node-style WebSocket constructor for its `Pool` transport. Without it, the connection fails silently. | Make sure `ws` is installed (`bun add -D ws`) and `drizzle.config.ts` sets `neonConfig.webSocketConstructor = ws`. Both are committed in FRG-6. |
+
+---
+
+## How to verify the DB connection separately from drizzle-kit
+
+When `bun run db:migrate` is acting weird, the fastest way to confirm "is this Neon, my URL, or drizzle-kit?" is to bypass drizzle-kit and talk to Neon directly:
+
+```bash
+bun -e '
+import { neon, Pool, neonConfig } from "@neondatabase/serverless";
+import ws from "ws";
+
+const url = process.env.DATABASE_URL;
+console.log("URL host:", url.replace(/:[^@]+@/, ":***@"));
+
+// HTTP fetch path (what the app runtime uses)
+const sql = neon(url);
+console.log("HTTP:", await sql`SELECT 1 as n, current_database() as db`);
+
+// WebSocket path (what drizzle-kit migrate uses)
+neonConfig.webSocketConstructor = ws;
+const pool = new Pool({ connectionString: url });
+console.log("WS:", (await pool.query("SELECT 1 as n, current_database() as db")).rows);
+await pool.end();
+'
+```
+
+If both queries succeed, the URL and credentials are fine — the issue is drizzle-kit specific. If one or both fail, you've narrowed it to the connection itself (URL typo, wrong branch, expired password).
 
 ---
 
