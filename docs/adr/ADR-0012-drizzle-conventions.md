@@ -74,12 +74,12 @@ Cons: adds ~30% to file length without any consumer (no feature epic uses relati
 - Denormalized `athlete_id` is duplicated data; programmer must keep it consistent on inserts (the column is `NOT NULL`, the value comes from the parent's `athlete_id`).
 - Explicit index naming is more typing than relying on Drizzle/Postgres defaults.
 - `casing: "snake_case"` is a small piece of magic — anyone unfamiliar with Drizzle will wonder why TS `namePl` becomes SQL `name_pl`. Docs (this ADR + `db/schema.ts` header) cover it.
-- Deferring `relations()` means `leftJoin` boilerplate in the first few server functions. Acceptable tax for keeping FRG-6 scoped.
+- Deferring `relations()` means `leftJoin` boilerplate in the first few server functions. Acceptable tax for keeping the schema epic scoped.
 
 ### Follow-ups
 
 - Add Drizzle `relations()` in the first epic that needs nested queries (`db.query.athletes.findMany({ with: { sessions: true } })`).
-- Add row-level security policies in a follow-up ADR once auth lands (FRG-7).
+- Add row-level security policies in a follow-up ADR once auth lands.
 - Schema linter or pre-commit hook that fails if a new owned table lacks `athlete_id` index — nice-to-have, defer until we see drift.
 
 ## References

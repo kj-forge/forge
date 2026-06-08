@@ -27,7 +27,7 @@
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-All "Planned" items land in the **Observability & Security setup** epic (post-FRG-7 auth, before AI features).
+All "Planned" items land in the **Observability & Security setup** epic (after auth lands, before AI features).
 
 ## Dashboards (placeholders)
 

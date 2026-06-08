@@ -41,7 +41,7 @@ Constraints:
 | WAF | Cloudflare WAF | basic OWASP rules | $20/mo Pro | Free tier covers MVP |
 | Dependency scanning | GitHub Dependabot | free on public repos | n/a | Already configured |
 | Secret scanning | GitHub native | free on public repos | n/a | Already enabled |
-| Static analysis | CodeQL | free on public repos | n/a | Workflow stub in repo, unpause post-FRG-6 |
+| Static analysis | CodeQL | free on public repos | n/a | Workflow stub in repo, unpause once we have meaningful code to analyze |
 | Alerting hub | Discord webhook | free | free | Single `#forge-alerts` channel; Sentry/Better Stack/Cloudflare all integrate |
 
 **Year-1 cost target: $0.** Beyond, ~$50–100/mo if any tier overflows around launch — still small.
@@ -135,11 +135,11 @@ Cons: production incidents are 10× more expensive to debug after the fact; port
 
 ### Follow-ups
 
-- **Implementation epic (~FRG-12):** wire Sentry client, PostHog client, Axiom logpush, Better Stack monitors, Cloudflare WAF/Rate Limiting rules, Discord webhook routing.
-- **AI integration epic (~FRG-13):** install `@openrouter/ai-sdk-provider`, build the `ai_usage` wrapper, wire prompt caching via Vercel AI SDK provider options.
+- **Implementation epic:** wire Sentry client, PostHog client, Axiom logpush, Better Stack monitors, Cloudflare WAF/Rate Limiting rules, Discord webhook routing.
+- **AI integration epic:** install `@openrouter/ai-sdk-provider`, build the `ai_usage` wrapper, wire prompt caching via Vercel AI SDK provider options.
 - Build `app/lib/analytics/` helper with allowlist of safe event payloads (so PII can't accidentally be sent to PostHog).
 - Add a `docs/architecture/observability.md` living doc with current dashboard URLs (placeholder until accounts created).
-- Pause-state on `.github/workflows/codeql.yml` is unpaused after FRG-6 lands code that's worth analyzing.
+- Pause-state on `.github/workflows/codeql.yml` is unpaused once we have meaningful code to analyze.
 
 ## References
 

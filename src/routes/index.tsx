@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 // In-memory counter — purely a demo of the server-function pattern.
 // Resets on server restart and won't survive horizontal scaling.
-// To be replaced with Postgres + Drizzle (FRG-* in a later PR).
+// To be replaced with Postgres + Drizzle in a later PR.
 let count = 0;
 
 const getCount = createServerFn({ method: "GET" }).handler(() => count);
