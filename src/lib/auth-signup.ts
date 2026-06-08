@@ -80,10 +80,21 @@ const ANIMALS = [
   "crane",
 ] as const;
 
+// Web Crypto (`crypto.getRandomValues`) instead of `Math.random()` — the file
+// lives in an auth context and the generated value ends up in a public slug,
+// so we want cryptographically strong randomness even though the username
+// itself is not a secret. Modulo bias on these tiny ranges is statistically
+// negligible (limit/2^32 ≈ 99.999%).
+function secureRandomInt(max: number): number {
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return arr[0] % max;
+}
+
 export function generateRandomUsername(): string {
-  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
-  const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
-  const num = Math.floor(Math.random() * 900) + 100;
+  const adj = ADJECTIVES[secureRandomInt(ADJECTIVES.length)];
+  const animal = ANIMALS[secureRandomInt(ANIMALS.length)];
+  const num = secureRandomInt(900) + 100;
   return `${adj}-${animal}-${num}`;
 }
 
