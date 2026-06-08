@@ -8,6 +8,13 @@
       "when": 1780760554155,
       "tag": "0000_useful_talkback",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780822998499,
+      "tag": "0001_better_auth_tables",
+      "breakpoints": true
     }
   ]
 }

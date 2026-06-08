@@ -150,20 +150,114 @@ export const aiPromptType = pgEnum("ai_prompt_type", [
 // ============================================================================
 // 2. AUTH & IDENTITY
 // ============================================================================
-// Better Auth manages `users` (and will add its own session/account tables in
-// a future epic). For now we define the shape of `users` ourselves. The
-// `athletes` table is the multi-tenant unit — every owned row references it.
+// Better Auth manages `users`, `auth_session`, `auth_account`,
+// `auth_verification` — see ADR-0015. Better Auth's default model names are
+// singular (`user`, `session`, `account`, `verification`); we rename all four
+// at the drizzleAdapter via a `schema` mapping in src/lib/auth.ts:
+//   user         → users
+//   session      → auth_session   (prefixed to avoid colliding with training sessions)
+//   account      → auth_account
+//   verification → auth_verification
+// Plural-DB-name exception is accepted on `auth_*` for parity with the Better
+// Auth ecosystem (singular is the upstream norm). The `athletes` table is the
+// multi-tenant unit — every owned row references it.
+//
+// PII columns in this section (auth_session.ipAddress/userAgent, audit_log.ip,
+// athletes.lastSeenIp etc.) are nullable and subject to GDPR retention; a
+// scheduled purge job is tracked as a follow-up to the observability epic.
 
 export const users = pgTable(
   "users",
   {
     id: uuid().primaryKey().defaultRandom(),
-    email: text().notNull().unique(),
+    // No column-level .unique() — uniqueness enforced by named uniqueIndex below
+    // to avoid Postgres creating two redundant unique indexes on the same column.
+    email: text().notNull(),
     name: text(),
+    // Better Auth: true after magic-link click / OAuth (Google auto-verifies).
+    emailVerified: boolean().notNull().default(false),
+    // Better Auth: avatar URL from OAuth provider; NULL for magic-link-only users.
+    image: text(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("users_email_idx").on(t.email)],
+);
+
+// Active sessions, one row per browser login. Token is HMAC-signed via
+// BETTER_AUTH_SECRET and stored in the session cookie. Sessions in DB (not
+// JWT-only) so we can revoke, list devices, and "log out everywhere".
+// Table prefixed `auth_` to avoid collision with training `sessions`.
+export const authSessions = pgTable(
+  "auth_session",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // No column-level .unique() — uniqueness enforced by named uniqueIndex below.
+    token: text().notNull(),
+    expiresAt: timestamp({ withTimezone: true }).notNull(),
+    ipAddress: text(),
+    userAgent: text(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("auth_session_token_idx").on(t.token),
+    index("auth_session_user_idx").on(t.userId),
+    // Supports future scheduled cleanup of expired sessions without full table scans.
+    index("auth_session_expires_idx").on(t.expiresAt),
+  ],
+);
+
+// Links a user to a provider identity. One user can have many accounts
+// (e.g., Google OAuth + magic-link on the same email = 1 user, 2 accounts).
+// `password` column is part of Better Auth's default schema; we keep it
+// nullable and never populate it (no password auth — magic link only).
+export const authAccounts = pgTable(
+  "auth_account",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    userId: uuid()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    accountId: text().notNull(),
+    providerId: text().notNull(),
+    accessToken: text(),
+    refreshToken: text(),
+    idToken: text(),
+    accessTokenExpiresAt: timestamp({ withTimezone: true }),
+    refreshTokenExpiresAt: timestamp({ withTimezone: true }),
+    scope: text(),
+    password: text(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("auth_account_user_idx").on(t.userId),
+    uniqueIndex("auth_account_provider_account_idx").on(t.providerId, t.accountId),
+  ],
+);
+
+// Short-lived verification tokens — magic links, email change, etc.
+// `value` stores a hashed token (Better Auth default). One row consumed
+// per successful verification (Better Auth deletes after use).
+export const authVerifications = pgTable(
+  "auth_verification",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    identifier: text().notNull(),
+    value: text().notNull(),
+    expiresAt: timestamp({ withTimezone: true }).notNull(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("auth_verification_identifier_idx").on(t.identifier),
+    // Supports future scheduled cleanup of expired/abandoned magic links.
+    index("auth_verification_expires_idx").on(t.expiresAt),
+  ],
 );
 
 export const athletes = pgTable(

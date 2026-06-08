@@ -18,7 +18,7 @@ Constraints:
 
 ## Decision
 
-Add the following to `db/schema.ts` in the same PR as the core data model (FRG-6), all with safe defaults so the P0 single-user UI ignores them.
+Add the following to `db/schema.ts` in the same PR as the core data model, all with safe defaults so the P0 single-user UI ignores them.
 
 ### New columns on `athletes`
 
@@ -87,7 +87,7 @@ Cons: Stripe data shapes change; their object names leak into our schema; we'd b
 ### Follow-ups
 
 - **ADR-0015** — Stripe integration (when ready to launch paid).
-- **ADR for RLS policies** once auth (FRG-7) lands — `subscription_tier` will gate feature flags via RLS or app-level checks.
+- **ADR for RLS policies** once auth lands — `subscription_tier` will gate feature flags via RLS or app-level checks.
 - Implement `audit_log` writes through Drizzle middleware (or a wrapper layer) in the auth epic.
 - Implement `consents` capture in the signup/onboarding flow.
 - Implement `data_export_requests` worker (Cloudflare Worker that builds a zip and signs an R2 URL) — defer until first user requests it.

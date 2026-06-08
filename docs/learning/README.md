@@ -10,6 +10,8 @@ These are not architecture decision records (those live in [`docs/adr/`](../adr/
 |---|---|
 | [database-concepts.md](database-concepts.md) | The ten backend concepts you'll meet over and over — primary keys, foreign keys, constraints, indexes, cascades, enums, jsonb, timezones, soft delete (and why we don't use it), denormalization — each with a frontend analogy and concrete Drizzle examples. |
 | [database-workflow.md](database-workflow.md) | The day-to-day cheat sheet: where the DB lives, how to run things locally, the full migration lifecycle, the two seed scripts, common gotchas, and a quick Neon UI reference. |
+| [auth-concepts.md](auth-concepts.md) | Sessions vs JWTs, cookies and their flags, the four auth tables Better Auth needs, magic-link flow, OAuth flow, the signup hook + transaction story, dev-mode gotchas (Resend domain restriction, Google Test-users mode). |
+| [curl-basics.md](curl-basics.md) | What curl is, why it's table stakes in 2026, the flags you actually use, vs alternatives (httpie / Postman / fetch), and an end-to-end smoke-test walkthrough of Forge's auth as the practical example. |
 
 ## How to use these
 
