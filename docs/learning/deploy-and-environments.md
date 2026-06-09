@@ -134,7 +134,7 @@ The GitHub Actions deploy workflow handles the duality: the build step sets `VIT
 
 This is the part where you can corrupt user data with a single PR if you get it wrong, so it deserves its own section.
 
-Drizzle migrations are SQL files in `db/migrations/`. They're applied by `drizzle-kit migrate` which uses the `DATABASE_URL` env var to figure out which database to apply them to. In dev, that's your Neon dev branch. In CI, that's the Neon production branch.
+Drizzle migrations are SQL files in `db/migrations/`. They're applied by `drizzle-kit migrate` which uses the `DATABASE_URL` env var to figure out which database to apply them to. In dev, that's your Neon dev branch. In the deploy CI job (triggered by a push to `production`), that's the Neon production branch.
 
 The deploy workflow runs `bun run db:migrate` **before** `wrangler deploy`. The ordering is intentional and the inverse is dangerous:
 
@@ -170,10 +170,20 @@ The "verification gate" in the deploy plan is `wrangler dev` works locally. If i
 
 ## 9. What happens at deploy time, step by step
 
-When you `git push` to `main`:
+Forge uses a **promote-to-prod** branching model. Day-to-day, PRs merge into `main` and CI runs there but no deploy fires. When ready to ship, you promote `main` to `production`:
+
+```sh
+git push origin main:production
+```
+
+(Or open a PR `main → production` in the GitHub UI and merge it — same effect.) Only the push to `production` triggers the deploy workflow.
+
+This gives an explicit gate between "merged" and "live". It's not free — one extra command per release — but it eliminates the "I merged a typo and prod is down" failure mode. At our scale (KJ is sole maintainer, 3-5 testers) the gate is cheap; at scale-with-a-team it would become the bottleneck and we'd add `[env.staging]` instead.
+
+The flow once you push to `production`:
 
 1. **GitHub Actions checks out the repo.**
-2. **`verify` job** — re-runs lint + typecheck + unit tests inline. Cheap defence against admin merges or force-pushes that bypassed the PR gate.
+2. **`verify` job** — re-runs lint + typecheck + unit tests inline. Cheap defence against force-pushes or admin merges that bypassed the PR gate to `main`.
 3. **`migrate` job** — `drizzle-kit migrate` connects to the Neon prod branch using `DATABASE_URL` from repo secrets, applies any new migrations, exits.
 4. **`deploy` job:**
    - Builds the worker (`bun run build`) with `VITE_APP_URL` set so the client bundle gets the right URL inlined.
@@ -181,7 +191,7 @@ When you `git push` to `main`:
    - Cloudflare's edge propagates the new worker globally (usually 5-30 seconds).
 5. **You verify by visiting the URL.** Magic link should work, OAuth should work, strength session should persist. See [`docs/runbooks/deploy.md`](../runbooks/deploy.md) §smoke test.
 
-Total time from push to live: typically 3-5 minutes. If any step fails, the previous version of the worker keeps serving traffic — Cloudflare doesn't tear down the old deployment until the new one is healthy.
+Total time from `production` push to live: typically 3-5 minutes. If any step fails, the previous version of the worker keeps serving traffic — Cloudflare doesn't tear down the old deployment until the new one is healthy.
 
 ---
 

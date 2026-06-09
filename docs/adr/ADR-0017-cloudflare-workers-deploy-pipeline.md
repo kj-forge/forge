@@ -73,17 +73,21 @@ Callers (`runSignupTransaction`, `runCreateSession`) acquire a fresh pool inside
 
 `@better-auth/kysely-adapter@1.6.14` had a transitive bug: imported `DEFAULT_MIGRATION_LOCK_TABLE` from the root of `kysely`, but kysely 0.29 moved those constants to `kysely/migration`. Build failed on rolldown's static analysis (even though the dialect files are only loaded via conditional dynamic imports we never trigger). Better Auth 1.6.15 fixed the imports. Bumped on this branch.
 
-### Deploy pipeline
+### Deploy pipeline — promote-to-prod model
 
-`.github/workflows/deploy.yml` triggered on `push: branches: [main]`. Three sequential jobs:
+`.github/workflows/deploy.yml` triggered on `push: branches: [production]` — NOT on merges to `main`. Day-to-day work flows: PRs → `main` (integration only, CI runs but no deploy fires). When ready to ship: `git push origin main:production` (or open a PR `main → production` and merge it). The push to `production` is what fires the deploy.
 
-1. **verify** — re-run lint + typecheck + unit tests inline. Defence-in-depth: the PR gate already ran them but a force-push could bypass. Cheap.
-2. **migrate** — `bun run db:migrate` against the prod Neon branch. Runs BEFORE the worker is deployed so the schema is forward-compatible with the new code. New columns must be additive — destructive migrations only ship in a follow-up PR after the code that stopped using the old column has already been deployed.
+This gives an explicit, manually-controlled gate between "merged" and "live" — useful at the current scale (3-5 testers, KJ is sole maintainer) where the cost of a bad merge hitting prod immediately is higher than the cost of one extra `git push` per release.
+
+Three sequential jobs in the workflow:
+
+1. **verify** — re-run lint + typecheck + unit tests inline. Defence-in-depth: the PR gate to `main` already ran them but a force-push to `production` could bypass. Cheap.
+2. **migrate** — `bun run db:migrate` against the prod Neon branch. Runs BEFORE the worker is deployed so the schema is forward-compatible with the new code. New columns must be additive — destructive migrations only ship in a follow-up promotion after the code that stopped using the old column has already been deployed.
 3. **deploy** — `cloudflare/wrangler-action@v3` builds with `VITE_APP_URL` inlined into the client bundle and pipes the seven Worker Secrets through `wrangler secret put` before deploying. Action version pinned (not `@latest`) so a major bump is an explicit PR, not a silent deploy break.
 
 ### What is out of scope for this ADR
 
-- **Staging environment.** Single env for now; `[env.staging]` blocks deferred until the third "merge broke prod" incident.
+- **Staging environment.** Single env for now; `[env.staging]` blocks deferred until there's a need to test changes against real traffic patterns before promoting. The `production` branch gate covers the "soak between merge and prod" use case at current scale.
 - **Preview deploys per PR.** `wrangler versions upload` enables this; not blocking, low value at 1 reviewer.
 - **Custom domain.** `*.workers.dev` is sufficient — DNS/SSL come when there's a brand reason.
 - **Allowlist enforcement, bot protection, security headers.** All belong to PR-B (security layer).
@@ -131,7 +135,7 @@ Callers (`runSignupTransaction`, `runCreateSession`) acquire a fresh pool inside
 
 ### Positive
 
-- "Merge to main = deployed to production" is one PR away from real.
+- "Push to production = deployed to *.workers.dev" is one PR away from real.
 - Pool refactor closes a latent bug class — module-scope DB clients that don't survive Workers' request boundary.
 - Observability dashboard logs available from minute one — no waiting on a separate observability PR to be able to debug.
 - ADR-0007's hosting decision is now an actual deploy.

@@ -5,7 +5,7 @@ Operational procedures for running Forge in production on Cloudflare Workers. Co
 This runbook covers four things:
 
 1. **First-time setup** (one-time, done once per environment).
-2. **Routine deploy** (every push to `main`).
+2. **Routine deploy** (every push to `production`).
 3. **Manual deploy / rollback** (when CI is unavailable or a fast rollback is needed).
 4. **Smoke test** (post-deploy verification).
 
@@ -85,11 +85,32 @@ Settings → Secrets and variables → Actions → New repository secret. Add ea
 
 All nine must be set before the first deploy succeeds. Missing any one = the deploy step fails (clearly, in the logs).
 
-### 1.7 First deploy (manual, to seed Workers Secrets)
+### 1.7 Create the `production` branch (one-time)
 
-The GitHub Actions workflow assumes Workers Secrets exist. The first push to `main` will create them via `cloudflare/wrangler-action@v3`'s `secrets:` mechanism — no separate seeding step needed.
+Forge uses a promote-to-prod branching model: `main` is the integration branch (where PRs merge, CI runs but no deploy fires), `production` is the prod branch (push to it = deploy). Before the first deploy, the `production` branch has to exist.
 
-If you ever need to seed manually (e.g., to test before merging):
+After the deploy-foundation PR merges to `main`:
+
+```sh
+git checkout main
+git pull origin main
+git checkout -b production
+git push -u origin production    # this is the FIRST deploy trigger
+```
+
+After that, future deploys are:
+
+```sh
+git push origin main:production  # fast-forward production to current main
+```
+
+Or open a PR `main → production` in the GitHub UI and merge it — same effect.
+
+### 1.8 First deploy (manual seeding optional)
+
+The GitHub Actions workflow assumes Workers Secrets exist. The first push to `production` will create them via `cloudflare/wrangler-action@v3`'s `secrets:` mechanism — no separate seeding step needed.
+
+If you ever need to seed manually (e.g., to test before promoting):
 
 ```sh
 bunx wrangler login                          # one-time browser auth
@@ -106,7 +127,23 @@ bunx wrangler secret put BETTER_AUTH_SECRET
 
 ### Trigger
 
-Any push (merge) to `main`. The GitHub Actions workflow `.github/workflows/deploy.yml` runs automatically.
+Push to the `production` branch — NOT merges to `main`. The GitHub Actions workflow `.github/workflows/deploy.yml` is wired to `branches: [production]` only.
+
+Two ways to promote `main` to `production`:
+
+```sh
+# Option A — fast-forward push from the command line
+git checkout main && git pull
+git push origin main:production
+```
+
+```sh
+# Option B — PR in the GitHub UI
+# Open: https://github.com/kj-forge/forge/compare/production...main
+# Click "Create pull request" → review → merge.
+```
+
+Option B gives a diff-review step; option A is a single command. Either way, the push to `production` is what fires the deploy.
 
 ### What happens
 
@@ -126,10 +163,10 @@ GitHub repo → Actions tab → most recent "Deploy" run. Each job has live logs
 
 ### What if a step fails
 
-- **verify fails** → fix the code, push again. Nothing was deployed; production unchanged.
-- **migrate fails** → the migration has a bug. Production schema unchanged; worker unchanged. Read the SQL error, fix the migration, re-push.
+- **verify fails** → fix on `main` (PR + merge), re-promote to `production`. Nothing was deployed; production unchanged.
+- **migrate fails** → the migration has a bug. Production schema unchanged; worker unchanged. Read the SQL error, fix on `main`, re-promote.
 - **deploy fails** → the migration ran (schema is now ahead of code). Investigate:
-  - If recoverable: fix the deploy issue, push again. Migration step is idempotent (Drizzle skips already-applied migrations).
+  - If recoverable: fix on `main`, re-promote to `production`. Migration step is idempotent (Drizzle skips already-applied migrations).
   - If unrecoverable: the previous worker is still serving. The schema mismatch is benign IF the migration was additive (it should always be — see [learning doc §7](../learning/deploy-and-environments.md#7-migrations-in-production)). If the migration was destructive and the old code needs the dropped column, you have a real problem — see §3.2 below.
 
 ---
@@ -138,7 +175,7 @@ GitHub repo → Actions tab → most recent "Deploy" run. Each job has live logs
 
 ### 3.1 Manual deploy (when CI is broken)
 
-From a clean checkout of `main`:
+From a clean checkout of `production` (or `main` if you trust HEAD):
 
 ```sh
 bun install --frozen-lockfile

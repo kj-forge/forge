@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [production]
 
 concurrency:
   group: deploy-production
@@ -13,14 +13,23 @@ permissions:
 
 # Production deploy pipeline.
 #
-# Triggered on every merge to main. Re-runs lint + typecheck + unit tests
-# inline (defence-in-depth — the PR gate already ran them, but a force-push
-# or admin merge could bypass) before touching prod. Migrations run BEFORE
-# the worker is deployed: the DB schema must always be forward-compatible
-# with the currently-deployed code, so when expand-then-contract migrations
-# land they MUST be additive in the merge that ships the new column and
-# DESTRUCTIVE only in the merge that ships the code that stopped using the
-# old column.
+# Triggered on push to the `production` branch — NOT on merges to `main`.
+# Day-to-day work merges into `main` (integration only, CI runs but no
+# deploy fires). When ready to ship, promote by fast-forwarding production
+# to main:
+#
+#   git push origin main:production
+#
+# Or via a PR `main → production` in the GitHub UI. Either way, this
+# workflow fires only on the production push.
+#
+# Re-runs lint + typecheck + unit tests inline (defence-in-depth — the
+# PR gate already ran them, but a force-push or admin merge could bypass)
+# before touching prod. Migrations run BEFORE the worker is deployed: the
+# DB schema must always be forward-compatible with the currently-deployed
+# code, so when expand-then-contract migrations land they MUST be additive
+# in the merge that ships the new column and DESTRUCTIVE only in the merge
+# that ships the code that stopped using the old column.
 #
 # Required repo secrets:
 #   CLOUDFLARE_API_TOKEN      — token scoped to "Edit Cloudflare Workers"
