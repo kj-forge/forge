@@ -1,0 +1,2 @@
+CREATE TYPE "public"."set_kind" AS ENUM('WARMUP', 'TOP_SET', 'WORK', 'BACK_OFF', 'FAILURE', 'DROP_SET');--> statement-breakpoint
+ALTER TABLE "sets" ADD COLUMN "kind" "set_kind" DEFAULT 'WORK' NOT NULL;

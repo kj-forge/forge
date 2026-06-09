@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -31,8 +31,14 @@ function MePage() {
   };
 
   return (
-    <main className="flex min-h-svh items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
+    <main className="mx-auto flex min-h-svh max-w-md flex-col gap-4 p-4">
+      <header className="flex items-center justify-between pt-2">
+        <Link to="/" className="text-muted-foreground text-sm">
+          ← Wróć
+        </Link>
+      </header>
+
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Twoje konto</CardTitle>
           <CardDescription>Zalogowany jako…</CardDescription>
