@@ -83,7 +83,12 @@ function NewSessionPage() {
 
       <div className="space-y-1 pt-2">
         <h1 className="font-bold text-2xl tracking-tight">Nowa sesja {SESSION_TYPE_LABEL_PL[type]}</h1>
-        <p className="text-muted-foreground text-sm">
+        {/* `todayDow` and the toLocaleDateString below derive from `new Date()` evaluated
+            during render, which uses UTC on the server (Workers runtime) and local
+            timezone on the client. Near midnight in the user's TZ the displayed day can
+            differ from the SSR-rendered one — suppress hydration warning, the client
+            re-renders with the correct local value on mount. */}
+        <p className="text-muted-foreground text-sm" suppressHydrationWarning>
           {DAY_OF_WEEK_PL[todayDow]?.replace(/.$/, "y") /* niedzieln-y/wtorkow-y */} ·{" "}
           {new Date().toLocaleDateString("pl-PL", { day: "numeric", month: "long" })}
         </p>
