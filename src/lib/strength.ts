@@ -6,8 +6,10 @@
 // (callable from client components). Auth is enforced inside each server fn
 // via `getCurrentAthleteOrThrow` — no client can call these unauthenticated.
 //
-// Atomic operations (multi-row dependent inserts) go through `dbPool`
-// transactions. Single-statement reads/writes go through the HTTP `db` client.
+// Atomic operations (multi-row dependent inserts) acquire a fresh pooled
+// connection via `createPool()` per request — WebSocket connections cannot
+// outlive a request on Workers. Single-statement reads/writes go through the
+// HTTP `db` client.
 // ============================================================================
 
 import { createServerFn } from "@tanstack/react-start";
@@ -16,7 +18,7 @@ import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "../../db/client";
-import { dbPool } from "../../db/pool";
+import { createPool } from "../../db/pool";
 import { athletes, blockMovements, exercises, sessionBlocks, sessions, sets } from "../../db/schema";
 
 import { auth } from "./auth";
@@ -365,89 +367,99 @@ interface CreateSessionResult {
 }
 
 // NOT exported — keeping it module-internal ensures the bundler can strip the
-// `dbPool` import from the client bundle. Exporting plain async functions that
-// reference server-only modules (like dbPool) forces the import to survive
-// tree-shaking, which makes `db/pool.ts` execute in the browser and crash with
+// pool import from the client bundle. Exporting plain async functions that
+// reference server-only modules forces the import to survive tree-shaking,
+// which makes `db/pool.ts` execute in the browser and crash with
 // `DATABASE_URL is not set`. When we add integration tests, we'll re-export
 // behind a `serverOnly` wrapper or split into a server-only file.
 //
 // Atomic: session + 1 block (+ N movements if cloning template). All inserts
-// ROLLBACK together if any step fails.
+// ROLLBACK together if any step fails. A fresh WebSocket pool is acquired
+// per call — Workers terminates idle sockets between requests, so module-
+// scope reuse is unsafe — and disposed in the finally block.
 async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessionResult> {
-  return dbPool.transaction(async (tx) => {
-    // 1. Clone movements from template (if requested) — copy the EXERCISE
-    // and the ACTUAL last set's reps/weight from the previous session into
-    // the new movement's target_* columns (not the previous movement's
-    // target_* which is almost always null in MVP). This is what gives the
-    // exercise drawer its "defaults from last set" UX on the first save.
-    const templateMovements = args.fromTemplateSessionId
-      ? await tx
-          .select({
-            exerciseId: blockMovements.exerciseId,
-            orderIndex: blockMovements.orderIndex,
-            // Correlated subqueries: read the previous movement's LAST set
-            // (by setNumber DESC). Returns null if the movement had no sets.
-            lastReps: sql<number | null>`(
+  const { db: tx_db, end } = await createPool();
+  try {
+    return await tx_db.transaction(async (tx) => {
+      // 1. Clone movements from template (if requested) — copy the EXERCISE
+      // and the ACTUAL last set's reps/weight from the previous session into
+      // the new movement's target_* columns (not the previous movement's
+      // target_* which is almost always null in MVP). This is what gives the
+      // exercise drawer its "defaults from last set" UX on the first save.
+      const templateMovements = args.fromTemplateSessionId
+        ? await tx
+            .select({
+              exerciseId: blockMovements.exerciseId,
+              orderIndex: blockMovements.orderIndex,
+              // Correlated subqueries: read the previous movement's LAST set
+              // (by setNumber DESC). Returns null if the movement had no sets.
+              lastReps: sql<number | null>`(
               SELECT s.reps FROM sets s
               WHERE s.block_movement_id = ${blockMovements.id}
               ORDER BY s.set_number DESC LIMIT 1
             )`,
-            lastWeightKg: sql<number | null>`(
+              lastWeightKg: sql<number | null>`(
               SELECT s.weight_kg FROM sets s
               WHERE s.block_movement_id = ${blockMovements.id}
               ORDER BY s.set_number DESC LIMIT 1
             )`,
-          })
-          .from(blockMovements)
-          .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
-          .where(
-            and(eq(sessionBlocks.sessionId, args.fromTemplateSessionId), eq(blockMovements.athleteId, args.athleteId)),
-          )
-          .orderBy(blockMovements.orderIndex)
-      : [];
+            })
+            .from(blockMovements)
+            .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
+            .where(
+              and(
+                eq(sessionBlocks.sessionId, args.fromTemplateSessionId),
+                eq(blockMovements.athleteId, args.athleteId),
+              ),
+            )
+            .orderBy(blockMovements.orderIndex)
+        : [];
 
-    // 2. INSERT the session row.
-    const [session] = await tx
-      .insert(sessions)
-      .values({
-        athleteId: args.athleteId,
-        date: args.date,
-        type: args.type,
-        startedAt: new Date(),
-        source: "MANUAL",
-      })
-      .returning({ id: sessions.id });
-
-    // 3. INSERT one block (strength is always a single STRAIGHT_SETS block in
-    // MVP — Hyrox / interval layouts will reuse this fn with a different kind).
-    const [block] = await tx
-      .insert(sessionBlocks)
-      .values({
-        athleteId: args.athleteId,
-        sessionId: session.id,
-        orderIndex: 0,
-        kind: "STRAIGHT_SETS",
-      })
-      .returning({ id: sessionBlocks.id });
-
-    // 4. Optionally INSERT the cloned movements. target_* are populated from
-    // the previous session's last set so the drawer can show meaningful
-    // defaults for the very first set of each exercise.
-    if (templateMovements.length > 0) {
-      await tx.insert(blockMovements).values(
-        templateMovements.map((m) => ({
+      // 2. INSERT the session row.
+      const [session] = await tx
+        .insert(sessions)
+        .values({
           athleteId: args.athleteId,
-          blockId: block.id,
-          orderIndex: m.orderIndex,
-          exerciseId: m.exerciseId,
-          targetReps: m.lastReps,
-          targetWeightKg: m.lastWeightKg,
-        })),
-      );
-    }
+          date: args.date,
+          type: args.type,
+          startedAt: new Date(),
+          source: "MANUAL",
+        })
+        .returning({ id: sessions.id });
 
-    return { sessionId: session.id, blockId: block.id };
-  });
+      // 3. INSERT one block (strength is always a single STRAIGHT_SETS block in
+      // MVP — Hyrox / interval layouts will reuse this fn with a different kind).
+      const [block] = await tx
+        .insert(sessionBlocks)
+        .values({
+          athleteId: args.athleteId,
+          sessionId: session.id,
+          orderIndex: 0,
+          kind: "STRAIGHT_SETS",
+        })
+        .returning({ id: sessionBlocks.id });
+
+      // 4. Optionally INSERT the cloned movements. target_* are populated from
+      // the previous session's last set so the drawer can show meaningful
+      // defaults for the very first set of each exercise.
+      if (templateMovements.length > 0) {
+        await tx.insert(blockMovements).values(
+          templateMovements.map((m) => ({
+            athleteId: args.athleteId,
+            blockId: block.id,
+            orderIndex: m.orderIndex,
+            exerciseId: m.exerciseId,
+            targetReps: m.lastReps,
+            targetWeightKg: m.lastWeightKg,
+          })),
+        );
+      }
+
+      return { sessionId: session.id, blockId: block.id };
+    });
+  } finally {
+    await end();
+  }
 }
 
 export const createSession = createServerFn({ method: "POST" })

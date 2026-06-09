@@ -1,3 +1,4 @@
+import { cloudflare } from "@cloudflare/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
@@ -12,6 +13,11 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   plugins: [
+    // Cloudflare plugin owns the SSR build environment ("ssr" is the TanStack
+    // Start convention) and provides the Workers runtime under `vite dev` via
+    // miniflare. Must precede tanstackStart so the SSR environment is attached
+    // before TanStack's server-fns are wired through it.
+    cloudflare({ viteEnvironment: { name: "ssr" } }),
     // Tailwind v4 must come before tanstackStart (per Tailwind TanStack Start guide)
     tailwindcss(),
     // VitePWA before tanstackStart so it sees the client build output

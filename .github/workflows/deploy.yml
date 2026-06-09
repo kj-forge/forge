@@ -1,0 +1,107 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+# Production deploy pipeline.
+#
+# Triggered on every merge to main. Re-runs lint + typecheck + unit tests
+# inline (defence-in-depth — the PR gate already ran them, but a force-push
+# or admin merge could bypass) before touching prod. Migrations run BEFORE
+# the worker is deployed: the DB schema must always be forward-compatible
+# with the currently-deployed code, so when expand-then-contract migrations
+# land they MUST be additive in the merge that ships the new column and
+# DESTRUCTIVE only in the merge that ships the code that stopped using the
+# old column.
+#
+# Required repo secrets:
+#   CLOUDFLARE_API_TOKEN      — token scoped to "Edit Cloudflare Workers"
+#   CLOUDFLARE_ACCOUNT_ID     — account ID from the Cloudflare dashboard
+#   DATABASE_URL              — Neon prod branch pooled connection string
+#   BETTER_AUTH_SECRET        — 32+ chars, fresh (do not reuse dev)
+#   VITE_APP_URL              — https://<worker-name>.<subdomain>.workers.dev
+#   RESEND_API_KEY            — Resend API key
+#   RESEND_FROM_EMAIL         — verified sender (or onboarding@resend.dev for dev)
+#   GOOGLE_CLIENT_ID
+#   GOOGLE_CLIENT_SECRET
+
+jobs:
+  verify:
+    name: Verify (lint + typecheck + unit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run test
+
+  migrate:
+    name: Migrate Neon (prod)
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Apply Drizzle migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: bun run db:migrate
+
+  deploy:
+    name: Deploy to Cloudflare Workers
+    needs: migrate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      # VITE_APP_URL is inlined into the client bundle at build time
+      # (`import.meta.env.VITE_APP_URL`). Must match the prod URL exactly or
+      # the client-side auth handler builds requests against the wrong host.
+      - name: Build for production
+        env:
+          VITE_APP_URL: ${{ secrets.VITE_APP_URL }}
+        run: bun run build
+      - name: Deploy + sync secrets
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: bun
+          # Worker Secrets — piped through `wrangler secret put` before
+          # the deploy command runs. Each name on its own line maps to an
+          # env var the action reads from `env:` below.
+          secrets: |
+            DATABASE_URL
+            BETTER_AUTH_SECRET
+            VITE_APP_URL
+            RESEND_API_KEY
+            RESEND_FROM_EMAIL
+            GOOGLE_CLIENT_ID
+            GOOGLE_CLIENT_SECRET
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          VITE_APP_URL: ${{ secrets.VITE_APP_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
