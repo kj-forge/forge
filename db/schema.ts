@@ -86,6 +86,12 @@ export const progressionKind = pgEnum("progression_kind", [
   "QUALITY_FIRST",
 ]);
 
+// Intent of an individual set within a strength session. WORK is the
+// straight-set default; WARMUP / TOP_SET / BACK_OFF capture the modern
+// top-set-plus-back-off model; FAILURE / DROP_SET cover edge cases.
+// Volume calculations exclude WARMUP.
+export const setKind = pgEnum("set_kind", ["WARMUP", "TOP_SET", "WORK", "BACK_OFF", "FAILURE", "DROP_SET"]);
+
 export const hyroxStationSlug = pgEnum("hyrox_station_slug", [
   "SKI_ERG",
   "SLED_PUSH",
@@ -525,7 +531,7 @@ export const sets = pgTable(
     distanceM: integer(),
     calories: integer(),
     rpe: smallint(),
-    isWarmup: boolean().notNull().default(false),
+    kind: setKind().notNull().default("WORK"),
     notes: text(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },

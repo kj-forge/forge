@@ -15,6 +15,20 @@
       "when": 1780822998499,
       "tag": "0001_better_auth_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780943722244,
+      "tag": "0002_set_kind",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780943744287,
+      "tag": "0003_drop_is_warmup",
+      "breakpoints": true
     }
   ]
 }
