@@ -123,6 +123,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Honor iOS safe-area insets in standalone PWA mode (no browser chrome
+       above the content). env() returns 0 outside iOS standalone, so this
+       is a no-op for desktop / non-iOS / browser tabs. */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
   html {
     @apply font-sans;
