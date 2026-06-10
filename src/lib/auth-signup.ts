@@ -9,7 +9,8 @@
 
 import { eq } from "drizzle-orm";
 
-import { dbPool } from "../../db/pool";
+import { db } from "../../db/client";
+import { createPool } from "../../db/pool";
 import { athletePublicProfiles, athletes, auditLog } from "../../db/schema";
 
 // Word lists for random usernames (e.g., "brave-otter-471"). Kept short and
@@ -127,76 +128,88 @@ export interface SignupTransactionResult {
 // Atomic: athlete + public profile + audit log all succeed, or none do.
 // Username collisions retry up to MAX_USERNAME_RETRIES — Postgres raises a
 // unique-violation (SQLSTATE 23505) which we catch and regenerate.
+//
+// A fresh WebSocket pool is acquired per call — Workers terminates idle
+// sockets between requests, so module-scope reuse is unsafe — and disposed
+// in the finally block.
 export async function runSignupTransaction(args: RunSignupTransactionArgs): Promise<SignupTransactionResult> {
   const genUsername = args.usernameGenerator ?? generateRandomUsername;
+  const { db: tx_db, end } = await createPool();
 
-  return dbPool.transaction(async (tx) => {
-    let athleteId: string | undefined;
-    let username: string | undefined;
+  try {
+    return await tx_db.transaction(async (tx) => {
+      let athleteId: string | undefined;
+      let username: string | undefined;
 
-    // 1. Athlete row with username retry on UNIQUE collision.
-    for (let attempt = 0; attempt < MAX_USERNAME_RETRIES; attempt++) {
-      const candidate = genUsername();
-      try {
-        const [row] = await tx
-          .insert(athletes)
-          .values({ userId: args.userId, username: candidate })
-          .returning({ id: athletes.id });
-        athleteId = row.id;
-        username = candidate;
-        break;
-      } catch (err) {
-        if (!isUniqueViolation(err)) throw err;
-        // Username collided; try again.
+      // 1. Athlete row with username retry on UNIQUE collision.
+      for (let attempt = 0; attempt < MAX_USERNAME_RETRIES; attempt++) {
+        const candidate = genUsername();
+        try {
+          const [row] = await tx
+            .insert(athletes)
+            .values({ userId: args.userId, username: candidate })
+            .returning({ id: athletes.id });
+          athleteId = row.id;
+          username = candidate;
+          break;
+        } catch (err) {
+          if (!isUniqueViolation(err)) throw err;
+          // Username collided; try again.
+        }
       }
-    }
-    if (!athleteId || !username) {
-      throw new Error(`Failed to allocate a unique username after ${MAX_USERNAME_RETRIES} attempts`);
-    }
+      if (!athleteId || !username) {
+        throw new Error(`Failed to allocate a unique username after ${MAX_USERNAME_RETRIES} attempts`);
+      }
 
-    if (args.forceFailureAt === "athlete") {
-      throw new Error("forceFailureAt: athlete (test-only)");
-    }
+      if (args.forceFailureAt === "athlete") {
+        throw new Error("forceFailureAt: athlete (test-only)");
+      }
 
-    // 2. Public profile (private by default; users opt-in later).
-    await tx.insert(athletePublicProfiles).values({
-      athleteId,
-      publicSlug: username,
-      isPublic: false,
+      // 2. Public profile (private by default; users opt-in later).
+      await tx.insert(athletePublicProfiles).values({
+        athleteId,
+        publicSlug: username,
+        isPublic: false,
+      });
+
+      if (args.forceFailureAt === "profile") {
+        throw new Error("forceFailureAt: profile (test-only)");
+      }
+
+      // 3. Audit log entry for the signup.
+      await tx.insert(auditLog).values({
+        athleteId,
+        actorUserId: args.userId,
+        action: "USER_SIGNUP",
+        entityType: "users",
+        entityId: args.userId,
+        ip: args.audit?.ip,
+        userAgent: args.audit?.userAgent,
+      });
+
+      if (args.forceFailureAt === "audit") {
+        throw new Error("forceFailureAt: audit (test-only)");
+      }
+
+      return { athleteId, username };
     });
-
-    if (args.forceFailureAt === "profile") {
-      throw new Error("forceFailureAt: profile (test-only)");
-    }
-
-    // 3. Audit log entry for the signup.
-    await tx.insert(auditLog).values({
-      athleteId,
-      actorUserId: args.userId,
-      action: "USER_SIGNUP",
-      entityType: "users",
-      entityId: args.userId,
-      ip: args.audit?.ip,
-      userAgent: args.audit?.userAgent,
-    });
-
-    if (args.forceFailureAt === "audit") {
-      throw new Error("forceFailureAt: audit (test-only)");
-    }
-
-    return { athleteId, username };
-  });
+  } finally {
+    await end();
+  }
 }
 
 // Idempotent backfill for orphan users (user row exists, athlete row missing).
 // Defence-in-depth: signup hook should normally cover this, but partial
 // failures (network blip mid-RPC, manual `DELETE FROM athletes`, restore from
 // a partial backup) can still produce orphans. Safe to call on every login.
+//
+// Read goes through the HTTP `db` client (single statement, no transaction
+// needed) — avoids the 50-150ms WebSocket handshake on the hot login path.
 export async function ensureAthlete(
   userId: string,
   audit?: AuditMetadata,
 ): Promise<{ athleteId: string; username: string; created: boolean }> {
-  const existing = await dbPool
+  const existing = await db
     .select({ id: athletes.id, username: athletes.username })
     .from(athletes)
     .where(eq(athletes.userId, userId))

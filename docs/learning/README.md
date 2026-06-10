@@ -14,6 +14,7 @@ These are not architecture decision records (those live in [`docs/adr/`](../adr/
 | [curl-basics.md](curl-basics.md) | What curl is, why it's table stakes in 2026, the flags you actually use, vs alternatives (httpie / Postman / fetch), and an end-to-end smoke-test walkthrough of Forge's auth as the practical example. |
 | [strength-ux.md](strength-ux.md) | The strength session logging flow — data model, set-kind enum, "from last session" template matching by day-of-week, progression suggestion heuristic, screen-by-screen UX, deliberate omissions list. |
 | [server-functions.md](server-functions.md) | TanStack Start server functions — builder pattern, Zod validation, per-fn auth, multi-tenant ownership, two DB clients (HTTP vs WebSocket pool), atomic transactions, plus the server-only-leak bug + React 19 `useEffect` / `FormEvent` anti-patterns we replaced. |
+| [deploy-and-environments.md](deploy-and-environments.md) | What "production" actually is when an app stops being local-only — V8 isolates vs Node, the Vite Cloudflare adapter, Wrangler, secrets vs vars vs `import.meta.env`, why the Neon WebSocket pool can't be a singleton on Workers, expand-then-contract migrations, `vite dev` vs `wrangler dev`. The prequel to [`docs/runbooks/deploy.md`](../runbooks/deploy.md). |
 
 ## How to use these
 

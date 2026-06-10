@@ -1,0 +1,25 @@
+// Cloudflare Workers configuration for Forge.
+//
+// Read by @cloudflare/vite-plugin (during `bun dev` and `bun run build`) and
+// by the `wrangler` CLI (deploy, secrets, tail). Secrets are NOT in this file
+// — they live in Workers Secrets via `wrangler secret put` (or GitHub Actions
+// piping repo secrets through cloudflare/wrangler-action).
+//
+// account_id is intentionally omitted; it's injected at deploy time via the
+// CLOUDFLARE_ACCOUNT_ID env var (CI) or `wrangler.toml`-less auth (local
+// `wrangler login`). This keeps the file safe to commit on a public repo.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "forge",
+  "main": "@tanstack/react-start/server-entry",
+  "compatibility_date": "2026-06-09",
+  // nodejs_compat: required for Better Auth, Resend SDK, and Drizzle/Neon to
+  // resolve Node built-ins (crypto, buffer, stream) under V8 isolates. Without
+  // it the bundle fails at deploy with "Could not resolve 'node:crypto'".
+  "compatibility_flags": ["nodejs_compat"],
+  // Free dashboard logs — kept on from day one so the first prod incidents are
+  // debuggable from the Cloudflare UI without wiring Sentry first (that's PR-C).
+  "observability": {
+    "enabled": true
+  }
+}

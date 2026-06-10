@@ -57,7 +57,13 @@ function MePage() {
             )}
             <div className="flex justify-between gap-3">
               <dt className="text-muted-foreground">Sesja wygasa</dt>
-              <dd className="font-medium">{new Date(session.session.expiresAt).toLocaleString("pl-PL")}</dd>
+              {/* Server renders the time in UTC (Workers runtime), client in the user's
+                  local timezone — guaranteed mismatch on the time portion. Until we wire
+                  athlete.timezone through SSR, suppress the warning and let the client
+                  re-render with local time on hydration. */}
+              <dd className="font-medium" suppressHydrationWarning>
+                {new Date(session.session.expiresAt).toLocaleString("pl-PL")}
+              </dd>
             </div>
           </dl>
           <Button type="button" variant="outline" className="w-full" onClick={handleSignOut} disabled={signingOut}>
