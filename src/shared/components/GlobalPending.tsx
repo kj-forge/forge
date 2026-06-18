@@ -1,4 +1,4 @@
-import { Spinner } from "./spinner";
+import { Spinner } from "./Spinner";
 
 // Full-page loader shown by TanStack Router's `defaultPendingComponent`
 // whenever a route loader (or navigation transition) takes longer than the
