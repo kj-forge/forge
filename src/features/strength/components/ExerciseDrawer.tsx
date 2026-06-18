@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
+import { NumericFormat } from "react-number-format";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ import { suggestKind } from "@/features/strength/lib/suggest-kind";
 import { addSet, deleteSet } from "@/features/strength/server/sets";
 import type { Movement, SetKind } from "@/features/strength/types";
 import { getErrorMessage } from "@/lib/error-message";
+import { Spinner } from "@/shared/components/Spinner";
 
 interface ExerciseDrawerProps {
   open: boolean;
@@ -32,8 +34,12 @@ interface ExerciseDrawerProps {
 
 const setFormSchema = z.object({
   kind: z.enum(SET_KINDS),
-  reps: z.number().int().min(1, "Min 1 powtórzenie").max(999, "Max 999"),
-  weightKg: z.number().min(0, "Min 0").max(999, "Max 999 kg"),
+  reps: z
+    .number({ error: "Wpisz liczbę powtórzeń." })
+    .int("Liczba całkowita")
+    .min(1, "Min 1 powtórzenie")
+    .max(999, "Max 999"),
+  weightKg: z.number({ error: "Wpisz ciężar (0 = bodyweight)." }).min(0, "Min 0").max(999, "Max 999 kg"),
   rpe: z.number().int().min(6).max(10).nullable(),
 });
 
@@ -139,12 +145,12 @@ export function ExerciseDrawer({ open, onOpenChange, movement }: ExerciseDrawerP
                         </span>
                         <button
                           type="button"
-                          className="text-muted-foreground text-xs hover:text-destructive disabled:opacity-50"
+                          className="flex items-center text-muted-foreground text-xs hover:text-destructive disabled:opacity-50"
                           onClick={() => handleDeleteSet(s.id)}
                           disabled={deletingSetId === s.id}
                           aria-label={`Usuń serię ${i + 1}`}
                         >
-                          {deletingSetId === s.id ? "..." : "✕"}
+                          {deletingSetId === s.id ? <Spinner size="sm" /> : "✕"}
                         </button>
                       </li>
                     ))}
@@ -200,23 +206,24 @@ export function ExerciseDrawer({ open, onOpenChange, movement }: ExerciseDrawerP
                           type="button"
                           variant="outline"
                           size="lg"
-                          onClick={() => field.onChange(Math.max(1, field.value - 1))}
+                          onClick={() => field.onChange(Math.max(1, (field.value ?? 1) - 1))}
                         >
                           −
                         </Button>
-                        <Input
+                        <NumericFormat
                           id="reps"
-                          type="number"
-                          inputMode="numeric"
+                          customInput={Input}
                           className="text-center text-lg"
-                          value={field.value}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                          value={field.value ?? ""}
+                          onValueChange={(values) => field.onChange(values.floatValue)}
+                          decimalScale={0}
+                          allowNegative={false}
                         />
                         <Button
                           type="button"
                           variant="outline"
                           size="lg"
-                          onClick={() => field.onChange(field.value + 1)}
+                          onClick={() => field.onChange((field.value ?? 0) + 1)}
                         >
                           +
                         </Button>
@@ -242,24 +249,24 @@ export function ExerciseDrawer({ open, onOpenChange, movement }: ExerciseDrawerP
                           type="button"
                           variant="outline"
                           size="lg"
-                          onClick={() => field.onChange(Math.max(0, Math.round((field.value - 2.5) * 10) / 10))}
+                          onClick={() => field.onChange(Math.max(0, Math.round(((field.value ?? 0) - 2.5) * 10) / 10))}
                         >
                           −2.5
                         </Button>
-                        <Input
+                        <NumericFormat
                           id="weight"
-                          type="number"
-                          inputMode="decimal"
-                          step={2.5}
+                          customInput={Input}
                           className="text-center text-lg"
-                          value={field.value}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber || 0)}
+                          value={field.value ?? ""}
+                          onValueChange={(values) => field.onChange(values.floatValue)}
+                          decimalScale={2}
+                          allowNegative={false}
                         />
                         <Button
                           type="button"
                           variant="outline"
                           size="lg"
-                          onClick={() => field.onChange(Math.round((field.value + 2.5) * 10) / 10)}
+                          onClick={() => field.onChange(Math.round(((field.value ?? 0) + 2.5) * 10) / 10)}
                         >
                           +2.5
                         </Button>
