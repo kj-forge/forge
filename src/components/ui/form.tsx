@@ -136,9 +136,6 @@ function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
   );
 }
 
-// Renders form-level errors set via form.setError("root.serverError", ...).
-// Stock <FormMessage /> only reads per-field context, so root errors need their
-// own renderer. Placed as a direct child of <form>, NOT inside <FormField>.
 function FormRootMessage({ className, ...props }: React.ComponentProps<"p">) {
   const { errors } = useFormState();
   const rootError = errors.root?.serverError ?? errors.root;
