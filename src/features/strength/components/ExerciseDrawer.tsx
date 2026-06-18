@@ -145,7 +145,7 @@ export function ExerciseDrawer({ open, onOpenChange, movement }: ExerciseDrawerP
                         </span>
                         <button
                           type="button"
-                          className="flex items-center text-muted-foreground text-xs hover:text-destructive disabled:opacity-50"
+                          className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground text-xs hover:text-destructive disabled:opacity-50"
                           onClick={() => handleDeleteSet(s.id)}
                           disabled={deletingSetId === s.id}
                           aria-label={`Usuń serię ${i + 1}`}
