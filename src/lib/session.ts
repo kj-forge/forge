@@ -16,7 +16,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 
-import { auth } from "./auth";
+import { auth } from "@/features/auth/server/better-auth";
 
 export const getSession = createServerFn({ method: "GET" }).handler(async () => {
   // getRequestHeaders returns a plain object; Better Auth wants a Headers

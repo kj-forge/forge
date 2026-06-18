@@ -20,12 +20,11 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { Resend } from "resend";
+import { env } from "@/lib/env";
+import { db } from "../../../../db/client";
+import { authAccounts, authSessions, authVerifications, users } from "../../../../db/schema";
 
-import { db } from "../../db/client";
-import { authAccounts, authSessions, authVerifications, users } from "../../db/schema";
-
-import { runSignupTransaction } from "./auth-signup";
-import { env } from "./env";
+import { runSignupTransaction } from "./signup-hook";
 
 const resend = new Resend(env.RESEND_API_KEY);
 
@@ -91,7 +90,7 @@ export const auth = betterAuth({
       create: {
         // Atomic side-effects on signup: create the athlete row, public
         // profile row, and audit log entry in a single Postgres transaction
-        // via the WebSocket pool. See src/lib/auth-signup.ts.
+        // via the WebSocket pool. See ./signup-hook.ts.
         after: async (user, ctx) => {
           await runSignupTransaction({
             userId: user.id,

@@ -9,9 +9,9 @@
 
 import { eq } from "drizzle-orm";
 
-import { db } from "../../db/client";
-import { createPool } from "../../db/pool";
-import { athletePublicProfiles, athletes, auditLog } from "../../db/schema";
+import { db } from "../../../../db/client";
+import { createPool } from "../../../../db/pool";
+import { athletePublicProfiles, athletes, auditLog } from "../../../../db/schema";
 
 // Word lists for random usernames (e.g., "brave-otter-471"). Kept short and
 // PG-safe (lowercase, no surprises). 900 × 900 × 900 ≈ 729M combinations.
@@ -81,11 +81,6 @@ const ANIMALS = [
   "crane",
 ] as const;
 
-// Web Crypto (`crypto.getRandomValues`) instead of `Math.random()` — the file
-// lives in an auth context and the generated value ends up in a public slug,
-// so we want cryptographically strong randomness even though the username
-// itself is not a secret. Modulo bias on these tiny ranges is statistically
-// negligible (limit/2^32 ≈ 99.999%).
 function secureRandomInt(max: number): number {
   const arr = new Uint32Array(1);
   crypto.getRandomValues(arr);

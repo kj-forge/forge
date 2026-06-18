@@ -1,6 +1,7 @@
 import { createRouter } from "@tanstack/react-router";
 
-import { GlobalPending } from "./components/global-pending";
+import { GlobalPending } from "@/shared/components/GlobalPending";
+import { RouteError } from "@/shared/components/RouteError";
 import { routeTree } from "./routeTree.gen";
 
 export function getRouter() {
@@ -17,6 +18,7 @@ export function getRouter() {
     defaultPendingMs: 300,
     defaultPendingMinMs: 300,
     defaultPendingComponent: GlobalPending,
+    defaultErrorComponent: RouteError,
   });
 
   return router;
