@@ -36,6 +36,13 @@
       "when": 1781861906087,
       "tag": "0004_smiling_hercules",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781891765436,
+      "tag": "0005_chilly_mister_sinister",
+      "breakpoints": true
     }
   ]
 }
