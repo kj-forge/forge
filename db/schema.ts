@@ -495,8 +495,6 @@ export const blockMovements = pgTable(
     exerciseId: uuid()
       .notNull()
       .references(() => exercises.id, { onDelete: "restrict" }),
-    targetReps: integer(),
-    targetWeightKg: doublePrecision(),
     targetDurationSeconds: integer(),
     targetDistanceM: integer(),
     targetCalories: integer(),
