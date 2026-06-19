@@ -131,11 +131,5 @@
   }
   html {
     @apply font-sans;
-    /* While a drawer is open, vaul pins the page by setting
-       `body { position: fixed }` (iOS-only, to stop background scroll). With no
-       height on <html> the document then collapses to zero, so iOS jumps the
-       page to the top on open and on close. Holding <html> at least
-       viewport-tall keeps the scroll context alive. See vaul #318 / #152. */
-    min-height: 100%;
   }
 }
