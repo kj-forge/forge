@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { db } from "../../../../db/client";
@@ -8,7 +8,8 @@ import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../
 
 export const listRecentSessions = createServerFn({ method: "GET" }).handler(async () => {
   const { athleteId } = await getCurrentAthleteOrThrow();
-  return db
+
+  const sessionRows = await db
     .select({
       id: sessions.id,
       date: sessions.date,
@@ -21,7 +22,153 @@ export const listRecentSessions = createServerFn({ method: "GET" }).handler(asyn
     .where(eq(sessions.athleteId, athleteId))
     .orderBy(desc(sessions.date))
     .limit(10);
+  if (sessionRows.length === 0) return [];
+
+  // One batched join for the card previews: every movement of these sessions
+  // with each of its sets (left join keeps planned-but-empty exercises). The
+  // heaviest set per movement is the "top set" headline; reduced in JS.
+  const ids = sessionRows.map((s) => s.id);
+  const rows = await db
+    .select({
+      sessionId: sessionBlocks.sessionId,
+      movementId: blockMovements.id,
+      name: exercises.namePl,
+      weightKg: sets.weightKg,
+      reps: sets.reps,
+    })
+    .from(blockMovements)
+    .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
+    .innerJoin(exercises, eq(blockMovements.exerciseId, exercises.id))
+    .leftJoin(sets, eq(sets.blockMovementId, blockMovements.id))
+    .where(and(eq(blockMovements.athleteId, athleteId), inArray(sessionBlocks.sessionId, ids)))
+    .orderBy(sessionBlocks.sessionId, blockMovements.orderIndex);
+
+  type TopSet = { name: string; weightKg: number | null; reps: number | null; hasSet: boolean };
+  const bySession = new Map<string, Map<string, TopSet>>();
+  for (const row of rows) {
+    let movements = bySession.get(row.sessionId);
+    if (!movements) {
+      movements = new Map();
+      bySession.set(row.sessionId, movements);
+    }
+    let top = movements.get(row.movementId);
+    if (!top) {
+      top = { name: row.name, weightKg: null, reps: null, hasSet: false };
+      movements.set(row.movementId, top);
+    }
+    const isRealSet = row.reps !== null || row.weightKg !== null;
+    if (!isRealSet) continue;
+    const heavier =
+      !top.hasSet ||
+      (row.weightKg ?? -1) > (top.weightKg ?? -1) ||
+      ((row.weightKg ?? -1) === (top.weightKg ?? -1) && (row.reps ?? -1) > (top.reps ?? -1));
+    if (heavier) {
+      top.weightKg = row.weightKg;
+      top.reps = row.reps;
+      top.hasSet = true;
+    }
+  }
+
+  return sessionRows.map((s) => ({
+    ...s,
+    // Map preserves insertion order, and rows arrive ordered by orderIndex.
+    exercises: [...(bySession.get(s.id)?.values() ?? [])].map((m) => ({
+      name: m.name,
+      weightKg: m.weightKg,
+      reps: m.reps,
+    })),
+  }));
 });
+
+// Reference set per kind, surfaced as the drawer's smart defaults. Keyed by the
+// three visible kinds — the only ones the picker can pre-fill.
+export type RefKind = "WARMUP" | "TOP_SET" | "BACK_OFF";
+export type KindRef = { reps: number | null; weightKg: number | null };
+export type LastByKind = Partial<Record<RefKind, KindRef>>;
+
+// For each exercise, find its most recent ENDED session of the SAME type and
+// distil one reference set per kind. WARMUP = first (ramp up from the lightest),
+// TOP_SET = last (3 sets at one weight → the last is the working number),
+// BACK_OFF = first. Two batched queries regardless of exercise count.
+async function loadLastByKind(
+  athleteId: string,
+  type: (typeof sessions.$inferSelect)["type"],
+  currentSessionId: string,
+  exerciseIds: string[],
+): Promise<Map<string, LastByKind>> {
+  if (exerciseIds.length === 0) return new Map();
+
+  // Q1: every prior movement of these exercises in an ended same-type session.
+  const candidates = await db
+    .select({
+      exerciseId: blockMovements.exerciseId,
+      movementId: blockMovements.id,
+      date: sessions.date,
+      startedAt: sessions.startedAt,
+    })
+    .from(blockMovements)
+    .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
+    .innerJoin(sessions, eq(sessionBlocks.sessionId, sessions.id))
+    .where(
+      and(
+        eq(blockMovements.athleteId, athleteId),
+        eq(sessions.type, type),
+        ne(sessions.id, currentSessionId),
+        isNotNull(sessions.endedAt),
+        inArray(blockMovements.exerciseId, exerciseIds),
+      ),
+    );
+
+  // Pick the most recent movement per exercise (date desc, then startedAt desc).
+  const best = new Map<string, { movementId: string; date: string; startedAt: Date | null }>();
+  for (const c of candidates) {
+    const cur = best.get(c.exerciseId);
+    const newer =
+      !cur ||
+      c.date > cur.date ||
+      (c.date === cur.date && (c.startedAt?.getTime() ?? 0) > (cur.startedAt?.getTime() ?? 0));
+    if (newer) best.set(c.exerciseId, { movementId: c.movementId, date: c.date, startedAt: c.startedAt });
+  }
+  if (best.size === 0) return new Map();
+
+  const movementToExercise = new Map<string, string>();
+  for (const [exerciseId, v] of best) movementToExercise.set(v.movementId, exerciseId);
+
+  // Q2: all sets of the chosen movements, ordered so first/last per kind is direct.
+  const setRows = await db
+    .select({
+      blockMovementId: sets.blockMovementId,
+      kind: sets.kind,
+      reps: sets.reps,
+      weightKg: sets.weightKg,
+    })
+    .from(sets)
+    .where(and(eq(sets.athleteId, athleteId), inArray(sets.blockMovementId, [...movementToExercise.keys()])))
+    .orderBy(sets.blockMovementId, sets.setNumber);
+
+  const rowsByExercise = new Map<string, typeof setRows>();
+  for (const row of setRows) {
+    const exerciseId = movementToExercise.get(row.blockMovementId);
+    if (!exerciseId) continue;
+    const arr = rowsByExercise.get(exerciseId) ?? [];
+    arr.push(row);
+    rowsByExercise.set(exerciseId, arr);
+  }
+
+  const result = new Map<string, LastByKind>();
+  for (const [exerciseId, rows] of rowsByExercise) {
+    const warmup = rows.find((r) => r.kind === "WARMUP");
+    const topSets = rows.filter((r) => r.kind === "TOP_SET");
+    const topSet = topSets[topSets.length - 1];
+    const backOff = rows.find((r) => r.kind === "BACK_OFF");
+    const lbk: LastByKind = {};
+    if (warmup) lbk.WARMUP = { reps: warmup.reps, weightKg: warmup.weightKg };
+    if (topSet) lbk.TOP_SET = { reps: topSet.reps, weightKg: topSet.weightKg };
+    if (backOff) lbk.BACK_OFF = { reps: backOff.reps, weightKg: backOff.weightKg };
+    result.set(exerciseId, lbk);
+  }
+  return result;
+}
 
 const sessionDetailsInput = z.object({ sessionId: z.uuid() });
 
@@ -59,11 +206,6 @@ export const getSessionDetails = createServerFn({ method: "GET" })
             blockId: blockMovements.blockId,
             orderIndex: blockMovements.orderIndex,
             exerciseId: blockMovements.exerciseId,
-            // targetReps / targetWeightKg are cloned from the previous
-            // session's last set when starting from a template. The drawer
-            // uses them as defaults for the first set of each exercise.
-            targetReps: blockMovements.targetReps,
-            targetWeightKg: blockMovements.targetWeightKg,
             exerciseSlug: exercises.slug,
             exerciseNamePl: exercises.namePl,
             exerciseDefaultUnit: exercises.defaultUnit,
@@ -90,17 +232,28 @@ export const getSessionDetails = createServerFn({ method: "GET" })
       setsByMovement.set(set.blockMovementId, arr);
     }
 
+    // Smart defaults only matter while logging — an ended session is read-only.
+    const lastByKindMap = session.endedAt
+      ? new Map<string, LastByKind>()
+      : await loadLastByKind(
+          athleteId,
+          session.type,
+          session.id,
+          movements.map((m) => m.exerciseId),
+        );
+
     return {
       session,
       block: blocks[0] ?? null,
       movements: movements.map((m) => ({
         ...m,
         sets: setsByMovement.get(m.id) ?? [],
+        lastByKind: lastByKindMap.get(m.exerciseId) ?? ({} as LastByKind),
       })),
     };
   });
 
-const lastByDowInput = z.object({
+const listTemplatesInput = z.object({
   type: z.enum([
     "STRENGTH",
     "HYROX_EMOM",
@@ -111,37 +264,50 @@ const lastByDowInput = z.object({
     "REHAB",
     "MOBILITY",
   ]),
-  dayOfWeek: z.int().min(0).max(6),
 });
 
-export const getLastSessionLikeByDow = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => lastByDowInput.parse(data))
+// The two most recent ENDED sessions of this type that actually have exercises,
+// each with its ordered exercise-name preview. The preview is what lets the
+// athlete recognise the day ("ah, the deadlift one") and reuse it as a base.
+export const listSessionTemplates = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => listTemplatesInput.parse(data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
 
-    // Try same day-of-week first; fall back to any session of the same type.
-    const [byDow] = await db
-      .select()
+    // Most recent ended sessions of the type; the inner join drops empty ones,
+    // groupBy collapses to one row per session.
+    const sessionRows = await db
+      .select({ id: sessions.id, date: sessions.date, startedAt: sessions.startedAt })
       .from(sessions)
-      .where(
-        and(
-          eq(sessions.athleteId, athleteId),
-          eq(sessions.type, data.type),
-          sql`EXTRACT(DOW FROM ${sessions.date}) = ${data.dayOfWeek}`,
-        ),
-      )
-      .orderBy(desc(sessions.date))
-      .limit(1);
+      .innerJoin(sessionBlocks, eq(sessionBlocks.sessionId, sessions.id))
+      .innerJoin(blockMovements, eq(blockMovements.blockId, sessionBlocks.id))
+      .where(and(eq(sessions.athleteId, athleteId), eq(sessions.type, data.type), isNotNull(sessions.endedAt)))
+      .groupBy(sessions.id, sessions.date, sessions.startedAt)
+      .orderBy(desc(sessions.date), desc(sessions.startedAt))
+      .limit(2);
+    if (sessionRows.length === 0) return [];
 
-    if (byDow) return byDow;
+    const ids = sessionRows.map((s) => s.id);
+    const exerciseRows = await db
+      .select({ sessionId: sessionBlocks.sessionId, namePl: exercises.namePl })
+      .from(blockMovements)
+      .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
+      .innerJoin(exercises, eq(blockMovements.exerciseId, exercises.id))
+      .where(and(eq(blockMovements.athleteId, athleteId), inArray(sessionBlocks.sessionId, ids)))
+      .orderBy(sessionBlocks.sessionId, blockMovements.orderIndex);
 
-    const [byType] = await db
-      .select()
-      .from(sessions)
-      .where(and(eq(sessions.athleteId, athleteId), eq(sessions.type, data.type)))
-      .orderBy(desc(sessions.date))
-      .limit(1);
-    return byType ?? null;
+    const exercisesBySession = new Map<string, string[]>();
+    for (const row of exerciseRows) {
+      const arr = exercisesBySession.get(row.sessionId) ?? [];
+      arr.push(row.namePl);
+      exercisesBySession.set(row.sessionId, arr);
+    }
+
+    return sessionRows.map((s) => ({
+      sessionId: s.id,
+      date: s.date,
+      exercises: exercisesBySession.get(s.id) ?? [],
+    }));
   });
 
 const createSessionInput = z.object({
@@ -186,28 +352,15 @@ async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessi
   const { db: tx_db, end } = await createPool();
   try {
     return await tx_db.transaction(async (tx) => {
-      // 1. Clone movements from template (if requested) — copy the EXERCISE
-      // and the ACTUAL last set's reps/weight from the previous session into
-      // the new movement's target_* columns (not the previous movement's
-      // target_* which is almost always null in MVP). This is what gives the
-      // exercise drawer its "defaults from last set" UX on the first save.
+      // 1. Clone the EXERCISE LIST from the template session (just the exercises
+      // and their order). Per-set defaults are no longer copied here — the
+      // drawer derives them at load time from the athlete's per-kind history
+      // (loadLastByKind), which decouples "what to train" from "how much".
       const templateMovements = args.fromTemplateSessionId
         ? await tx
             .select({
               exerciseId: blockMovements.exerciseId,
               orderIndex: blockMovements.orderIndex,
-              // Correlated subqueries: read the previous movement's LAST set
-              // (by setNumber DESC). Returns null if the movement had no sets.
-              lastReps: sql<number | null>`(
-              SELECT s.reps FROM sets s
-              WHERE s.block_movement_id = ${blockMovements.id}
-              ORDER BY s.set_number DESC LIMIT 1
-            )`,
-              lastWeightKg: sql<number | null>`(
-              SELECT s.weight_kg FROM sets s
-              WHERE s.block_movement_id = ${blockMovements.id}
-              ORDER BY s.set_number DESC LIMIT 1
-            )`,
             })
             .from(blockMovements)
             .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
@@ -244,9 +397,7 @@ async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessi
         })
         .returning({ id: sessionBlocks.id });
 
-      // 4. Optionally INSERT the cloned movements. target_* are populated from
-      // the previous session's last set so the drawer can show meaningful
-      // defaults for the very first set of each exercise.
+      // 4. Optionally INSERT the cloned movements (exercise + order only).
       if (templateMovements.length > 0) {
         await tx.insert(blockMovements).values(
           templateMovements.map((m) => ({
@@ -254,8 +405,6 @@ async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessi
             blockId: block.id,
             orderIndex: m.orderIndex,
             exerciseId: m.exerciseId,
-            targetReps: m.lastReps,
-            targetWeightKg: m.lastWeightKg,
           })),
         );
       }

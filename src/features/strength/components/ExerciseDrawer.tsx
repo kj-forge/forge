@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { SET_KIND_COLOR, SET_KIND_LABEL, SET_KINDS, VISIBLE_SET_KINDS } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
 import { suggestKind } from "@/features/strength/lib/suggest-kind";
+import type { KindRef, RefKind } from "@/features/strength/server/sessions";
 import { addSet, deleteSet } from "@/features/strength/server/sets";
 import type { Movement, SetKind } from "@/features/strength/types";
 import { getErrorMessage } from "@/lib/error-message";
@@ -45,24 +46,35 @@ const setFormSchema = z.object({
 
 type SetFormValues = z.infer<typeof setFormSchema>;
 
-export function ExerciseDrawer({ open, onOpenChange, movement }: ExerciseDrawerProps) {
-  const router = useRouter();
-  const lastSet = movement.sets[movement.sets.length - 1];
+// A historical reference set → form inputs. No history leaves both empty;
+// a null weight (bodyweight) becomes 0 ("0 = bodyweight").
+function refToFields(ref: KindRef | undefined): { reps: number | undefined; weightKg: number | undefined } {
+  if (!ref) return { reps: undefined, weightKg: undefined };
+  return { reps: ref.reps ?? undefined, weightKg: ref.weightKg ?? 0 };
+}
 
-  // Default precedence for the FIRST set of an exercise:
-  //   1. Last set in THIS session (carry-over within the workout)
-  //   2. movement.targetReps / targetWeightKg — cloned from the previous
-  //      session's last set when the user picked "Z poprzedniej sesji"
-  //   3. Hard fallback (5 reps × 0 kg) for brand-new exercises with no history
-  const defaultReps = lastSet?.reps ?? movement.targetReps ?? 5;
-  const defaultWeight = lastSet?.weightKg ?? movement.targetWeightKg ?? 0;
+export function ExerciseDrawer({ open, onOpenChange, movement }: ExerciseDrawerProps) {
+  // Conditional-mount the body so the form re-seeds its defaults from the
+  // latest sets + lastByKind every time the drawer opens.
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent>{open ? <ExerciseDrawerBody movement={movement} /> : null}</DrawerContent>
+    </Drawer>
+  );
+}
+
+function ExerciseDrawerBody({ movement }: { movement: Movement }) {
+  const router = useRouter();
+
+  const initialKind = suggestKind(movement);
+  const initialFields = refToFields(movement.lastByKind[initialKind as RefKind]);
 
   const form = useForm<SetFormValues>({
     resolver: zodResolver(setFormSchema),
     defaultValues: {
-      kind: suggestKind(movement),
-      reps: defaultReps,
-      weightKg: defaultWeight,
+      kind: initialKind,
+      reps: initialFields.reps,
+      weightKg: initialFields.weightKg,
       rpe: null,
     },
     mode: "onSubmit",
@@ -115,218 +127,222 @@ export function ExerciseDrawer({ open, onOpenChange, movement }: ExerciseDrawerP
     }
   };
 
+  // Switching kind pre-fills that kind's last-session reference; if there's no
+  // history for it, the current inputs stay as the athlete left them.
+  const handleKindChange = (k: SetKind) => {
+    form.setValue("kind", k);
+    const ref = movement.lastByKind[k as RefKind];
+    if (!ref) return;
+    form.setValue("reps", (ref.reps ?? undefined) as number);
+    form.setValue("weightKg", ref.weightKg ?? 0);
+  };
+
   const isSubmitting = form.formState.isSubmitting;
   const currentKind = useWatch({ control: form.control, name: "kind" });
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
-        <Form {...form}>
-          <form className="mx-auto w-full max-w-md" onSubmit={onSubmit} noValidate>
-            <DrawerHeader>
-              <DrawerTitle>{movement.exerciseNamePl}</DrawerTitle>
-              <DrawerDescription>
-                {movement.sets.length === 0
-                  ? "Pierwsza seria"
-                  : `${movement.sets.length} ${movement.sets.length === 1 ? "seria" : "serii"} w tej sesji`}
-              </DrawerDescription>
-            </DrawerHeader>
+    <Form {...form}>
+      <form className="mx-auto w-full max-w-md" onSubmit={onSubmit} noValidate>
+        <DrawerHeader>
+          <DrawerTitle>{movement.exerciseNamePl}</DrawerTitle>
+          <DrawerDescription>
+            {movement.sets.length === 0
+              ? "Pierwsza seria"
+              : `${movement.sets.length} ${movement.sets.length === 1 ? "seria" : "serii"} w tej sesji`}
+          </DrawerDescription>
+        </DrawerHeader>
 
-            <div className="space-y-4 px-4">
-              {movement.sets.length > 0 && (
-                <div className="rounded-lg bg-muted/50 p-3 text-xs">
-                  <p className="mb-1 font-medium">📊 W tej sesji:</p>
-                  <ul className="space-y-0.5">
-                    {movement.sets.map((s, i) => (
-                      <li key={s.id} className="flex items-center justify-between gap-2">
-                        <span className={SET_KIND_COLOR[s.kind as SetKind]}>
-                          {i + 1}. {SET_KIND_LABEL[s.kind as SetKind]} · {formatSet(s)}
-                          {s.rpe !== null && ` · RPE ${s.rpe}`}
-                        </span>
+        <div className="space-y-4 px-4">
+          {movement.sets.length > 0 && (
+            <div className="rounded-lg bg-muted/50 p-3 text-xs">
+              <p className="mb-1 font-medium">📊 W tej sesji:</p>
+              <ul className="space-y-0.5">
+                {movement.sets.map((s, i) => (
+                  <li key={s.id} className="flex items-center justify-between gap-2">
+                    <span className={SET_KIND_COLOR[s.kind as SetKind]}>
+                      {i + 1}. {SET_KIND_LABEL[s.kind as SetKind]} · {formatSet(s)}
+                      {s.rpe !== null && ` · RPE ${s.rpe}`}
+                    </span>
+                    <button
+                      type="button"
+                      className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground text-xs hover:text-destructive disabled:opacity-50"
+                      onClick={() => handleDeleteSet(s.id)}
+                      disabled={deletingSetId === s.id}
+                      aria-label={`Usuń serię ${i + 1}`}
+                    >
+                      {deletingSetId === s.id ? <Spinner size="sm" /> : "✕"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {deleteError && (
+                <p className="mt-2 text-destructive" role="alert">
+                  {deleteError}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {/* Kind chips */}
+            <FormField
+              control={form.control}
+              name="kind"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Typ serii</FormLabel>
+                  <FormControl>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {VISIBLE_SET_KINDS.map((k) => (
                         <button
+                          key={k}
                           type="button"
-                          className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground text-xs hover:text-destructive disabled:opacity-50"
-                          onClick={() => handleDeleteSet(s.id)}
-                          disabled={deletingSetId === s.id}
-                          aria-label={`Usuń serię ${i + 1}`}
+                          className={`rounded-md border px-2 py-1.5 text-xs transition-colors ${
+                            field.value === k
+                              ? "border-foreground bg-foreground text-background"
+                              : "border-border text-muted-foreground hover:bg-accent"
+                          }`}
+                          onClick={() => handleKindChange(k)}
                         >
-                          {deletingSetId === s.id ? <Spinner size="sm" /> : "✕"}
+                          {SET_KIND_LABEL[k]}
                         </button>
-                      </li>
-                    ))}
-                  </ul>
-                  {deleteError && (
-                    <p className="mt-2 text-destructive" role="alert">
-                      {deleteError}
+                      ))}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Reps stepper */}
+            <Controller
+              control={form.control}
+              name="reps"
+              render={({ field, fieldState }) => (
+                <div className="space-y-1.5">
+                  <Label htmlFor="reps">Powtórzenia</Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      onClick={() => field.onChange(Math.max(1, (field.value ?? 1) - 1))}
+                    >
+                      −
+                    </Button>
+                    <NumericFormat
+                      id="reps"
+                      customInput={Input}
+                      className="text-center text-lg"
+                      value={field.value ?? ""}
+                      onValueChange={(values) => field.onChange(values.floatValue)}
+                      decimalScale={0}
+                      allowNegative={false}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      onClick={() => field.onChange((field.value ?? 0) + 1)}
+                    >
+                      +
+                    </Button>
+                  </div>
+                  {fieldState.error && (
+                    <p className="text-destructive text-xs" role="alert">
+                      {fieldState.error.message}
                     </p>
                   )}
                 </div>
               )}
+            />
 
-              <div className="space-y-3">
-                {/* Kind chips */}
-                <FormField
-                  control={form.control}
-                  name="kind"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Typ serii</FormLabel>
-                      <FormControl>
-                        <div className="grid grid-cols-3 gap-1.5">
-                          {VISIBLE_SET_KINDS.map((k) => (
-                            <button
-                              key={k}
-                              type="button"
-                              className={`rounded-md border px-2 py-1.5 text-xs transition-colors ${
-                                field.value === k
-                                  ? "border-foreground bg-foreground text-background"
-                                  : "border-border text-muted-foreground hover:bg-accent"
-                              }`}
-                              onClick={() => field.onChange(k)}
-                            >
-                              {SET_KIND_LABEL[k]}
-                            </button>
-                          ))}
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+            {/* Weight stepper */}
+            <Controller
+              control={form.control}
+              name="weightKg"
+              render={({ field, fieldState }) => (
+                <div className="space-y-1.5">
+                  <Label htmlFor="weight">Ciężar (kg)</Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      onClick={() => field.onChange(Math.max(0, Math.round(((field.value ?? 0) - 2.5) * 10) / 10))}
+                    >
+                      −2.5
+                    </Button>
+                    <NumericFormat
+                      id="weight"
+                      customInput={Input}
+                      className="text-center text-lg"
+                      value={field.value ?? ""}
+                      onValueChange={(values) => field.onChange(values.floatValue)}
+                      decimalScale={2}
+                      allowNegative={false}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      onClick={() => field.onChange(Math.round(((field.value ?? 0) + 2.5) * 10) / 10)}
+                    >
+                      +2.5
+                    </Button>
+                  </div>
+                  <p className="text-muted-foreground text-xs">0 = bodyweight</p>
+                  {fieldState.error && (
+                    <p className="text-destructive text-xs" role="alert">
+                      {fieldState.error.message}
+                    </p>
                   )}
-                />
+                </div>
+              )}
+            />
 
-                {/* Reps stepper */}
-                <Controller
-                  control={form.control}
-                  name="reps"
-                  render={({ field, fieldState }) => (
-                    <div className="space-y-1.5">
-                      <Label htmlFor="reps">Powtórzenia</Label>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="lg"
-                          onClick={() => field.onChange(Math.max(1, (field.value ?? 1) - 1))}
-                        >
-                          −
-                        </Button>
-                        <NumericFormat
-                          id="reps"
-                          customInput={Input}
-                          className="text-center text-lg"
-                          value={field.value ?? ""}
-                          onValueChange={(values) => field.onChange(values.floatValue)}
-                          decimalScale={0}
-                          allowNegative={false}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="lg"
-                          onClick={() => field.onChange((field.value ?? 0) + 1)}
-                        >
-                          +
-                        </Button>
-                      </div>
-                      {fieldState.error && (
-                        <p className="text-destructive text-xs" role="alert">
-                          {fieldState.error.message}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                />
+            {/* RPE optional */}
+            <Controller
+              control={form.control}
+              name="rpe"
+              render={({ field }) => (
+                <div className="space-y-1.5">
+                  <Label>RPE (opcjonalne)</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[6, 7, 8, 9, 10].map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        className={`rounded-md border px-3 py-1 text-sm transition-colors ${
+                          field.value === v
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border text-muted-foreground hover:bg-accent"
+                        }`}
+                        onClick={() => field.onChange(field.value === v ? null : v)}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            />
 
-                {/* Weight stepper */}
-                <Controller
-                  control={form.control}
-                  name="weightKg"
-                  render={({ field, fieldState }) => (
-                    <div className="space-y-1.5">
-                      <Label htmlFor="weight">Ciężar (kg)</Label>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="lg"
-                          onClick={() => field.onChange(Math.max(0, Math.round(((field.value ?? 0) - 2.5) * 10) / 10))}
-                        >
-                          −2.5
-                        </Button>
-                        <NumericFormat
-                          id="weight"
-                          customInput={Input}
-                          className="text-center text-lg"
-                          value={field.value ?? ""}
-                          onValueChange={(values) => field.onChange(values.floatValue)}
-                          decimalScale={2}
-                          allowNegative={false}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="lg"
-                          onClick={() => field.onChange(Math.round(((field.value ?? 0) + 2.5) * 10) / 10)}
-                        >
-                          +2.5
-                        </Button>
-                      </div>
-                      <p className="text-muted-foreground text-xs">0 = bodyweight</p>
-                      {fieldState.error && (
-                        <p className="text-destructive text-xs" role="alert">
-                          {fieldState.error.message}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                />
+            <FormRootMessage />
+          </div>
+        </div>
 
-                {/* RPE optional */}
-                <Controller
-                  control={form.control}
-                  name="rpe"
-                  render={({ field }) => (
-                    <div className="space-y-1.5">
-                      <Label>RPE (opcjonalne)</Label>
-                      <div className="flex flex-wrap gap-1.5">
-                        {[6, 7, 8, 9, 10].map((v) => (
-                          <button
-                            key={v}
-                            type="button"
-                            className={`rounded-md border px-3 py-1 text-sm transition-colors ${
-                              field.value === v
-                                ? "border-foreground bg-foreground text-background"
-                                : "border-border text-muted-foreground hover:bg-accent"
-                            }`}
-                            onClick={() => field.onChange(field.value === v ? null : v)}
-                          >
-                            {v}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                />
-
-                <FormRootMessage />
-              </div>
-            </div>
-
-            <DrawerFooter className="gap-2">
-              <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-                {isSubmitting
-                  ? "Zapisuję..."
-                  : `⚡ Zapisz serię (${SET_KIND_LABEL[currentKind].replace(/^\S+\s/, "")})`}
-              </Button>
-              <DrawerClose asChild>
-                <Button type="button" variant="outline" className="w-full">
-                  Zamknij
-                </Button>
-              </DrawerClose>
-            </DrawerFooter>
-          </form>
-        </Form>
-      </DrawerContent>
-    </Drawer>
+        <DrawerFooter className="gap-2">
+          <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+            {isSubmitting ? "Zapisuję..." : `⚡ Zapisz serię (${SET_KIND_LABEL[currentKind].replace(/^\S+\s/, "")})`}
+          </Button>
+          <DrawerClose asChild>
+            <Button type="button" variant="outline" className="w-full">
+              Zamknij
+            </Button>
+          </DrawerClose>
+        </DrawerFooter>
+      </form>
+    </Form>
   );
 }

@@ -25,7 +25,7 @@ export function SessionsListView() {
       ) : (
         <ul className="space-y-2">
           {sessionsList.map((s) => (
-            <SessionListItem key={s.id} session={s} />
+            <SessionListItem key={s.id} session={s} detail="names" />
           ))}
         </ul>
       )}

@@ -71,7 +71,7 @@ export function HomeView() {
         ) : (
           <ul className="space-y-2">
             {recentSessions.slice(0, 5).map((s) => (
-              <SessionListItem key={s.id} session={s} dateFormat="short" />
+              <SessionListItem key={s.id} session={s} dateFormat="short" detail="top-sets" />
             ))}
           </ul>
         )}
