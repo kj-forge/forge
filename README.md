@@ -40,6 +40,42 @@ Original (pre-audit) scope was "generic training PWA for strength + running with
 
 See [docs/architecture/system-overview.md](docs/architecture/system-overview.md) for the system overview, [docs/architecture/data-model.md](docs/architecture/data-model.md) for the schema, and [docs/adr/](docs/adr/) for architecture decisions (11 ADRs as of this writing).
 
+## Project structure
+
+Feature-first layout (Bulletproof React-style, pragmatically applied — see [ADR-0018](docs/adr/ADR-0018-folder-architecture.md) for the full decision + rationale + alternatives considered).
+
+```
+src/
+  routes/                 # TanStack Start file-based routing. Thin (~20 lines):
+                          #   createFileRoute + import <View /> from features/.
+  features/<feature>/     # All domain code for one feature. Folders are named
+                          # by RUNTIME — where the code executes:
+    server/               #   Server-side code: createServerFn RPC endpoints
+                          #   (one file per resource), library instances
+                          #   (Better Auth), server-only helpers. Files
+                          #   plain-named, NOT *.server.ts — that extension
+                          #   triggers TanStack Start's import-protection and
+                          #   breaks the RPC split.
+    client.ts             #   Client-only non-React code (browser SDK wrappers).
+                          #   Promote to client/ folder when it outgrows a file.
+    views/                #   Top-level entry components. Imported by exactly
+                          #   one route. Naming: <Name>View.tsx.
+    components/           #   Reusable building blocks within the feature.
+    forms/                #   Vertical form slices: Zod schema + RHF + submit.
+    lib/                  #   Universal non-React helpers (one per file).
+    constants.ts          #   Enums, label maps.
+    types.ts              #   Feature-scoped TypeScript types.
+  shared/
+    components/           # Cross-feature business components (Spinner,
+                          # StatusBadge — used by 2+ features, have business
+                          # semantics, not pure UI primitives).
+  components/
+    ui/                   # shadcn primitives. Pure UI, no business knowledge.
+  lib/                    # Cross-cutting non-React utilities (cn, env, session).
+```
+
+**Three-tier component model:** UI primitive (`components/ui/`) → cross-feature shared (`shared/components/`) → feature-specific (`features/<feat>/components/`). A view is what a page renders; a component is what a view is built from. Routes stay thin.
+
 ## Project management
 
 Work is tracked in Linear (initiative `Forge`). PRs link to Linear issues via the `## Linear` section in the PR template (see [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md)).

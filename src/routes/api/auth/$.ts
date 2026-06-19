@@ -9,7 +9,7 @@
 
 import { createFileRoute } from "@tanstack/react-router";
 
-import { auth } from "@/lib/auth";
+import { auth } from "@/features/auth/server/better-auth";
 
 export const Route = createFileRoute("/api/auth/$")({
   server: {
