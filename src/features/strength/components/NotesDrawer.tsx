@@ -70,6 +70,7 @@ function NotesForm({ initialNotes, onSave }: { initialNotes: string; onSave: (no
         placeholder="Wnioski z dzisiejszego treningu..."
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
+        maxLength={5000}
       />
       {error && (
         <p className="text-destructive text-sm" role="alert">

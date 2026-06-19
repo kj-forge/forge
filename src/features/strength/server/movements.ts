@@ -70,7 +70,7 @@ export const removeExerciseFromSession = createServerFn({ method: "POST" })
     const [{ setCount }] = await db
       .select({ setCount: sql<number>`COUNT(*)::int` })
       .from(sets)
-      .where(eq(sets.blockMovementId, data.blockMovementId));
+      .where(and(eq(sets.blockMovementId, data.blockMovementId), eq(sets.athleteId, athleteId)));
 
     if (setCount > 0) {
       throw new Error("Nie można usunąć ćwiczenia, w którym są już zapisane serie.");

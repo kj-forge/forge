@@ -1,4 +1,5 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
+import dayjs from "dayjs";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,6 @@ export function NewSessionView() {
   const [creating, setCreating] = useState<"template" | "blank" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const todayIso = new Date().toISOString().slice(0, 10);
   const todayDow = new Date().getDay();
 
   const start = async (fromTemplateSessionId?: string) => {
@@ -26,7 +26,10 @@ export function NewSessionView() {
     setCreating(fromTemplateSessionId ? "template" : "blank");
     try {
       const result = await createSession({
-        data: { type, date: todayIso, fromTemplateSessionId },
+        // Local calendar date at click time (client tz), not UTC — `dayjs()`
+        // defaults to local, so a session started after local midnight gets
+        // today's date, not yesterday's.
+        data: { type, date: dayjs().format("YYYY-MM-DD"), fromTemplateSessionId },
       });
       navigate({ to: "/sessions/$sessionId", params: { sessionId: result.sessionId } });
     } catch (err) {
