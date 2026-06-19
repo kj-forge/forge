@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { signOut } from "@/features/auth/client";
+import { getErrorMessage } from "@/lib/error-message";
 
 const route = getRouteApi("/me");
 
@@ -11,13 +12,16 @@ export function MeView() {
   const { session } = route.useRouteContext();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSignOut = async () => {
+    setError(null);
     setSigningOut(true);
     try {
       await signOut();
       navigate({ to: "/login" });
-    } catch {
+    } catch (err) {
+      setError(getErrorMessage(err, "Nie udało się wylogować."));
       setSigningOut(false);
     }
   };
@@ -61,6 +65,11 @@ export function MeView() {
           <Button type="button" variant="outline" className="w-full" onClick={handleSignOut} disabled={signingOut}>
             {signingOut ? "Wylogowuję..." : "Wyloguj"}
           </Button>
+          {error && (
+            <p className="text-destructive text-sm" role="alert">
+              {error}
+            </p>
+          )}
         </CardContent>
       </Card>
     </main>

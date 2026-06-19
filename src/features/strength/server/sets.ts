@@ -31,7 +31,7 @@ export const addSet = createServerFn({ method: "POST" })
     const [{ nextNum }] = await db
       .select({ nextNum: sql<number>`COALESCE(MAX(${sets.setNumber}), 0) + 1` })
       .from(sets)
-      .where(eq(sets.blockMovementId, data.blockMovementId));
+      .where(and(eq(sets.blockMovementId, data.blockMovementId), eq(sets.athleteId, athleteId)));
 
     const [row] = await db
       .insert(sets)

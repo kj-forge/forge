@@ -10,7 +10,7 @@ import { signIn } from "@/features/auth/client";
 import { mapAuthError } from "@/features/auth/lib/auth-errors";
 
 const loginSchema = z.object({
-  email: z.email("Podaj prawidłowy adres email (np. ty@example.com)").max(64, "Email jest za długi."),
+  email: z.email("Podaj prawidłowy adres email (np. ty@example.com)").max(254, "Email jest za długi."),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
