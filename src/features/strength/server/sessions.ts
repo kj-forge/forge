@@ -181,8 +181,12 @@ async function loadLastByKind(
   const result = new Map<string, LastByKind>();
   for (const [exerciseId, rows] of rowsByExercise) {
     const warmup = rows.find((r) => r.kind === "WARMUP");
-    const topSets = rows.filter((r) => r.kind === "TOP_SET");
-    const topSet = topSets[topSets.length - 1];
+    // TOP_SET = last tagged top set; fall back to the last legacy WORK set so
+    // exercises logged before the kind picker shipped still seed a working
+    // default instead of opening blank.
+    let topCandidates = rows.filter((r) => r.kind === "TOP_SET");
+    if (topCandidates.length === 0) topCandidates = rows.filter((r) => r.kind === "WORK");
+    const topSet = topCandidates[topCandidates.length - 1];
     const backOff = rows.find((r) => r.kind === "BACK_OFF");
     const lbk: LastByKind = {};
     if (warmup) lbk.WARMUP = { reps: warmup.reps, weightKg: warmup.weightKg };

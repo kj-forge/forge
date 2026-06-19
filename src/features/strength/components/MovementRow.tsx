@@ -38,7 +38,9 @@ export function MovementRow({ movement, isEnded }: { movement: Movement; isEnded
 
   const statusText =
     movement.sets.length === 0 ? "Pusta" : `${workSets.length} ${workSets.length === 1 ? "seria" : "serii"}`;
-  const statusClass = movement.sets.length === 0 ? "text-muted-foreground" : "text-emerald-600 dark:text-emerald-400";
+  // Green only once a working set exists — a warmup-only movement still reads
+  // "0 serii", but muted, not as if it were logged.
+  const statusClass = workSets.length === 0 ? "text-muted-foreground" : "text-emerald-600 dark:text-emerald-400";
 
   return (
     <>
