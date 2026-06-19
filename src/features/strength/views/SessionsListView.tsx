@@ -20,12 +20,12 @@ export function SessionsListView() {
 
       {sessionsList.length === 0 ? (
         <Card>
-          <CardContent className="py-6 text-center text-muted-foreground text-sm">Jeszcze brak sesji.</CardContent>
+          <CardContent className="py-6 text-center text-muted-foreground text-sm">Brak zakończonych sesji.</CardContent>
         </Card>
       ) : (
         <ul className="space-y-2">
           {sessionsList.map((s) => (
-            <SessionListItem key={s.id} session={s} />
+            <SessionListItem key={s.id} session={s} detail="names" />
           ))}
         </ul>
       )}

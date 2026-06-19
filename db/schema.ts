@@ -495,8 +495,6 @@ export const blockMovements = pgTable(
     exerciseId: uuid()
       .notNull()
       .references(() => exercises.id, { onDelete: "restrict" }),
-    targetReps: integer(),
-    targetWeightKg: doublePrecision(),
     targetDurationSeconds: integer(),
     targetDistanceM: integer(),
     targetCalories: integer(),
@@ -508,6 +506,11 @@ export const blockMovements = pgTable(
     index("block_movements_exercise_idx").on(t.exerciseId),
     // Powers "this athlete's progression on this exercise" queries.
     index("block_movements_athlete_exercise_idx").on(t.athleteId, t.exerciseId, t.createdAt.desc()),
+    // One row per exercise per block — server-side guard against the double-add
+    // race (slow network / double-tap). addExerciseToSession relies on this via
+    // INSERT … ON CONFLICT. Existing duplicates are removed in the same
+    // migration before the index is created.
+    uniqueIndex("block_movements_block_exercise_uq").on(t.blockId, t.exerciseId),
   ],
 );
 

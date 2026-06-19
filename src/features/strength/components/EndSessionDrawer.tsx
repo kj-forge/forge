@@ -58,6 +58,7 @@ export function EndSessionDrawer({ open, onOpenChange, movementCount, onConfirm 
                 placeholder="Wnioski z dzisiejszego treningu..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
+                maxLength={5000}
               />
             </div>
             {error && (

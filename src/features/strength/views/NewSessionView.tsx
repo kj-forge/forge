@@ -1,4 +1,5 @@
 import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
+import dayjs from "dayjs";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -9,24 +10,35 @@ import { getErrorMessage } from "@/lib/error-message";
 
 const route = getRouteApi("/sessions/new");
 
-const DAY_OF_WEEK_PL = ["niedzielna", "poniedziałkowa", "wtorkowa", "środowa", "czwartkowa", "piątkowa", "sobotnia"];
+// "czwartek, 12 czerwca" → "Czwartek, 12 czerwca". A date-only string at UTC
+// midnight + Poland's positive offset stays on the same calendar day, so SSR
+// (UTC) and client (local) agree — no hydration mismatch.
+function formatTemplateDate(dateStr: string): string {
+  const formatted = new Date(dateStr).toLocaleDateString("pl-PL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
 
 export function NewSessionView() {
   const { type } = route.useSearch();
-  const lastSession = route.useLoaderData();
+  const templates = route.useLoaderData();
   const navigate = useNavigate();
-  const [creating, setCreating] = useState<"template" | "blank" | null>(null);
+  // Tracks which action is in flight: a template's sessionId, "blank", or none.
+  const [creating, setCreating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const todayDow = new Date().getDay();
 
   const start = async (fromTemplateSessionId?: string) => {
     setError(null);
-    setCreating(fromTemplateSessionId ? "template" : "blank");
+    setCreating(fromTemplateSessionId ?? "blank");
     try {
       const result = await createSession({
-        data: { type, date: todayIso, fromTemplateSessionId },
+        // Local calendar date at click time (client tz), not UTC — `dayjs()`
+        // defaults to local, so a session started after local midnight gets
+        // today's date, not yesterday's.
+        data: { type, date: dayjs().format("YYYY-MM-DD"), fromTemplateSessionId },
       });
       navigate({ to: "/sessions/$sessionId", params: { sessionId: result.sessionId } });
     } catch (err) {
@@ -45,42 +57,33 @@ export function NewSessionView() {
 
       <div className="space-y-1 pt-2">
         <h1 className="font-bold text-2xl tracking-tight">Nowa sesja {SESSION_TYPE_LABEL_PL_ADJ[type]}</h1>
-        {/* `todayDow` and the toLocaleDateString below derive from `new Date()` evaluated
-            during render, which uses UTC on the server (Workers runtime) and local
-            timezone on the client. Near midnight in the user's TZ the displayed day can
-            differ from the SSR-rendered one — suppress hydration warning, the client
-            re-renders with the correct local value on mount. */}
-        <p className="text-muted-foreground text-sm" suppressHydrationWarning>
-          {DAY_OF_WEEK_PL[todayDow]?.replace(/.$/, "y") /* niedzieln-y/wtorkow-y */} ·{" "}
-          {new Date().toLocaleDateString("pl-PL", { day: "numeric", month: "long" })}
-        </p>
+        {templates.length > 0 ? (
+          <p className="text-muted-foreground text-sm">Zacznij od ostatniej sesji albo od zera.</p>
+        ) : null}
       </div>
 
-      {lastSession ? (
-        <Card>
+      {templates.map((t) => (
+        <Card key={t.sessionId}>
           <CardHeader>
-            <CardTitle>🔄 Z poprzedniej sesji</CardTitle>
-            <CardDescription>
-              {DAY_OF_WEEK_PL[new Date(lastSession.date).getDay()]} sesja ·{" "}
-              {new Date(lastSession.date).toLocaleDateString("pl-PL", { day: "numeric", month: "long" })}
-            </CardDescription>
+            <CardTitle className="text-base">{formatTemplateDate(t.date)}</CardTitle>
+            <CardDescription>{t.exercises.join(" · ")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full" onClick={() => start(lastSession.id)} disabled={creating !== null}>
-              {creating === "template" ? "Tworzę..." : "Użyj jako template"}
+            <Button className="w-full" onClick={() => start(t.sessionId)} disabled={creating !== null}>
+              {creating === t.sessionId ? "Tworzę..." : "Użyj jako bazę"}
             </Button>
           </CardContent>
         </Card>
-      ) : null}
+      ))}
 
       <Card>
         <CardHeader>
-          <CardTitle>🆕 Pusta sesja</CardTitle>
+          <CardTitle className="text-base">🆕 Pusta sesja</CardTitle>
           <CardDescription>Zacznij od zera — sam dodajesz ćwiczenia.</CardDescription>
         </CardHeader>
         <CardContent>
           <Button
-            variant={lastSession ? "outline" : "default"}
+            variant={templates.length > 0 ? "outline" : "default"}
             className="w-full"
             onClick={() => start()}
             disabled={creating !== null}

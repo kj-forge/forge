@@ -108,6 +108,7 @@ function ExercisePickerForm({ onPicked }: { onPicked: (exerciseId: string) => Pr
         placeholder="Wyszukaj ćwiczenie..."
         value={query}
         onChange={(e) => handleSearch(e.target.value)}
+        maxLength={50}
         autoFocus
         disabled={pickingId !== null}
       />
