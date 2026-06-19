@@ -12,6 +12,14 @@ import { Spinner } from "@/shared/components/Spinner";
 import { ExerciseDrawer } from "./ExerciseDrawer";
 import { ViewOnlyExerciseDrawer } from "./ViewOnlyExerciseDrawer";
 
+// Polish plural for the warmup-count hint: 1 rozgrzewka / 2–4 rozgrzewki / rozgrzewek.
+function warmupNoun(n: number): string {
+  if (n === 1) return "rozgrzewka";
+  const last = n % 10;
+  const lastTwo = n % 100;
+  return last >= 2 && last <= 4 && !(lastTwo >= 12 && lastTwo <= 14) ? "rozgrzewki" : "rozgrzewek";
+}
+
 export function MovementRow({ movement, isEnded }: { movement: Movement; isEnded: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -55,17 +63,18 @@ export function MovementRow({ movement, isEnded }: { movement: Movement; isEnded
                 <span className={`w-20 shrink-0 text-right text-xs ${statusClass}`}>{statusText}</span>
               </div>
               {movement.sets.length > 0 && (
-                <p className="mt-1 flex flex-wrap gap-x-2 text-xs">
+                <div className="mt-1 space-y-0.5 text-xs">
                   {warmupSets.length > 0 && (
-                    <span className="text-muted-foreground">🔥 {warmupSets.map(formatSet).join(" · ")}</span>
+                    <p className="text-muted-foreground">
+                      🔥 {warmupSets.length} {warmupNoun(warmupSets.length)}
+                    </p>
                   )}
-                  {workSets.map((s, i) => (
-                    <span key={s.id} className={SET_KIND_COLOR[s.kind as SetKind]}>
-                      {i === 0 ? "" : "· "}
+                  {workSets.map((s) => (
+                    <p key={s.id} className={SET_KIND_COLOR[s.kind as SetKind]}>
                       {formatSet(s)}
-                    </span>
+                    </p>
                   ))}
-                </p>
+                </div>
               )}
             </CardContent>
           </Card>

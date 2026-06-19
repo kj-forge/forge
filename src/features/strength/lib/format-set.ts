@@ -11,5 +11,5 @@ export function formatWeight(weightKg: number | null): string {
 // card's top-set line — hence the narrow Pick rather than a full SetRow.
 export function formatSet(s: Pick<SetRow, "reps" | "weightKg">): string {
   const reps = s.reps ?? "–";
-  return `${reps}×${formatWeight(s.weightKg)}`;
+  return `${reps}× ${formatWeight(s.weightKg)}`;
 }

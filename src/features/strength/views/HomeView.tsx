@@ -15,6 +15,13 @@ export function HomeView() {
   const firstName = session.user.name?.split(" ")[0] ?? "athleto";
   const lastSession = recentSessions[0];
 
+  // In-progress sessions first (their badge marks them), then most recent.
+  // Capped at 4 — the dashboard is a glance, full list lives in history.
+  const visibleSessions = [
+    ...recentSessions.filter((s) => s.endedAt === null),
+    ...recentSessions.filter((s) => s.endedAt !== null),
+  ].slice(0, 4);
+
   return (
     <main className="mx-auto flex min-h-svh max-w-md flex-col gap-6 p-4">
       <header className="flex items-center justify-between pt-2">
@@ -57,7 +64,7 @@ export function HomeView() {
       <section className="space-y-2">
         <div className="flex items-center justify-between px-1">
           <h2 className="font-medium text-sm">Ostatnie sesje</h2>
-          {recentSessions.length > 0 && (
+          {recentSessions.some((s) => s.endedAt !== null) && (
             <Link to="/sessions" className="text-muted-foreground text-xs underline-offset-4 hover:underline">
               Zobacz wszystkie →
             </Link>
@@ -70,7 +77,7 @@ export function HomeView() {
           </Card>
         ) : (
           <ul className="space-y-2">
-            {recentSessions.slice(0, 5).map((s) => (
+            {visibleSessions.map((s) => (
               <SessionListItem key={s.id} session={s} dateFormat="short" detail="top-sets" />
             ))}
           </ul>

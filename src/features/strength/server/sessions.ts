@@ -6,27 +6,22 @@ import { db } from "../../../../db/client";
 import { createPool } from "../../../../db/pool";
 import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
 
-export const listRecentSessions = createServerFn({ method: "GET" }).handler(async () => {
-  const { athleteId } = await getCurrentAthleteOrThrow();
+const sessionCardColumns = {
+  id: sessions.id,
+  date: sessions.date,
+  type: sessions.type,
+  title: sessions.title,
+  startedAt: sessions.startedAt,
+  endedAt: sessions.endedAt,
+};
 
-  const sessionRows = await db
-    .select({
-      id: sessions.id,
-      date: sessions.date,
-      type: sessions.type,
-      title: sessions.title,
-      startedAt: sessions.startedAt,
-      endedAt: sessions.endedAt,
-    })
-    .from(sessions)
-    .where(eq(sessions.athleteId, athleteId))
-    .orderBy(desc(sessions.date))
-    .limit(10);
-  if (sessionRows.length === 0) return [];
+// Attach each session's exercise previews (ordered, with the heaviest logged
+// set per exercise) in one batched join. Left join keeps planned-but-empty
+// exercises; the heaviest set is reduced in JS. Shared by the dashboard feed
+// and the completed-session history.
+async function attachExercises<T extends { id: string }>(athleteId: string, sessionRows: T[]) {
+  if (sessionRows.length === 0) return [] as (T & { exercises: SessionTopExercise[] })[];
 
-  // One batched join for the card previews: every movement of these sessions
-  // with each of its sets (left join keeps planned-but-empty exercises). The
-  // heaviest set per movement is the "top set" headline; reduced in JS.
   const ids = sessionRows.map((s) => s.id);
   const rows = await db
     .select({
@@ -43,7 +38,7 @@ export const listRecentSessions = createServerFn({ method: "GET" }).handler(asyn
     .where(and(eq(blockMovements.athleteId, athleteId), inArray(sessionBlocks.sessionId, ids)))
     .orderBy(sessionBlocks.sessionId, blockMovements.orderIndex);
 
-  type TopSet = { name: string; weightKg: number | null; reps: number | null; hasSet: boolean };
+  type TopSet = SessionTopExercise & { hasSet: boolean };
   const bySession = new Map<string, Map<string, TopSet>>();
   for (const row of rows) {
     let movements = bySession.get(row.sessionId);
@@ -78,6 +73,34 @@ export const listRecentSessions = createServerFn({ method: "GET" }).handler(asyn
       reps: m.reps,
     })),
   }));
+}
+
+type SessionTopExercise = { name: string; weightKg: number | null; reps: number | null };
+
+// Dashboard feed: most recent sessions including the in-progress one (the badge
+// marks it). The view sorts active to the top and trims the count.
+export const listRecentSessions = createServerFn({ method: "GET" }).handler(async () => {
+  const { athleteId } = await getCurrentAthleteOrThrow();
+  const sessionRows = await db
+    .select(sessionCardColumns)
+    .from(sessions)
+    .where(eq(sessions.athleteId, athleteId))
+    .orderBy(desc(sessions.date))
+    .limit(10);
+  return attachExercises(athleteId, sessionRows);
+});
+
+// History: only ENDED sessions — an in-progress one isn't "history" yet and is
+// resumed from the dashboard. (Pagination is a later epic; capped for now.)
+export const listCompletedSessions = createServerFn({ method: "GET" }).handler(async () => {
+  const { athleteId } = await getCurrentAthleteOrThrow();
+  const sessionRows = await db
+    .select(sessionCardColumns)
+    .from(sessions)
+    .where(and(eq(sessions.athleteId, athleteId), isNotNull(sessions.endedAt)))
+    .orderBy(desc(sessions.date))
+    .limit(20);
+  return attachExercises(athleteId, sessionRows);
 });
 
 // Reference set per kind, surfaced as the drawer's smart defaults. Keyed by the
