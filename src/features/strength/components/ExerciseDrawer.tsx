@@ -197,10 +197,10 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
                         <button
                           key={k}
                           type="button"
-                          className={`rounded-md border px-2 py-1.5 text-xs transition-colors ${
+                          className={`rounded-md border px-2 py-1.5 font-medium text-xs transition-colors ${
                             field.value === k
                               ? "border-foreground bg-foreground text-background"
-                              : "border-border text-muted-foreground hover:bg-accent"
+                              : `border-border ${SET_KIND_COLOR[k]} hover:bg-accent`
                           }`}
                           onClick={() => handleKindChange(k)}
                         >
@@ -334,7 +334,7 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
 
         <DrawerFooter className="shrink-0 gap-2">
           <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-            {isSubmitting ? "Zapisuję..." : `⚡ Zapisz serię (${SET_KIND_LABEL[currentKind].replace(/^\S+\s/, "")})`}
+            {isSubmitting ? "Zapisuję..." : `⚡ Zapisz serię (${SET_KIND_LABEL[currentKind]})`}
           </Button>
           <DrawerClose asChild>
             <Button type="button" variant="outline" className="w-full">

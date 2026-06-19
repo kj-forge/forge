@@ -11,7 +11,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { SET_KIND_COLOR, SET_KIND_DISPLAY_ORDER, SET_KIND_LABEL } from "@/features/strength/constants";
+import { SET_KIND_COLOR, SET_KIND_DISPLAY_ORDER, SET_KIND_ICON, SET_KIND_LABEL } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
 import { removeExerciseFromSession } from "@/features/strength/server/movements";
 import type { Movement } from "@/features/strength/types";
@@ -74,7 +74,9 @@ export function ViewOnlyExerciseDrawer({ open, onOpenChange, movement }: ViewOnl
             ) : (
               grouped.map((g) => (
                 <section key={g.kind} className="space-y-1.5">
-                  <h3 className={`font-medium text-xs ${SET_KIND_COLOR[g.kind]}`}>{SET_KIND_LABEL[g.kind]}</h3>
+                  <h3 className={`font-medium text-xs ${SET_KIND_COLOR[g.kind]}`}>
+                    {SET_KIND_ICON[g.kind]} {SET_KIND_LABEL[g.kind]}
+                  </h3>
                   <ul className="space-y-1 rounded-lg bg-muted/40 p-3 text-sm">
                     {g.sets.map((s) => (
                       <li key={s.id} className="flex items-center justify-between gap-2">
