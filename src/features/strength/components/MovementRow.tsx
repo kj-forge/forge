@@ -2,10 +2,10 @@ import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { SET_KIND_COLOR } from "@/features/strength/constants";
+import { SET_KIND_COLOR, SET_KIND_DISPLAY_ORDER } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
 import { removeExerciseFromSession } from "@/features/strength/server/movements";
-import type { Movement, SetKind } from "@/features/strength/types";
+import type { Movement } from "@/features/strength/types";
 import { getErrorMessage } from "@/lib/error-message";
 import { Spinner } from "@/shared/components/Spinner";
 
@@ -18,7 +18,6 @@ export function MovementRow({ movement, isEnded }: { movement: Movement; isEnded
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const workSets = movement.sets.filter((s) => s.kind !== "WARMUP");
-  const warmupSets = movement.sets.filter((s) => s.kind === "WARMUP");
 
   // Active session + empty movement: show the inline ✕ for quick removal
   // (mid-workout the user may have added an exercise they no longer want).
@@ -39,7 +38,9 @@ export function MovementRow({ movement, isEnded }: { movement: Movement; isEnded
 
   const statusText =
     movement.sets.length === 0 ? "Pusta" : `${workSets.length} ${workSets.length === 1 ? "seria" : "serii"}`;
-  const statusClass = movement.sets.length === 0 ? "text-muted-foreground" : "text-emerald-600 dark:text-emerald-400";
+  // Green only once a working set exists — a warmup-only movement still reads
+  // "0 serii", but muted, not as if it were logged.
+  const statusClass = workSets.length === 0 ? "text-muted-foreground" : "text-emerald-600 dark:text-emerald-400";
 
   return (
     <>
@@ -54,18 +55,18 @@ export function MovementRow({ movement, isEnded }: { movement: Movement; isEnded
                 <p className="min-w-0 flex-1 truncate font-medium text-sm">{movement.exerciseNamePl}</p>
                 <span className={`w-20 shrink-0 text-right text-xs ${statusClass}`}>{statusText}</span>
               </div>
-              {movement.sets.length > 0 && (
-                <p className="mt-1 flex flex-wrap gap-x-2 text-xs">
-                  {warmupSets.length > 0 && (
-                    <span className="text-muted-foreground">🔥 {warmupSets.map(formatSet).join(" · ")}</span>
-                  )}
-                  {workSets.map((s, i) => (
-                    <span key={s.id} className={SET_KIND_COLOR[s.kind as SetKind]}>
-                      {i === 0 ? "" : "· "}
-                      {formatSet(s)}
-                    </span>
-                  ))}
-                </p>
+              {workSets.length > 0 && (
+                <div className="mt-1 space-y-0.5 text-xs">
+                  {SET_KIND_DISPLAY_ORDER.filter((kind) => kind !== "WARMUP").map((kind) => {
+                    const kindSets = movement.sets.filter((s) => s.kind === kind);
+                    if (kindSets.length === 0) return null;
+                    return (
+                      <p key={kind} className={SET_KIND_COLOR[kind]}>
+                        {kindSets.map(formatSet).join(" · ")}
+                      </p>
+                    );
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>

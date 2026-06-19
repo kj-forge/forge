@@ -11,7 +11,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import { SET_KIND_COLOR, SET_KIND_DISPLAY_ORDER, SET_KIND_LABEL } from "@/features/strength/constants";
+import { SET_KIND_COLOR, SET_KIND_DISPLAY_ORDER, SET_KIND_ICON, SET_KIND_LABEL } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
 import { removeExerciseFromSession } from "@/features/strength/server/movements";
 import type { Movement } from "@/features/strength/types";
@@ -56,8 +56,8 @@ export function ViewOnlyExerciseDrawer({ open, onOpenChange, movement }: ViewOnl
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <div className="mx-auto w-full max-w-md">
-          <DrawerHeader>
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden">
+          <DrawerHeader className="shrink-0">
             <DrawerTitle>{movement.exerciseNamePl}</DrawerTitle>
             <DrawerDescription>
               {movement.sets.length === 0
@@ -66,7 +66,7 @@ export function ViewOnlyExerciseDrawer({ open, onOpenChange, movement }: ViewOnl
             </DrawerDescription>
           </DrawerHeader>
 
-          <div className="space-y-4 px-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
             {grouped.length === 0 ? (
               <p className="rounded-lg bg-muted/50 p-3 text-center text-muted-foreground text-sm">
                 To ćwiczenie zostało dodane do sesji, ale nie zalogowano żadnej serii.
@@ -74,7 +74,9 @@ export function ViewOnlyExerciseDrawer({ open, onOpenChange, movement }: ViewOnl
             ) : (
               grouped.map((g) => (
                 <section key={g.kind} className="space-y-1.5">
-                  <h3 className={`font-medium text-xs ${SET_KIND_COLOR[g.kind]}`}>{SET_KIND_LABEL[g.kind]}</h3>
+                  <h3 className={`font-medium text-xs ${SET_KIND_COLOR[g.kind]}`}>
+                    {SET_KIND_ICON[g.kind]} {SET_KIND_LABEL[g.kind]}
+                  </h3>
                   <ul className="space-y-1 rounded-lg bg-muted/40 p-3 text-sm">
                     {g.sets.map((s) => (
                       <li key={s.id} className="flex items-center justify-between gap-2">
@@ -96,7 +98,7 @@ export function ViewOnlyExerciseDrawer({ open, onOpenChange, movement }: ViewOnl
             )}
           </div>
 
-          <DrawerFooter className="gap-2">
+          <DrawerFooter className="shrink-0 gap-2">
             {canRemoveExercise && (
               <Button
                 type="button"
