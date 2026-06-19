@@ -85,7 +85,7 @@ export const listRecentSessions = createServerFn({ method: "GET" }).handler(asyn
     .select(sessionCardColumns)
     .from(sessions)
     .where(eq(sessions.athleteId, athleteId))
-    .orderBy(desc(sessions.date))
+    .orderBy(desc(sessions.date), desc(sessions.startedAt))
     .limit(10);
   return attachExercises(athleteId, sessionRows);
 });
@@ -98,7 +98,7 @@ export const listCompletedSessions = createServerFn({ method: "GET" }).handler(a
     .select(sessionCardColumns)
     .from(sessions)
     .where(and(eq(sessions.athleteId, athleteId), isNotNull(sessions.endedAt)))
-    .orderBy(desc(sessions.date))
+    .orderBy(desc(sessions.date), desc(sessions.startedAt))
     .limit(20);
   return attachExercises(athleteId, sessionRows);
 });
