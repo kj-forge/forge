@@ -25,24 +25,15 @@ export const addExerciseToSession = createServerFn({ method: "POST" })
       .limit(1);
     if (!block) throw new Error("Nie znaleziono sesji.");
 
-    // Defense in depth against double-add races: when the client invalidates
-    // the route loader after a successful add, slow mobile networks can leave
-    // the UI showing stale data long enough that the user taps "add" twice on
-    // the same exercise. The client-side in-flight lock catches the common
-    // case, but a stale re-render or a flaky network can still slip through.
-    // Reject duplicates server-side with a friendly Polish message.
-    const [existing] = await db
-      .select({ id: blockMovements.id })
-      .from(blockMovements)
-      .where(and(eq(blockMovements.blockId, block.id), eq(blockMovements.exerciseId, data.exerciseId)))
-      .limit(1);
-    if (existing) throw new Error("To ćwiczenie jest już w tej sesji.");
-
     const [{ nextIndex }] = await db
       .select({ nextIndex: sql<number>`COALESCE(MAX(${blockMovements.orderIndex}), -1) + 1` })
       .from(blockMovements)
       .where(eq(blockMovements.blockId, block.id));
 
+    // The (block_id, exercise_id) unique index is the source of truth against
+    // double-add races (slow network / double-tap). ON CONFLICT DO NOTHING
+    // makes the duplicate a no-op; an empty `returning` means it was already
+    // there.
     const [row] = await db
       .insert(blockMovements)
       .values({
@@ -51,7 +42,9 @@ export const addExerciseToSession = createServerFn({ method: "POST" })
         orderIndex: nextIndex,
         exerciseId: data.exerciseId,
       })
+      .onConflictDoNothing({ target: [blockMovements.blockId, blockMovements.exerciseId] })
       .returning({ id: blockMovements.id });
+    if (!row) throw new Error("To ćwiczenie jest już w tej sesji.");
 
     return { blockMovementId: row.id, orderIndex: nextIndex };
   });
@@ -67,19 +60,26 @@ export const removeExerciseFromSession = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
 
+    // Atomic: delete only when the movement is owned AND has zero sets. Checking
+    // emptiness inside the DELETE closes the count-then-delete window where a
+    // concurrently logged set would be cascade-deleted.
+    const [row] = await db
+      .delete(blockMovements)
+      .where(
+        and(
+          eq(blockMovements.id, data.blockMovementId),
+          eq(blockMovements.athleteId, athleteId),
+          sql`NOT EXISTS (SELECT 1 FROM ${sets} WHERE ${sets.blockMovementId} = ${blockMovements.id})`,
+        ),
+      )
+      .returning({ id: blockMovements.id });
+    if (row) return row;
+
+    // Nothing deleted — distinguish "has sets" from "not found" for the message.
     const [{ setCount }] = await db
       .select({ setCount: sql<number>`COUNT(*)::int` })
       .from(sets)
       .where(and(eq(sets.blockMovementId, data.blockMovementId), eq(sets.athleteId, athleteId)));
-
-    if (setCount > 0) {
-      throw new Error("Nie można usunąć ćwiczenia, w którym są już zapisane serie.");
-    }
-
-    const [row] = await db
-      .delete(blockMovements)
-      .where(and(eq(blockMovements.id, data.blockMovementId), eq(blockMovements.athleteId, athleteId)))
-      .returning({ id: blockMovements.id });
-    if (!row) throw new Error("Ćwiczenie nie znalezione");
-    return row;
+    if (setCount > 0) throw new Error("Nie można usunąć ćwiczenia, w którym są już zapisane serie.");
+    throw new Error("Ćwiczenie nie znalezione");
   });
