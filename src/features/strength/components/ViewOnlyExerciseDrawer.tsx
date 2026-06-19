@@ -56,8 +56,8 @@ export function ViewOnlyExerciseDrawer({ open, onOpenChange, movement }: ViewOnl
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <div className="mx-auto w-full max-w-md">
-          <DrawerHeader>
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden">
+          <DrawerHeader className="shrink-0">
             <DrawerTitle>{movement.exerciseNamePl}</DrawerTitle>
             <DrawerDescription>
               {movement.sets.length === 0
@@ -66,7 +66,7 @@ export function ViewOnlyExerciseDrawer({ open, onOpenChange, movement }: ViewOnl
             </DrawerDescription>
           </DrawerHeader>
 
-          <div className="space-y-4 px-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
             {grouped.length === 0 ? (
               <p className="rounded-lg bg-muted/50 p-3 text-center text-muted-foreground text-sm">
                 To ćwiczenie zostało dodane do sesji, ale nie zalogowano żadnej serii.
@@ -96,7 +96,7 @@ export function ViewOnlyExerciseDrawer({ open, onOpenChange, movement }: ViewOnl
             )}
           </div>
 
-          <DrawerFooter className="gap-2">
+          <DrawerFooter className="shrink-0 gap-2">
             {canRemoveExercise && (
               <Button
                 type="button"

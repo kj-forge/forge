@@ -142,8 +142,8 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
 
   return (
     <Form {...form}>
-      <form className="mx-auto w-full max-w-md" onSubmit={onSubmit} noValidate>
-        <DrawerHeader>
+      <form className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden" onSubmit={onSubmit} noValidate>
+        <DrawerHeader className="shrink-0">
           <DrawerTitle>{movement.exerciseNamePl}</DrawerTitle>
           <DrawerDescription>
             {movement.sets.length === 0
@@ -152,7 +152,7 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
           </DrawerDescription>
         </DrawerHeader>
 
-        <div className="space-y-4 px-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
           {movement.sets.length > 0 && (
             <div className="rounded-lg bg-muted/50 p-3 text-xs">
               <p className="mb-1 font-medium">📊 W tej sesji:</p>
@@ -332,7 +332,7 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
           </div>
         </div>
 
-        <DrawerFooter className="gap-2">
+        <DrawerFooter className="shrink-0 gap-2">
           <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
             {isSubmitting ? "Zapisuję..." : `⚡ Zapisz serię (${SET_KIND_LABEL[currentKind].replace(/^\S+\s/, "")})`}
           </Button>
