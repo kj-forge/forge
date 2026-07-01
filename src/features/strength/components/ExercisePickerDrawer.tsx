@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { searchExercises } from "@/features/strength/server/exercises";
 import { getErrorMessage } from "@/lib/error-message";
@@ -27,29 +27,24 @@ interface ExercisePickerDrawerProps {
 // the form mounts fresh — no `useEffect`-driven reset required.
 export function ExercisePickerDrawer({ open, onOpenChange, onPicked }: ExercisePickerDrawerProps) {
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      {/* Fixed tall height: the picker's own content is short, so without this
-          it never crosses vaul's "isTallEnough" threshold and vaul skips the
-          keyboard reposition — leaving the results list spilling under the
-          keyboard on mobile (only the first row visible). Tall + flex-scroll
-          keeps the list a proper scroll region above the keyboard. */}
-      <DrawerContent className="h-[80dvh]">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden">
-          <DrawerHeader className="shrink-0">
-            <DrawerTitle>Dodaj ćwiczenie</DrawerTitle>
-            <DrawerDescription>Wyszukaj po nazwie PL lub aliasie (np. "siady", "martwy").</DrawerDescription>
-          </DrawerHeader>
+          <DialogHeader className="shrink-0">
+            <DialogTitle>Dodaj ćwiczenie</DialogTitle>
+            <DialogDescription>Wyszukaj po nazwie PL lub aliasie (np. "siady", "martwy").</DialogDescription>
+          </DialogHeader>
 
           {open ? <ExercisePickerForm onPicked={onPicked} /> : null}
 
-          <DrawerFooter className="shrink-0">
-            <DrawerClose asChild>
+          <DialogFooter className="shrink-0">
+            <DialogClose asChild>
               <Button variant="outline">Anuluj</Button>
-            </DrawerClose>
-          </DrawerFooter>
+            </DialogClose>
+          </DialogFooter>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 }
 

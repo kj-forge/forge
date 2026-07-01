@@ -2,14 +2,14 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/error-message";
 
 interface NotesDrawerProps {
@@ -23,26 +23,26 @@ interface NotesDrawerProps {
 // opens, so we never need to manually reset `notes` from `initialNotes`.
 export function NotesDrawer({ open, onOpenChange, initialNotes, onSave }: NotesDrawerProps) {
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <div className="mx-auto w-full max-w-md">
-          <DrawerHeader>
-            <DrawerTitle>Notatki sesji</DrawerTitle>
-            <DrawerDescription>Wnioski, samopoczucie, plan na następny trening.</DrawerDescription>
-          </DrawerHeader>
+          <DialogHeader>
+            <DialogTitle>Notatki sesji</DialogTitle>
+            <DialogDescription>Wnioski, samopoczucie, plan na następny trening.</DialogDescription>
+          </DialogHeader>
 
           {open ? <NotesForm initialNotes={initialNotes} onSave={onSave} /> : null}
 
-          <DrawerFooter>
-            <DrawerClose asChild>
+          <DialogFooter>
+            <DialogClose asChild>
               <Button variant="outline" className="w-full">
                 Anuluj
               </Button>
-            </DrawerClose>
-          </DrawerFooter>
+            </DialogClose>
+          </DialogFooter>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 }
 

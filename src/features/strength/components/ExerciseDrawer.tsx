@@ -7,14 +7,14 @@ import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRootMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,9 +57,9 @@ export function ExerciseDrawer({ open, onOpenChange, movement }: ExerciseDrawerP
   // Conditional-mount the body so the form re-seeds its defaults from the
   // latest sets + lastByKind every time the drawer opens.
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>{open ? <ExerciseDrawerBody movement={movement} /> : null}</DrawerContent>
-    </Drawer>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>{open ? <ExerciseDrawerBody movement={movement} /> : null}</DialogContent>
+    </Dialog>
   );
 }
 
@@ -143,14 +143,14 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
   return (
     <Form {...form}>
       <form className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden" onSubmit={onSubmit} noValidate>
-        <DrawerHeader className="shrink-0">
-          <DrawerTitle>{movement.exerciseNamePl}</DrawerTitle>
-          <DrawerDescription>
+        <DialogHeader className="shrink-0">
+          <DialogTitle>{movement.exerciseNamePl}</DialogTitle>
+          <DialogDescription>
             {movement.sets.length === 0
               ? "Pierwsza seria"
               : `${movement.sets.length} ${movement.sets.length === 1 ? "seria" : "serii"} w tej sesji`}
-          </DrawerDescription>
-        </DrawerHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
           {movement.sets.length > 0 && (
@@ -332,16 +332,16 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
           </div>
         </div>
 
-        <DrawerFooter className="shrink-0 gap-2">
+        <DialogFooter className="shrink-0 gap-2">
           <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
             {isSubmitting ? "Zapisuję..." : `⚡ Zapisz serię (${SET_KIND_LABEL[currentKind]})`}
           </Button>
-          <DrawerClose asChild>
+          <DialogClose asChild>
             <Button type="button" variant="outline" className="w-full">
               Zamknij
             </Button>
-          </DrawerClose>
-        </DrawerFooter>
+          </DialogClose>
+        </DialogFooter>
       </form>
     </Form>
   );
