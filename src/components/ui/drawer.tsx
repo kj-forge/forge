@@ -4,11 +4,7 @@ import { Drawer as DrawerPrimitive } from "vaul";
 import { cn } from "@/lib/utils";
 
 function Drawer({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Root>) {
-  // noBodyStyles: stop vaul from setting `body { position: fixed }` on iOS. That
-  // collapsed the body's safe-area padding, jumping the page to the top edge on
-  // every drawer open/close in the standalone PWA. The overlay still blocks
-  // interaction, so the background just stays put. See vaul #318.
-  return <DrawerPrimitive.Root data-slot="drawer" noBodyStyles {...props} />;
+  return <DrawerPrimitive.Root data-slot="drawer" {...props} />;
 }
 
 function DrawerTrigger({ ...props }: React.ComponentProps<typeof DrawerPrimitive.Trigger>) {
