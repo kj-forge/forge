@@ -28,16 +28,21 @@ interface ExercisePickerDrawerProps {
 export function ExercisePickerDrawer({ open, onOpenChange, onPicked }: ExercisePickerDrawerProps) {
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
-        <div className="mx-auto w-full max-w-md">
-          <DrawerHeader>
+      {/* Fixed tall height: the picker's own content is short, so without this
+          it never crosses vaul's "isTallEnough" threshold and vaul skips the
+          keyboard reposition — leaving the results list spilling under the
+          keyboard on mobile (only the first row visible). Tall + flex-scroll
+          keeps the list a proper scroll region above the keyboard. */}
+      <DrawerContent className="h-[80dvh]">
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden">
+          <DrawerHeader className="shrink-0">
             <DrawerTitle>Dodaj ćwiczenie</DrawerTitle>
             <DrawerDescription>Wyszukaj po nazwie PL lub aliasie (np. "siady", "martwy").</DrawerDescription>
           </DrawerHeader>
 
           {open ? <ExercisePickerForm onPicked={onPicked} /> : null}
 
-          <DrawerFooter>
+          <DrawerFooter className="shrink-0">
             <DrawerClose asChild>
               <Button variant="outline">Anuluj</Button>
             </DrawerClose>
@@ -102,7 +107,7 @@ function ExercisePickerForm({ onPicked }: { onPicked: (exerciseId: string) => Pr
   };
 
   return (
-    <div className="space-y-3 px-4">
+    <div className="flex min-h-0 flex-1 flex-col space-y-3 px-4">
       <Input
         type="search"
         placeholder="Wyszukaj ćwiczenie..."
@@ -119,7 +124,7 @@ function ExercisePickerForm({ onPicked }: { onPicked: (exerciseId: string) => Pr
         </p>
       )}
 
-      <ul className="max-h-[50vh] space-y-1 overflow-y-auto">
+      <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto">
         {searching && <li className="py-2 text-center text-muted-foreground text-xs">Szukam...</li>}
         {!searching && !error && query.trim().length >= 2 && results.length === 0 && (
           <li className="py-2 text-center text-muted-foreground text-xs">Brak wyników.</li>
