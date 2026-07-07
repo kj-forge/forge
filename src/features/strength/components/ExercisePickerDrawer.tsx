@@ -6,7 +6,6 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -21,27 +20,35 @@ interface ExercisePickerDrawerProps {
   onPicked: (exerciseId: string) => Promise<void>;
 }
 
-// The drawer shell is always mounted (Vaul controls visibility). The search
-// form, however, is conditionally rendered — when `open` flips to false the
-// form unmounts, taking its query/results state with it. On the next open
-// the form mounts fresh — no `useEffect`-driven reset required.
+// The drawer shell is always mounted. The search form, however, is
+// conditionally rendered — when `open` flips to false the form unmounts,
+// taking its query/results state with it. On the next open the form mounts
+// fresh — no `useEffect`-driven reset required.
 export function ExercisePickerDrawer({ open, onOpenChange, onPicked }: ExercisePickerDrawerProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      {/* Full-screen on mobile: with the input pinned near the top of the
+          screen it stays visible regardless of what the keyboard does to the
+          viewport — we don't depend on vaul's reposition math (flaky on iOS 26).
+          "Anuluj" lives in the header so no footer competes for space. */}
+      <DialogContent
+        className="h-dvh pt-[env(safe-area-inset-top)] data-[vaul-drawer-direction=bottom]:max-h-none md:h-auto md:min-h-96"
+        showCloseButton={false}
+      >
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden">
-          <DialogHeader className="shrink-0">
-            <DialogTitle>Dodaj ćwiczenie</DialogTitle>
-            <DialogDescription>Wyszukaj po nazwie PL lub aliasie (np. "siady", "martwy").</DialogDescription>
+          <DialogHeader className="shrink-0 flex-row items-start justify-between text-left md:pr-4">
+            <div className="flex flex-col gap-0.5">
+              <DialogTitle>Dodaj ćwiczenie</DialogTitle>
+              <DialogDescription>Wyszukaj po nazwie PL lub aliasie (np. "siady", "martwy").</DialogDescription>
+            </div>
+            <DialogClose asChild>
+              <Button variant="ghost" size="sm">
+                Anuluj
+              </Button>
+            </DialogClose>
           </DialogHeader>
 
           {open ? <ExercisePickerForm onPicked={onPicked} /> : null}
-
-          <DialogFooter className="shrink-0">
-            <DialogClose asChild>
-              <Button variant="outline">Anuluj</Button>
-            </DialogClose>
-          </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>
@@ -106,6 +113,7 @@ function ExercisePickerForm({ onPicked }: { onPicked: (exerciseId: string) => Pr
       <Input
         type="search"
         placeholder="Wyszukaj ćwiczenie..."
+        className="shrink-0"
         value={query}
         onChange={(e) => handleSearch(e.target.value)}
         maxLength={50}
@@ -119,7 +127,7 @@ function ExercisePickerForm({ onPicked }: { onPicked: (exerciseId: string) => Pr
         </p>
       )}
 
-      <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto">
+      <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
         {searching && <li className="py-2 text-center text-muted-foreground text-xs">Szukam...</li>}
         {!searching && !error && query.trim().length >= 2 && results.length === 0 && (
           <li className="py-2 text-center text-muted-foreground text-xs">Brak wyników.</li>
