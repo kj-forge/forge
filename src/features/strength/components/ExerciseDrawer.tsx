@@ -7,21 +7,21 @@ import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRootMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SET_KIND_COLOR, SET_KIND_LABEL, SET_KINDS, VISIBLE_SET_KINDS } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
+import { seedSetFields } from "@/features/strength/lib/seed-set-fields";
 import { suggestKind } from "@/features/strength/lib/suggest-kind";
-import type { KindRef, RefKind } from "@/features/strength/server/sessions";
 import { addSet, deleteSet } from "@/features/strength/server/sets";
 import type { Movement, SetKind } from "@/features/strength/types";
 import { getErrorMessage } from "@/lib/error-message";
@@ -46,20 +46,14 @@ const setFormSchema = z.object({
 
 type SetFormValues = z.infer<typeof setFormSchema>;
 
-// A historical reference set → form inputs. No history leaves both empty;
-// a null weight (bodyweight) becomes 0 ("0 = bodyweight").
-function refToFields(ref: KindRef | undefined): { reps: number | undefined; weightKg: number | undefined } {
-  if (!ref) return { reps: undefined, weightKg: undefined };
-  return { reps: ref.reps ?? undefined, weightKg: ref.weightKg ?? 0 };
-}
-
 export function ExerciseDrawer({ open, onOpenChange, movement }: ExerciseDrawerProps) {
-  // Conditional-mount the body so the form re-seeds its defaults from the
-  // latest sets + lastByKind every time the drawer opens.
+  // Conditional-mount the body so the form re-seeds its defaults every time
+  // the drawer opens: this session's latest set of the kind first, then the
+  // historical lastByKind reference.
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>{open ? <ExerciseDrawerBody movement={movement} /> : null}</DrawerContent>
-    </Drawer>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>{open ? <ExerciseDrawerBody movement={movement} /> : null}</DialogContent>
+    </Dialog>
   );
 }
 
@@ -67,7 +61,10 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
   const router = useRouter();
 
   const initialKind = suggestKind(movement);
-  const initialFields = refToFields(movement.lastByKind[initialKind as RefKind]);
+  const initialFields = seedSetFields(movement.sets, movement.lastByKind, initialKind) ?? {
+    reps: undefined,
+    weightKg: undefined,
+  };
 
   const form = useForm<SetFormValues>({
     resolver: zodResolver(setFormSchema),
@@ -127,14 +124,15 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
     }
   };
 
-  // Switching kind pre-fills that kind's last-session reference; if there's no
-  // history for it, the current inputs stay as the athlete left them.
+  // Switching kind pre-fills that kind's latest set from this session, falling
+  // back to the last-session reference; if neither exists, the current inputs
+  // stay as the athlete left them.
   const handleKindChange = (k: SetKind) => {
     form.setValue("kind", k);
-    const ref = movement.lastByKind[k as RefKind];
-    if (!ref) return;
-    form.setValue("reps", (ref.reps ?? undefined) as number);
-    form.setValue("weightKg", ref.weightKg ?? 0);
+    const seed = seedSetFields(movement.sets, movement.lastByKind, k);
+    if (!seed) return;
+    form.setValue("reps", seed.reps as number);
+    form.setValue("weightKg", seed.weightKg ?? 0);
   };
 
   const isSubmitting = form.formState.isSubmitting;
@@ -143,14 +141,14 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
   return (
     <Form {...form}>
       <form className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden" onSubmit={onSubmit} noValidate>
-        <DrawerHeader className="shrink-0">
-          <DrawerTitle>{movement.exerciseNamePl}</DrawerTitle>
-          <DrawerDescription>
+        <DialogHeader className="shrink-0">
+          <DialogTitle>{movement.exerciseNamePl}</DialogTitle>
+          <DialogDescription>
             {movement.sets.length === 0
               ? "Pierwsza seria"
               : `${movement.sets.length} ${movement.sets.length === 1 ? "seria" : "serii"} w tej sesji`}
-          </DrawerDescription>
-        </DrawerHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
           {movement.sets.length > 0 && (
@@ -332,16 +330,16 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
           </div>
         </div>
 
-        <DrawerFooter className="shrink-0 gap-2">
+        <DialogFooter className="shrink-0 gap-2">
           <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
             {isSubmitting ? "Zapisuję..." : `⚡ Zapisz serię (${SET_KIND_LABEL[currentKind]})`}
           </Button>
-          <DrawerClose asChild>
+          <DialogClose asChild>
             <Button type="button" variant="outline" className="w-full">
               Zamknij
             </Button>
-          </DrawerClose>
-        </DrawerFooter>
+          </DialogClose>
+        </DialogFooter>
       </form>
     </Form>
   );
