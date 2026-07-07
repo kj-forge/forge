@@ -2,14 +2,14 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { getErrorMessage } from "@/lib/error-message";
 
@@ -39,22 +39,22 @@ export function EndSessionDrawer({ open, onOpenChange, movementCount, onConfirm 
   };
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <div className="mx-auto w-full max-w-md">
-          <DrawerHeader>
-            <DrawerTitle>Zakończ sesję?</DrawerTitle>
-            <DrawerDescription>
+          <DialogHeader>
+            <DialogTitle>Zakończ sesję?</DialogTitle>
+            <DialogDescription>
               {movementCount} {movementCount === 1 ? "ćwiczenie" : "ćwiczeń"}
-            </DrawerDescription>
-          </DrawerHeader>
+            </DialogDescription>
+          </DialogHeader>
 
           <div className="space-y-3 px-4">
             <div className="space-y-1.5">
               <Label htmlFor="notes">Notatki (opcjonalne)</Label>
               <textarea
                 id="notes"
-                className="min-h-24 w-full rounded-md border border-border bg-background p-2 text-sm"
+                className="min-h-24 w-full resize-none rounded-md border border-border bg-background p-2 text-sm"
                 placeholder="Wnioski z dzisiejszego treningu..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -68,18 +68,18 @@ export function EndSessionDrawer({ open, onOpenChange, movementCount, onConfirm 
             )}
           </div>
 
-          <DrawerFooter className="gap-2">
+          <DialogFooter className="gap-2">
             <Button className="w-full" disabled={ending} onClick={handleConfirm}>
               {ending ? "Zakańczam..." : "Zakończ i zapisz"}
             </Button>
-            <DrawerClose asChild>
+            <DialogClose asChild>
               <Button variant="outline" className="w-full">
                 Anuluj
               </Button>
-            </DrawerClose>
-          </DrawerFooter>
+            </DialogClose>
+          </DialogFooter>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 }

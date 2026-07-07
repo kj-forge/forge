@@ -3,14 +3,14 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SET_KIND_COLOR, SET_KIND_DISPLAY_ORDER, SET_KIND_ICON, SET_KIND_LABEL } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
 import { removeExerciseFromSession } from "@/features/strength/server/movements";
@@ -54,17 +54,17 @@ export function ViewOnlyExerciseDrawer({ open, onOpenChange, movement }: ViewOnl
   };
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden">
-          <DrawerHeader className="shrink-0">
-            <DrawerTitle>{movement.exerciseNamePl}</DrawerTitle>
-            <DrawerDescription>
+          <DialogHeader className="shrink-0">
+            <DialogTitle>{movement.exerciseNamePl}</DialogTitle>
+            <DialogDescription>
               {movement.sets.length === 0
                 ? "Brak zalogowanych serii"
                 : `${movement.sets.length} ${movement.sets.length === 1 ? "seria" : "serii"} · podsumowanie`}
-            </DrawerDescription>
-          </DrawerHeader>
+            </DialogDescription>
+          </DialogHeader>
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
             {grouped.length === 0 ? (
@@ -98,7 +98,7 @@ export function ViewOnlyExerciseDrawer({ open, onOpenChange, movement }: ViewOnl
             )}
           </div>
 
-          <DrawerFooter className="shrink-0 gap-2">
+          <DialogFooter className="shrink-0 gap-2">
             {canRemoveExercise && (
               <Button
                 type="button"
@@ -110,14 +110,14 @@ export function ViewOnlyExerciseDrawer({ open, onOpenChange, movement }: ViewOnl
                 {removingExercise ? <Spinner size="sm" /> : "Usuń ćwiczenie z sesji"}
               </Button>
             )}
-            <DrawerClose asChild>
+            <DialogClose asChild>
               <Button variant="outline" className="w-full">
                 Zamknij
               </Button>
-            </DrawerClose>
-          </DrawerFooter>
+            </DialogClose>
+          </DialogFooter>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 }

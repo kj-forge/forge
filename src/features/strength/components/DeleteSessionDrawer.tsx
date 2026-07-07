@@ -2,14 +2,14 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/error-message";
 
 interface DeleteSessionDrawerProps {
@@ -35,17 +35,17 @@ export function DeleteSessionDrawer({ open, onOpenChange, isEnded, onConfirm }: 
   };
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
         <div className="mx-auto w-full max-w-md">
-          <DrawerHeader>
-            <DrawerTitle>⚠️ Usunąć sesję?</DrawerTitle>
-            <DrawerDescription>
+          <DialogHeader>
+            <DialogTitle>⚠️ Usunąć sesję?</DialogTitle>
+            <DialogDescription>
               {isEnded
                 ? "Sesja zostanie nieodwracalnie usunięta wraz ze wszystkimi seriami."
                 : "Sesja jest w trakcie. Usunięcie skasuje całość — nie da się tego cofnąć."}
-            </DrawerDescription>
-          </DrawerHeader>
+            </DialogDescription>
+          </DialogHeader>
 
           <div className="px-4">
             {error && (
@@ -55,18 +55,18 @@ export function DeleteSessionDrawer({ open, onOpenChange, isEnded, onConfirm }: 
             )}
           </div>
 
-          <DrawerFooter className="gap-2">
+          <DialogFooter className="gap-2">
             <Button variant="destructive" className="w-full" disabled={deleting} onClick={handleConfirm}>
               {deleting ? "Usuwam..." : "Tak, usuń"}
             </Button>
-            <DrawerClose asChild>
+            <DialogClose asChild>
               <Button variant="outline" className="w-full">
                 Anuluj
               </Button>
-            </DrawerClose>
-          </DrawerFooter>
+            </DialogClose>
+          </DialogFooter>
         </div>
-      </DrawerContent>
-    </Drawer>
+      </DialogContent>
+    </Dialog>
   );
 }
