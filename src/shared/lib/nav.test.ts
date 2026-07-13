@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { NAV_ITEMS, showsTabBar } from "./nav";
+import { isActivePath, NAV_ITEMS, showsTabBar } from "./nav";
 
 describe("showsTabBar", () => {
   test("visible on the four top-level destinations", () => {
@@ -17,6 +17,20 @@ describe("showsTabBar", () => {
 
   test("hidden on unknown routes (fail closed)", () => {
     expect(showsTabBar("/login")).toBe(false);
+  });
+});
+
+describe("isActivePath", () => {
+  test("exact match, trailing slash tolerated", () => {
+    expect(isActivePath("/", "/")).toBe(true);
+    expect(isActivePath("/sessions", "/sessions")).toBe(true);
+    expect(isActivePath("/sessions/", "/sessions")).toBe(true);
+  });
+
+  test("no prefix matching — detail routes don't activate parents", () => {
+    expect(isActivePath("/sessions/abc", "/sessions")).toBe(false);
+    expect(isActivePath("/sessions/new", "/sessions")).toBe(false);
+    expect(isActivePath("/sessions", "/")).toBe(false);
   });
 });
 

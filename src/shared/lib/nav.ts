@@ -17,7 +17,14 @@ export const NAV_ITEMS: NavItem[] = [
 
 const TAB_BAR_PATHS = new Set(["/", "/sessions", "/sessions/new", "/me"]);
 
+function normalizePath(pathname: string): string {
+  return pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+}
+
 export function showsTabBar(pathname: string): boolean {
-  const normalized = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
-  return TAB_BAR_PATHS.has(normalized);
+  return TAB_BAR_PATHS.has(normalizePath(pathname));
+}
+
+export function isActivePath(pathname: string, to: NavItem["to"]): boolean {
+  return normalizePath(pathname) === to;
 }
