@@ -16,7 +16,14 @@ export function GoogleSignInButton() {
     // lets the user retry without reloading.
     const resetTimer = setTimeout(() => setIsSubmitting(false), 5000);
     try {
-      await signIn.social({ provider: "google", callbackURL: "/me" });
+      // better-fetch reports failures (including network errors) in the result
+      // instead of throwing — a catch-only path silently swallows them.
+      const { error: signInError } = await signIn.social({ provider: "google", callbackURL: "/me" });
+      if (signInError) {
+        clearTimeout(resetTimer);
+        setError(signInError.message || "Logowanie przez Google nie powiodło się.");
+        setIsSubmitting(false);
+      }
     } catch (err) {
       clearTimeout(resetTimer);
       setError(getErrorMessage(err, "Logowanie przez Google nie powiodło się."));
