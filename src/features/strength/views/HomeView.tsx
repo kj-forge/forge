@@ -23,15 +23,10 @@ export function HomeView() {
   ].slice(0, 4);
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-md flex-col gap-6 p-4">
-      <header className="flex items-center justify-between pt-2">
-        <div>
-          <p className="text-muted-foreground text-sm">Cześć,</p>
-          <h1 className="font-bold text-2xl tracking-tight">{firstName} 👋</h1>
-        </div>
-        <Link to="/me" className="text-muted-foreground text-sm underline-offset-4 hover:underline">
-          Konto
-        </Link>
+    <main className="mx-auto flex max-w-md flex-col gap-6 p-4">
+      <header className="pt-2">
+        <p className="text-muted-foreground text-sm">Cześć,</p>
+        <h1 className="font-bold text-2xl tracking-tight">{firstName} 👋</h1>
       </header>
 
       <Card>

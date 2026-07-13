@@ -1,4 +1,4 @@
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { getRouteApi } from "@tanstack/react-router";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { SessionListItem } from "@/features/strength/components/SessionListItem";
@@ -9,14 +9,8 @@ export function SessionsListView() {
   const sessionsList = route.useLoaderData();
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-md flex-col gap-3 p-4">
-      <header className="flex items-center justify-between pt-2">
-        <Link to="/" className="text-muted-foreground text-sm">
-          ← Wróć
-        </Link>
-      </header>
-
-      <h1 className="font-bold text-2xl tracking-tight">Historia sesji</h1>
+    <main className="mx-auto flex max-w-md flex-col gap-3 p-4">
+      <h1 className="pt-2 font-bold text-2xl tracking-tight">Historia sesji</h1>
 
       {sessionsList.length === 0 ? (
         <Card>

@@ -1,4 +1,4 @@
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { useState } from "react";
 
@@ -48,13 +48,7 @@ export function NewSessionView() {
   };
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-md flex-col gap-4 p-4">
-      <header className="flex items-center justify-between pt-2">
-        <Link to="/" className="text-muted-foreground text-sm">
-          ← Wróć
-        </Link>
-      </header>
-
+    <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
       <div className="space-y-1 pt-2">
         <h1 className="font-bold text-2xl tracking-tight">Nowa sesja {SESSION_TYPE_LABEL_PL_ADJ[type]}</h1>
         {templates.length > 0 ? (
