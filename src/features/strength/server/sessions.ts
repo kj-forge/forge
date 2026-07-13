@@ -48,11 +48,12 @@ async function attachExercises<T extends { id: string }>(athleteId: string, sess
     }
     let top = movements.get(row.movementId);
     if (!top) {
-      top = { name: row.name, weightKg: null, reps: null, hasSet: false };
+      top = { name: row.name, weightKg: null, reps: null, setCount: 0, hasSet: false };
       movements.set(row.movementId, top);
     }
     const isRealSet = row.reps !== null || row.weightKg !== null;
     if (!isRealSet) continue;
+    top.setCount += 1;
     const heavier =
       !top.hasSet ||
       (row.weightKg ?? -1) > (top.weightKg ?? -1) ||
@@ -71,11 +72,12 @@ async function attachExercises<T extends { id: string }>(athleteId: string, sess
       name: m.name,
       weightKg: m.weightKg,
       reps: m.reps,
+      setCount: m.setCount,
     })),
   }));
 }
 
-type SessionTopExercise = { name: string; weightKg: number | null; reps: number | null };
+type SessionTopExercise = { name: string; weightKg: number | null; reps: number | null; setCount: number };
 
 // Dashboard feed: most recent sessions including the in-progress one (the badge
 // marks it). The view sorts active to the top and trims the count.

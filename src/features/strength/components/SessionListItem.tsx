@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
-import { formatWeight } from "@/features/strength/lib/format-set";
+import { formatSeriesCount, formatWeight } from "@/features/strength/lib/format-set";
 import type { SessionType } from "@/features/strength/types";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
@@ -10,6 +10,7 @@ interface SessionExercise {
   name: string;
   weightKg: number | null;
   reps: number | null;
+  setCount: number;
 }
 
 interface SessionListItemProps {
@@ -17,6 +18,7 @@ interface SessionListItemProps {
     id: string;
     date: string | Date;
     type: string;
+    title?: string | null;
     endedAt: Date | null;
     exercises?: SessionExercise[];
   };
@@ -31,6 +33,9 @@ const TOP_SETS_SHOWN = 3;
 export function SessionListItem({ session, dateFormat = "long", detail = "none" }: SessionListItemProps) {
   const label = SESSION_TYPE_LABEL_PL[session.type as SessionType] ?? session.type;
   const exercises = session.exercises ?? [];
+  // The card headline is the day's main lift — first exercise in session order
+  // (an explicit session title, once nameable, wins). Type falls to the subline.
+  const headline = session.title ?? exercises[0]?.name;
 
   return (
     <li>
@@ -40,10 +45,11 @@ export function SessionListItem({ session, dateFormat = "long", detail = "none" 
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex items-center gap-2">
-                  <p className="font-medium text-sm">{label}</p>
+                  <p className="truncate font-semibold text-base leading-tight">{headline ?? label}</p>
                   <StatusBadge endedAt={session.endedAt} />
                 </div>
                 <p className="text-muted-foreground text-xs">
+                  {headline ? `${label} · ` : ""}
                   {new Date(session.date).toLocaleDateString("pl-PL", {
                     weekday: dateFormat,
                     day: "numeric",
@@ -58,8 +64,13 @@ export function SessionListItem({ session, dateFormat = "long", detail = "none" 
                 {detail === "top-sets" && exercises.length > 0 && (
                   <ul className="space-y-0.5 pt-1">
                     {exercises.slice(0, TOP_SETS_SHOWN).map((e) => (
-                      <li key={e.name} className="flex items-center justify-between gap-3 text-xs">
-                        <span className="truncate">{e.name}</span>
+                      <li key={e.name} className="flex items-baseline justify-between gap-3 text-xs">
+                        <span className="min-w-0 truncate">
+                          {e.name}
+                          {e.setCount > 0 && (
+                            <span className="text-muted-foreground"> · {formatSeriesCount(e.setCount)}</span>
+                          )}
+                        </span>
                         {e.reps !== null && (
                           <span className="shrink-0 text-muted-foreground tabular-nums">
                             {e.reps}× <span className="font-medium text-foreground">{formatWeight(e.weightKg)}</span>

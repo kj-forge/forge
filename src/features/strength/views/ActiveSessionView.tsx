@@ -1,4 +1,5 @@
 import { getRouteApi, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import dayjs from "dayjs";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,8 @@ import { ExercisePickerDrawer } from "@/features/strength/components/ExercisePic
 import { MovementRow } from "@/features/strength/components/MovementRow";
 import { NotesDrawer } from "@/features/strength/components/NotesDrawer";
 import { addExerciseToSession } from "@/features/strength/server/movements";
-import { deleteSession, endSession, updateSessionNotes } from "@/features/strength/server/sessions";
+import { createSession, deleteSession, endSession, updateSessionNotes } from "@/features/strength/server/sessions";
+import { getErrorMessage } from "@/lib/error-message";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
 const route = getRouteApi("/sessions/$sessionId");
@@ -22,8 +24,26 @@ export function ActiveSessionView() {
   const [endOpen, setEndOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   const isEnded = session.endedAt !== null;
+
+  // Same-day repeat of an ended session: new session cloned from this one's
+  // exercise list (sets start empty; the drawer seeds weights from history).
+  const repeatSession = async () => {
+    setCopyError(null);
+    setCopying(true);
+    try {
+      const result = await createSession({
+        data: { type: session.type, date: dayjs().format("YYYY-MM-DD"), fromTemplateSessionId: session.id },
+      });
+      navigate({ to: "/sessions/$sessionId", params: { sessionId: result.sessionId } });
+    } catch (err) {
+      setCopyError(getErrorMessage(err, "Nie udało się utworzyć sesji."));
+      setCopying(false);
+    }
+  };
 
   return (
     <main className="mx-auto flex min-h-svh max-w-md flex-col gap-3 p-4 pb-32">
@@ -93,9 +113,19 @@ export function ActiveSessionView() {
             </Button>
           </>
         ) : (
-          <Button type="button" variant="outline" className="w-full" onClick={() => setNotesOpen(true)}>
-            ✏️ Edytuj notatki
-          </Button>
+          <>
+            <Button type="button" className="w-full" onClick={repeatSession} disabled={copying}>
+              {copying ? "Tworzę..." : "🔁 Trenuj na tej bazie"}
+            </Button>
+            <Button type="button" variant="outline" className="w-full" onClick={() => setNotesOpen(true)}>
+              ✏️ Edytuj notatki
+            </Button>
+            {copyError && (
+              <p className="text-destructive text-xs" role="alert">
+                {copyError}
+              </p>
+            )}
+          </>
         )}
         <button
           type="button"
