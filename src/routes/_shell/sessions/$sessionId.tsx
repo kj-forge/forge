@@ -4,7 +4,7 @@ import { getSessionDetails } from "@/features/strength/server/sessions";
 import { ActiveSessionView } from "@/features/strength/views/ActiveSessionView";
 import { getSession } from "@/lib/session";
 
-export const Route = createFileRoute("/sessions/$sessionId")({
+export const Route = createFileRoute("/_shell/sessions/$sessionId")({
   beforeLoad: async () => {
     const session = await getSession();
     if (!session) throw redirect({ to: "/login" });
