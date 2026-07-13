@@ -8,7 +8,7 @@ import { SESSION_TYPE_LABEL_PL_ADJ } from "@/features/strength/constants";
 import { createSession } from "@/features/strength/server/sessions";
 import { getErrorMessage } from "@/lib/error-message";
 
-const route = getRouteApi("/sessions/new");
+const route = getRouteApi("/_shell/sessions/new");
 
 // "czwartek, 12 czerwca" → "Czwartek, 12 czerwca". A date-only string at UTC
 // midnight + Poland's positive offset stays on the same calendar day, so SSR

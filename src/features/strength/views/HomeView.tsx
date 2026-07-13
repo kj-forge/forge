@@ -6,7 +6,7 @@ import { SessionListItem } from "@/features/strength/components/SessionListItem"
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import type { SessionType } from "@/features/strength/types";
 
-const route = getRouteApi("/");
+const route = getRouteApi("/_shell/");
 
 export function HomeView() {
   const { session } = route.useRouteContext();

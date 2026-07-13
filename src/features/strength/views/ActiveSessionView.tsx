@@ -14,7 +14,7 @@ import { createSession, deleteSession, endSession, updateSessionNotes } from "@/
 import { getErrorMessage } from "@/lib/error-message";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
-const route = getRouteApi("/sessions/$sessionId");
+const route = getRouteApi("/_shell/sessions/$sessionId");
 
 export function ActiveSessionView() {
   const { session, movements } = route.useLoaderData();

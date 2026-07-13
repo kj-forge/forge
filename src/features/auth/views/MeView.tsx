@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { signOut } from "@/features/auth/client";
 import { getErrorMessage } from "@/lib/error-message";
 
-const route = getRouteApi("/me");
+const route = getRouteApi("/_shell/me");
 
 export function MeView() {
   const { session } = route.useRouteContext();

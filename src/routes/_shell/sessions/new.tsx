@@ -9,7 +9,7 @@ const searchSchema = z.object({
   type: z.enum(SESSION_TYPES).default("STRENGTH"),
 });
 
-export const Route = createFileRoute("/sessions/new")({
+export const Route = createFileRoute("/_shell/sessions/new")({
   beforeLoad: async () => {
     const session = await getSession();
     if (!session) throw redirect({ to: "/login" });

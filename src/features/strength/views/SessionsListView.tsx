@@ -3,7 +3,7 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { SessionListItem } from "@/features/strength/components/SessionListItem";
 
-const route = getRouteApi("/sessions/");
+const route = getRouteApi("/_shell/sessions/");
 
 export function SessionsListView() {
   const sessionsList = route.useLoaderData();
