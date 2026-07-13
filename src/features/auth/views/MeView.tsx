@@ -1,4 +1,4 @@
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { signOut } from "@/features/auth/client";
 import { getErrorMessage } from "@/lib/error-message";
 
-const route = getRouteApi("/me");
+const route = getRouteApi("/_shell/me");
 
 export function MeView() {
   const { session } = route.useRouteContext();
@@ -27,14 +27,8 @@ export function MeView() {
   };
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-md flex-col gap-4 p-4">
-      <header className="flex items-center justify-between pt-2">
-        <Link to="/" className="text-muted-foreground text-sm">
-          ← Wróć
-        </Link>
-      </header>
-
-      <Card className="w-full">
+    <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
+      <Card className="mt-2 w-full">
         <CardHeader>
           <CardTitle>Twoje konto</CardTitle>
           <CardDescription>Zalogowany jako…</CardDescription>

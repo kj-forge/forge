@@ -22,6 +22,11 @@ ADRs are immutable once accepted. To change a decision, write a new ADR that sup
 | [ADR-0012](ADR-0012-drizzle-conventions.md) | Drizzle ORM conventions (snake_case casing, UUID PKs, athlete_id denormalization, no soft delete) | Accepted |
 | [ADR-0013](ADR-0013-monetization-ready-schema.md) | Monetization-ready schema additions (locale/timezone/subscription/public profile/audit log/consent/referrals) | Accepted |
 | [ADR-0014](ADR-0014-observability-and-llm-gateway.md) | Observability stack + OpenRouter as LLM gateway (Sentry/PostHog/Axiom/Better Stack/Discord + ai_usage table) | Accepted |
+| [ADR-0015](ADR-0015-better-auth-implementation.md) | Better Auth implementation — schema, hooks, atomicity | Accepted |
+| [ADR-0016](ADR-0016-strength-logging-ux.md) | Strength session logging — UX, schema, server-fn architecture | Accepted |
+| [ADR-0017](ADR-0017-cloudflare-workers-deploy-pipeline.md) | Cloudflare Workers deploy pipeline + Workers-compatible runtime refactor | Accepted |
+| [ADR-0018](ADR-0018-folder-architecture.md) | Folder architecture — feature-first with thin routes | Accepted |
+| [ADR-0019](ADR-0019-app-shell-fixed-viewport.md) | App shell with a fixed viewport and inner scroll container | Proposed |
 
 ## How to add an ADR
 

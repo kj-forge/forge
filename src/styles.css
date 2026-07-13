@@ -123,11 +123,16 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Honor iOS safe-area insets in standalone PWA mode (no browser chrome
-       above the content). env() returns 0 outside iOS standalone, so this
-       is a no-op for desktop / non-iOS / browser tabs. */
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* The window itself must never scroll: vaul's iOS scroll-lock replays
+     window scroll state on drawer open/close, visibly jumping a scrolled
+     page. Scrolling happens inside the shell's <main>. Safe-area insets
+     are owned by the shell chrome (top bar / tab bar), not body. */
+  html,
+  body {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
   html {
     @apply font-sans;

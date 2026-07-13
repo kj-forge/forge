@@ -1,4 +1,4 @@
-import { getRouteApi, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { useState } from "react";
 
@@ -14,7 +14,7 @@ import { createSession, deleteSession, endSession, updateSessionNotes } from "@/
 import { getErrorMessage } from "@/lib/error-message";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
-const route = getRouteApi("/sessions/$sessionId");
+const route = getRouteApi("/_shell/sessions/$sessionId");
 
 export function ActiveSessionView() {
   const { session, movements } = route.useLoaderData();
@@ -46,11 +46,8 @@ export function ActiveSessionView() {
   };
 
   return (
-    <main className="mx-auto flex min-h-svh max-w-md flex-col gap-3 p-4 pb-32">
-      <header className="flex items-center justify-between pt-2">
-        <Link to="/" className="text-muted-foreground text-sm">
-          ← Wróć
-        </Link>
+    <main className="mx-auto flex max-w-md flex-col gap-3 p-4 pb-32">
+      <header className="flex items-center justify-end pt-2">
         <span className="text-muted-foreground text-xs">
           {new Date(session.date).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
         </span>
@@ -102,7 +99,7 @@ export function ActiveSessionView() {
         </Card>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md space-y-2 border-t bg-background p-4">
+      <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md space-y-2 border-t bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {!isEnded ? (
           <>
             <Button type="button" variant="outline" className="w-full" onClick={() => setPickerOpen(true)}>

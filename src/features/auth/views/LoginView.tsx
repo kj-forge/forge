@@ -4,7 +4,7 @@ import { LoginForm } from "@/features/auth/forms/LoginForm";
 
 export function LoginView() {
   return (
-    <main className="flex min-h-svh items-center justify-center p-4">
+    <main className="flex h-dvh items-center justify-center overflow-y-auto p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Zaloguj się do Forge</CardTitle>

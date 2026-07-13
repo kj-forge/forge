@@ -8,7 +8,7 @@ export function CheckEmailView() {
   const { email } = route.useSearch();
 
   return (
-    <main className="flex min-h-svh items-center justify-center p-4">
+    <main className="flex h-dvh items-center justify-center overflow-y-auto p-4">
       <Card className="w-full max-w-sm text-center">
         <CardHeader>
           <CardTitle>Sprawdź skrzynkę</CardTitle>
