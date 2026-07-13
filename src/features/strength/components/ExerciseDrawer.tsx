@@ -3,7 +3,6 @@ import { useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { NumericFormat } from "react-number-format";
-import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,9 +17,17 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRootMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SET_KIND_COLOR, SET_KIND_LABEL, SET_KINDS, VISIBLE_SET_KINDS } from "@/features/strength/constants";
+import { SET_KIND_COLOR, SET_KIND_LABEL, VISIBLE_SET_KINDS } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
 import { seedSetFields } from "@/features/strength/lib/seed-set-fields";
+import {
+  numToInputStr,
+  type SetFormInput,
+  type SetFormValues,
+  setFormSchema,
+  stepReps,
+  stepWeight,
+} from "@/features/strength/lib/set-form";
 import { suggestKind } from "@/features/strength/lib/suggest-kind";
 import { addSet, deleteSet } from "@/features/strength/server/sets";
 import type { Movement, SetKind } from "@/features/strength/types";
@@ -32,19 +39,6 @@ interface ExerciseDrawerProps {
   onOpenChange: (open: boolean) => void;
   movement: Movement;
 }
-
-const setFormSchema = z.object({
-  kind: z.enum(SET_KINDS),
-  reps: z
-    .number({ error: "Wpisz liczbę powtórzeń." })
-    .int("Liczba całkowita")
-    .min(1, "Min 1 powtórzenie")
-    .max(999, "Max 999"),
-  weightKg: z.number({ error: "Wpisz ciężar (0 = bodyweight)." }).min(0, "Min 0").max(999, "Max 999 kg"),
-  rpe: z.number().int().min(6).max(10).nullable(),
-});
-
-type SetFormValues = z.infer<typeof setFormSchema>;
 
 export function ExerciseDrawer({ open, onOpenChange, movement }: ExerciseDrawerProps) {
   // Conditional-mount the body so the form re-seeds its defaults every time
@@ -66,12 +60,12 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
     weightKg: undefined,
   };
 
-  const form = useForm<SetFormValues>({
+  const form = useForm<SetFormInput, unknown, SetFormValues>({
     resolver: zodResolver(setFormSchema),
     defaultValues: {
       kind: initialKind,
-      reps: initialFields.reps,
-      weightKg: initialFields.weightKg,
+      reps: numToInputStr(initialFields.reps),
+      weightKg: numToInputStr(initialFields.weightKg),
       rpe: null,
     },
     mode: "onSubmit",
@@ -99,8 +93,8 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
       // Carry-over for the next set: keep kind/reps/weight, clear RPE only.
       form.reset({
         kind: values.kind,
-        reps: values.reps,
-        weightKg: values.weightKg,
+        reps: numToInputStr(values.reps),
+        weightKg: numToInputStr(values.weightKg),
         rpe: null,
       });
     } catch (err) {
@@ -131,8 +125,8 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
     form.setValue("kind", k);
     const seed = seedSetFields(movement.sets, movement.lastByKind, k);
     if (!seed) return;
-    form.setValue("reps", seed.reps as number);
-    form.setValue("weightKg", seed.weightKg ?? 0);
+    form.setValue("reps", numToInputStr(seed.reps));
+    form.setValue("weightKg", numToInputStr(seed.weightKg ?? 0));
   };
 
   const isSubmitting = form.formState.isSubmitting;
@@ -224,7 +218,7 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
                       type="button"
                       variant="outline"
                       size="lg"
-                      onClick={() => field.onChange(Math.max(1, (field.value ?? 1) - 1))}
+                      onClick={() => field.onChange(stepReps(field.value, -1))}
                     >
                       −
                     </Button>
@@ -232,8 +226,9 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
                       id="reps"
                       customInput={Input}
                       className="text-center text-lg"
-                      value={field.value ?? ""}
-                      onValueChange={(values) => field.onChange(values.floatValue)}
+                      value={field.value}
+                      valueIsNumericString
+                      onValueChange={(values) => field.onChange(values.value)}
                       decimalScale={0}
                       allowNegative={false}
                     />
@@ -241,7 +236,7 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
                       type="button"
                       variant="outline"
                       size="lg"
-                      onClick={() => field.onChange((field.value ?? 0) + 1)}
+                      onClick={() => field.onChange(stepReps(field.value, 1))}
                     >
                       +
                     </Button>
@@ -267,7 +262,7 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
                       type="button"
                       variant="outline"
                       size="lg"
-                      onClick={() => field.onChange(Math.max(0, Math.round(((field.value ?? 0) - 2.5) * 10) / 10))}
+                      onClick={() => field.onChange(stepWeight(field.value, -2.5))}
                     >
                       −2.5
                     </Button>
@@ -275,8 +270,9 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
                       id="weight"
                       customInput={Input}
                       className="text-center text-lg"
-                      value={field.value ?? ""}
-                      onValueChange={(values) => field.onChange(values.floatValue)}
+                      value={field.value}
+                      valueIsNumericString
+                      onValueChange={(values) => field.onChange(values.value)}
                       decimalScale={2}
                       allowNegative={false}
                     />
@@ -284,7 +280,7 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
                       type="button"
                       variant="outline"
                       size="lg"
-                      onClick={() => field.onChange(Math.round(((field.value ?? 0) + 2.5) * 10) / 10)}
+                      onClick={() => field.onChange(stepWeight(field.value, 2.5))}
                     >
                       +2.5
                     </Button>
