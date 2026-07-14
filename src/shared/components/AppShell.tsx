@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/shared/components/AppSidebar";
 import { ForgeLogo } from "@/shared/components/ForgeLogo";
+import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { isActivePath, NAV_ITEMS, showsTabBar } from "@/shared/lib/nav";
 
@@ -29,7 +30,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link to="/" className="md:hidden" aria-label="Forge — start">
             <ForgeLogo className="text-lg" />
           </Link>
-          <div className="ml-auto flex items-center">
+          <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
             <UserMenu />
           </div>
         </header>

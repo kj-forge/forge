@@ -3,6 +3,8 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
+@custom-variant dark (&:is(.dark *));
+
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: "Geist Variable", sans-serif;
@@ -84,42 +86,41 @@
   --sidebar-ring: #ff5a0080;
 }
 
-/* Żar kuźni — dark: graphite steel, glowing ember. Follows the system
-   (media-based; the manual switcher is a separate post-epic task). */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0c0c0d;
-    --foreground: #f5f2ee;
-    --card: #161618;
-    --card-foreground: #f5f2ee;
-    --popover: #161618;
-    --popover-foreground: #f5f2ee;
-    --primary: #ff6a00;
-    --primary-foreground: #ffffff;
-    --secondary: #1c1c1f;
-    --secondary-foreground: #f5f2ee;
-    --muted: #1c1c1f;
-    --muted-foreground: #8f8a84;
-    --accent: #1c1c1f;
-    --accent-foreground: #f5f2ee;
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: #ffffff14;
-    --input: #ffffff1f;
-    --ring: #ff6a0080;
-    --chart-1: #ff6a00;
-    --chart-2: #8f8a84;
-    --chart-3: #6b6660;
-    --chart-4: #47443f;
-    --chart-5: #f5f2ee;
-    --sidebar: #161618;
-    --sidebar-foreground: #f5f2ee;
-    --sidebar-primary: #ff6a00;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #1c1c1f;
-    --sidebar-accent-foreground: #f5f2ee;
-    --sidebar-border: #ffffff14;
-    --sidebar-ring: #ff6a0080;
-  }
+/* Żar kuźni — dark: graphite steel, glowing ember. Class-based: the
+   pre-paint script in __root applies .dark from the stored preference
+   (system by default), and ThemeToggle switches it at runtime. */
+.dark {
+  --background: #0c0c0d;
+  --foreground: #f5f2ee;
+  --card: #161618;
+  --card-foreground: #f5f2ee;
+  --popover: #161618;
+  --popover-foreground: #f5f2ee;
+  --primary: #ff6a00;
+  --primary-foreground: #ffffff;
+  --secondary: #1c1c1f;
+  --secondary-foreground: #f5f2ee;
+  --muted: #1c1c1f;
+  --muted-foreground: #8f8a84;
+  --accent: #1c1c1f;
+  --accent-foreground: #f5f2ee;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: #ffffff14;
+  --input: #ffffff1f;
+  --ring: #ff6a0080;
+  --chart-1: #ff6a00;
+  --chart-2: #8f8a84;
+  --chart-3: #6b6660;
+  --chart-4: #47443f;
+  --chart-5: #f5f2ee;
+  --sidebar: #161618;
+  --sidebar-foreground: #f5f2ee;
+  --sidebar-primary: #ff6a00;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c1c1f;
+  --sidebar-accent-foreground: #f5f2ee;
+  --sidebar-border: #ffffff14;
+  --sidebar-ring: #ff6a0080;
 }
 
 @utility bg-ember {
