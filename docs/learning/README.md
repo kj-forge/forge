@@ -17,6 +17,7 @@ These are not architecture decision records (those live in [`docs/adr/`](../adr/
 | [deploy-and-environments.md](deploy-and-environments.md) | What "production" actually is when an app stops being local-only — V8 isolates vs Node, the Vite Cloudflare adapter, Wrangler, secrets vs vars vs `import.meta.env`, why the Neon WebSocket pool can't be a singleton on Workers, expand-then-contract migrations, `vite dev` vs `wrangler dev`. The prequel to [`docs/runbooks/deploy.md`](../runbooks/deploy.md). |
 | [app-shell-navigation.md](app-shell-navigation.md) | The fixed-viewport app shell behind [ADR-0019](../adr/ADR-0019-app-shell-fixed-viewport.md) — why the browser window stopped scrolling, sticky-in-scroll bottom bars, safe-area insets, and the resolvedLocation trick for nav active states. |
 | [estimated-1rm-and-pr-detection.md](estimated-1rm-and-pr-detection.md) | What `e1RM ~131 kg` means — the Epley formula vs alternatives, why rep-ranges need a common currency, PR semantics (warmups, bodyweight, added-load `+kg`), bestSet vs bestE1RM, the `is_main_lift` flag-vs-category call, and the Warsaw-timezone weekday default. |
+| [upsert-and-composite-unique.md](upsert-and-composite-unique.md) | One row per (athlete, weekday) — composite unique constraints, the three save-or-update patterns (SELECT-then-INSERT vs DO NOTHING vs DO UPDATE) and their race conditions, manual `updatedAt`, and why the free-text plan didn't reuse `weekly_templates`. |
 
 ## How to use these
 

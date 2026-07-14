@@ -26,9 +26,9 @@
 
 **Interfaces (produces):** `WEEKDAY_LABELS_PL` (existing, "PON"…), `WEEKDAY_FULL_PL: readonly string[]` — `["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"]`, `warsawWeekday(now?: Date): number` (existing).
 
-- [ ] RED: add `WEEKDAY_FULL_PL` test to the moved test file; run → fail (export missing).
-- [ ] GREEN: `git mv` both files to `src/shared/lib/`, add the constant, fix imports. Full suite green.
-- [ ] Verify + commit `refactor(shared): weekday helpers shared across features`.
+- [x] RED: add `WEEKDAY_FULL_PL` test to the moved test file; run → fail (export missing).
+- [x] GREEN: `git mv` both files to `src/shared/lib/`, add the constant, fix imports. Full suite green.
+- [x] Verify + commit `refactor(shared): weekday helpers shared across features`.
 
 ### Task 2: Schema — `training_plan_days`
 
@@ -55,8 +55,8 @@ export const trainingPlanDays = pgTable(
 );
 ```
 
-- [ ] Add enum + table. `bun run db:generate` → `bun run format` → `bun run db:migrate` (dev DB).
-- [ ] Verify + commit `feat(db): training_plan_days table`.
+- [x] Add enum + table. `bun run db:generate` → `bun run format` → `bun run db:migrate` (dev DB).
+- [x] Verify + commit `feat(db): training_plan_days table`.
 
 ### Task 3: Plan feature — constants + server fns
 
@@ -69,8 +69,8 @@ export const trainingPlanDays = pgTable(
 - `getTrainingPlan()` → `PlanDay[]` (athlete's rows ordered by dayOfWeek; `PlanDay = { id, dayOfWeek, intensity, training, goal }`).
 - `upsertPlanDay({ dayOfWeek: 0-6, intensity, training: string(1..2000), goal?: string(..500) })` — `onConflictDoUpdate` on `(athleteId, dayOfWeek)`, sets `updatedAt: new Date()`, returns the row. Empty-string goal normalised to null.
 
-- [ ] Implement (athlete-scoped via `getCurrentAthleteOrThrow`, zod inputValidator, style of `server/sessions.ts`).
-- [ ] Verify + commit `feat(plan): training plan server fns`.
+- [x] Implement (athlete-scoped via `getCurrentAthleteOrThrow`, zod inputValidator, style of `server/sessions.ts`).
+- [x] Verify + commit `feat(plan): training plan server fns`.
 
 ### Task 4: Nav — sidebar Plan link, tab bar stays at five (TDD)
 
@@ -78,19 +78,19 @@ export const trainingPlanDays = pgTable(
 
 **Interfaces (produces):** `NavItem` gains `inTabBar: boolean`; `NAV_ITEMS` = 6 items ordered `/, /sessions, /sessions/new, /stats, /plan, /me` (Plan: label "Plan", icon `CalendarDays`, `inTabBar: false`, before `/me`); `TAB_BAR_ITEMS = NAV_ITEMS.filter((i) => i.inTabBar)` (5); `showsTabBar("/plan")` → true (bar visible, no tab active).
 
-- [ ] RED: tests — NAV_ITEMS six labels incl. "Plan"; TAB_BAR_ITEMS five (no "/plan"); `showsTabBar("/plan")` true, `"/plan/x"` false; `isActivePath("/plan", "/plan")` true.
-- [ ] GREEN: nav.ts; AppShell maps `TAB_BAR_ITEMS` (grid stays `grid-cols-5`); AppSidebar keeps `NAV_ITEMS`; route stub.
-- [ ] Verify + commit `feat(ui): plan link in sidebar, tab bar unchanged`.
+- [x] RED: tests — NAV_ITEMS six labels incl. "Plan"; TAB_BAR_ITEMS five (no "/plan"); `showsTabBar("/plan")` true, `"/plan/x"` false; `isActivePath("/plan", "/plan")` true.
+- [x] GREEN: nav.ts; AppShell maps `TAB_BAR_ITEMS` (grid stays `grid-cols-5`); AppSidebar keeps `NAV_ITEMS`; route stub.
+- [x] Verify + commit `feat(ui): plan link in sidebar, tab bar unchanged`.
 
 ### Task 5: Route + PlanView — 7 day cards
 
 **Files:** Replace stub `src/routes/_shell/plan/index.tsx` (loader `getTrainingPlan`, pendingComponent `SessionListSkeleton`); create `src/features/plan/views/PlanView.tsx`.
 
-- [ ] Route: beforeLoad auth (pattern of `_shell/stats/index.tsx`), loader, component `PlanView`.
-- [ ] View: `<main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4">`, h1 "Plan tygodnia". Always render 7 cards (`WEEKDAY_FULL_PL` order): filled → header (uppercase day name + intensity pill), training `whitespace-pre-line text-sm`, goal line (lucide `Target` size-3, muted); missing → dashed "uzupełnij" card. Today (`warsawWeekday()` client-side is fine — view renders post-hydration on the phone) gets ember ring (`border-primary/50 ring-1 ring-primary/30`) + day name `text-primary`; desktop `md:grid md:grid-cols-2 lg:grid-cols-3`? NO — keep single column list on mobile, `md:grid-cols-2` grid (approved desktop mockup shows a grid).
-- [ ] Empty state (0 days): Card with text + gradient CTA `Uzupełnij tydzień (PON → ND)` → opens the drawer in serial mode at day 0 (wired fully in Task 6; here the CTA can set the same state).
-- [ ] Each card tappable (`button` semantics, `hover:bg-accent`) → opens drawer for that day (state lives in PlanView: `editing: { day: number; serial: boolean } | null`).
-- [ ] Verify + dev smoke + commit `feat(plan): plan tygodnia view`.
+- [x] Route: beforeLoad auth (pattern of `_shell/stats/index.tsx`), loader, component `PlanView`.
+- [x] View: `<main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4">`, h1 "Plan tygodnia". Always render 7 cards (`WEEKDAY_FULL_PL` order): filled → header (uppercase day name + intensity pill), training `whitespace-pre-line text-sm`, goal line (lucide `Target` size-3, muted); missing → dashed "uzupełnij" card. Today (`warsawWeekday()` client-side is fine — view renders post-hydration on the phone) gets ember ring (`border-primary/50 ring-1 ring-primary/30`) + day name `text-primary`; desktop `md:grid md:grid-cols-2 lg:grid-cols-3`? NO — keep single column list on mobile, `md:grid-cols-2` grid (approved desktop mockup shows a grid).
+- [x] Empty state (0 days): Card with text + gradient CTA `Uzupełnij tydzień (PON → ND)` → opens the drawer in serial mode at day 0 (wired fully in Task 6; here the CTA can set the same state).
+- [x] Each card tappable (`button` semantics, `hover:bg-accent`) → opens drawer for that day (state lives in PlanView: `editing: { day: number; serial: boolean } | null`).
+- [x] Verify + dev smoke + commit `feat(plan): plan tygodnia view`.
 
 ### Task 6: Day editor drawer + serial "fill the week" mode
 
@@ -105,24 +105,24 @@ export const planDayFormSchema = z.object({
 });
 ```
 
-- [ ] Drawer body (conditional-mount like `ExerciseDrawer` so defaults re-seed per open): title = full day name; serial mode adds 7 progress bars (`bg-primary` for days ≤ current index) + subtitle `uzupełniasz tydzień · dzień N z 7`.
-- [ ] Fields: intensity chips (4, gradient-active like kind chips, one tap), `Textarea` Trening (autofocus, `text-base` ≥16px, rows≈4), Textarea Cel (optional, rows 2). shadcn `textarea` is NOT installed yet — `yes n | bun x --bun shadcn@latest add textarea` (research-first: confirm against ui.shadcn.com; no overwrites).
-- [ ] Submit: `upsertPlanDay` → `router.invalidate()`. Serial: primary button `Zapisz i dalej → {next full day name}` advances `editing.day + 1` (after ND → close); ghost `Zapisz i zamknij`. Non-serial: single `Zapisz` (bg-ember). Server error → `FormRootMessage`.
-- [ ] Prefill when the day exists (defaultValues from loader data); new day defaults `intensity: "MEDIUM"`.
-- [ ] Verify + dev smoke (fill a week end-to-end) + commit `feat(plan): day editor drawer with serial week fill`.
+- [x] Drawer body (conditional-mount like `ExerciseDrawer` so defaults re-seed per open): title = full day name; serial mode adds 7 progress bars (`bg-primary` for days ≤ current index) + subtitle `uzupełniasz tydzień · dzień N z 7`.
+- [x] Fields: intensity chips (4, gradient-active like kind chips, one tap), `Textarea` Trening (autofocus, `text-base` ≥16px, rows≈4), Textarea Cel (optional, rows 2). shadcn `textarea` is NOT installed yet — `yes n | bun x --bun shadcn@latest add textarea` (research-first: confirm against ui.shadcn.com; no overwrites).
+- [x] Submit: `upsertPlanDay` → `router.invalidate()`. Serial: primary button `Zapisz i dalej → {next full day name}` advances `editing.day + 1` (after ND → close); ghost `Zapisz i zamknij`. Non-serial: single `Zapisz` (bg-ember). Server error → `FormRootMessage`.
+- [x] Prefill when the day exists (defaultValues from loader data); new day defaults `intensity: "MEDIUM"`.
+- [x] Verify + dev smoke (fill a week end-to-end) + commit `feat(plan): day editor drawer with serial week fill`.
 
 ### Task 7: Home — „Dziś wg planu" card
 
 **Files:** Modify `src/routes/_shell/index.tsx` (loader → `Promise.all([listRecentSessions(), getTrainingPlan()])`), `src/features/strength/views/HomeView.tsx`; create `src/features/plan/components/TodayPlanCard.tsx`.
 
-- [ ] Loader returns `{ sessions, plan }`; HomeView adapts (`route.useLoaderData()` shape change).
-- [ ] `TodayPlanCard({ plan })`: today = `warsawWeekday()`; if plan empty → dashed teaser `Ustaw plan tygodnia →` (Link to `/plan`); if today missing → muted "Brak planu na dziś" + link; else ember-tinted card (approved mockup): kicker `CalendarDays` + „Dziś wg planu", day name + pill, training (`whitespace-pre-line`, clamp ~3 lines `line-clamp-3`), goal muted. Whole card = Link to `/plan`.
-- [ ] Verify + commit `feat(plan): dziś wg planu card on home`.
+- [x] Loader returns `{ sessions, plan }`; HomeView adapts (`route.useLoaderData()` shape change).
+- [x] `TodayPlanCard({ plan })`: today = `warsawWeekday()`; if plan empty → dashed teaser `Ustaw plan tygodnia →` (Link to `/plan`); if today missing → muted "Brak planu na dziś" + link; else ember-tinted card (approved mockup): kicker `CalendarDays` + „Dziś wg planu", day name + pill, training (`whitespace-pre-line`, clamp ~3 lines `line-clamp-3`), goal muted. Whole card = Link to `/plan`.
+- [x] Verify + commit `feat(plan): dziś wg planu card on home`.
 
 ### Task 8: Docs + handoff
 
-- [ ] `docs/learning/upsert-and-composite-unique.md` — short: composite unique constraint, INSERT…ON CONFLICT DO UPDATE vs DO NOTHING (seed) vs SELECT-then-INSERT (race), why updatedAt is set manually. Index it in `docs/learning/README.md`.
-- [ ] Update this plan's checkboxes; commit `docs: training plan learning notes`.
+- [x] `docs/learning/upsert-and-composite-unique.md` — short: composite unique constraint, INSERT…ON CONFLICT DO UPDATE vs DO NOTHING (seed) vs SELECT-then-INSERT (race), why updatedAt is set manually. Index it in `docs/learning/README.md`.
+- [x] Update this plan's checkboxes; commit `docs: training plan learning notes`.
 - [ ] KJ visual pass (both themes, iPhone, fill-the-week flow) → push → PR (`Closes FRG-14`) → promote via PR.
 
 ## Self-Review
