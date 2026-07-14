@@ -1,10 +1,10 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
-import { warsawWeekday } from "@/features/strength/lib/weekday";
 import { getPrTable, getWeekdayComparison } from "@/features/strength/server/stats";
 import { StatsView } from "@/features/strength/views/StatsView";
 import { getSession } from "@/lib/session";
 import { SessionListSkeleton } from "@/shared/components/SessionListSkeleton";
+import { warsawWeekday } from "@/shared/lib/weekday";
 
 const searchSchema = z.object({
   seg: z.enum(["rekordy", "zestawienia"]).default("rekordy").catch("rekordy"),
