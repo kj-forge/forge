@@ -102,7 +102,7 @@ export function ActiveSessionView() {
       {/* Sticky (not fixed): occupies layout space at the end of the scroll
           container, so content can never be hidden behind it — no manual
           bottom-padding clearance to keep in sync with its height. */}
-      <div className="sticky bottom-0 -mx-4 mt-auto space-y-2 border-t bg-background px-4 pt-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom)-1rem))]">
+      <div className="sticky bottom-0 -mx-4 mt-auto space-y-2 border-t bg-background px-4 pt-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom)-2rem))]">
         {!isEnded ? (
           <>
             <Button type="button" variant="outline" className="w-full" onClick={() => setPickerOpen(true)}>
