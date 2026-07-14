@@ -2,7 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Statystyki tab with a PR table for main lifts (heaviest set + Epley e1RM + date), an accessories toggle, per-exercise history drill-down, and PR detection wired to the set-save celebration (deferred piece of the redesign epic).
+**Goal:** Statystyki tab with two segments — "Rekordy" (PR table: heaviest set + Epley e1RM + date, accessories toggle) and "Zestawienia" (weekday comparison matrix: exercises × recent sessions of a chosen weekday, compact set notation) — plus PR detection wired to a TOAST celebration on set save (deferred piece of the redesign epic).
+
+> **SCOPE v2 (KJ, 2026-07-14, mockup stats-wizja-v2):** per-exercise history drill-down DROPPED (PR rows are not links). Added: Zestawienia matrix (day chips PON–ND, last 2 months, sticky exercise column + horizontal date scroll on mobile, newest column ember). Celebration is a ~4s auto-hide toast (sonner), not an in-drawer badge.
 
 **Architecture:** `is_main_lift` boolean on `exercises` (+ data migration setting it for the 4 main lifts; accessory group resolved by slug list constant). Pure, unit-tested libs for e1RM and PR detection in `src/features/strength/lib/`. Server fns follow the existing batched-query style (`attachExercises`/`loadLastByKind` in `server/sessions.ts`). Routes under `_shell` (tab bar gains the 5th item; `showsTabBar` + `NAV_ITEMS` updated with tests).
 
@@ -41,15 +43,16 @@
 - [ ] RED: tests (Epley known values: 100×1=100, 100×5≈116.5, rounding; bestSet ordering/warmup exclusion/bw-only → null; isNewPR edges incl. equal e1RM → false). Run, watch fail.
 - [ ] GREEN: implement; full suite green; commit `feat(strength): e1rm and pr-detection libs`.
 
-### Task 3: Server fns — PR table + exercise history
+### Task 3: Server fns — PR table + weekday comparison
 
-**Files:** Create `src/features/strength/server/stats.ts`.
+**Files:** Create `src/features/strength/server/stats.ts`; create `src/features/strength/lib/format-sets-compact.ts` + `.test.ts`.
 
 **Interfaces:**
-- `getPrTable({ includeAccessories: boolean })` → `{ exerciseId, slug, namePl, isMainLift, best: {weightKg, reps, e1rm, date} | null }[]` — main lifts always; accessory slugs when asked. One batched query over sets joined to sessions (ended only), reduce in JS with `bestSet`/`epleyE1RM`.
-- `getExerciseHistory({ exerciseId })` → last 20 ended sessions with that exercise: `{ sessionId, date, sets: SetRow-lite[], topSet }[]` — query shape like `loadLastByKind` Q1+Q2.
+- `getPrTable({ includeAccessories: boolean })` → `{ exerciseId, slug, namePl, isMainLift, best: {weightKg, reps, e1rm, date} | null }[]` — main lifts always; accessory slugs when asked. One batched query over sets joined to sessions (ended only), reduce in JS with `bestSet`/`epleyE1RM`. Loaded-bw (weighted pull-up/dips slugs): best shown as `+kg`, e1rm null.
+- `getWeekdayComparison({ weekday: 0-6 })` → ended sessions of that weekday from the last 2 months (newest first), each `{ sessionId, date, exercises: { namePl, sets: {weightKg, reps, kind}[] }[] }` — batched like `attachExercises`; matrix pivot happens client-side.
+- `formatSetsCompact(sets)` (pure, TDD): KJ's notes notation — equal sets collapse to `4×5`, varied reps join `8/7/6/6`, weight groups separated by `·`, bodyweight = reps only, weighted-bw = `+20`. RED first with cases from the mockup (105 4×5; 12/12/10; 50 8/7/6/6 · 40 ×10).
 
-- [ ] Implement (athlete-scoped, `createServerFn` + zod inputValidator like siblings). Typecheck + commit `feat(strength): stats server fns`.
+- [ ] TDD the formatter, then implement server fns (athlete-scoped, zod inputValidator). Commit `feat(strength): stats server fns + compact set formatter`.
 
 ### Task 4: Nav — Statystyki tab
 
@@ -59,20 +62,21 @@
 - [ ] GREEN: add `{ to: "/stats", label: "Statystyki", icon: ChartNoAxesColumn, exact: true }` + TAB_BAR_PATHS entry; tab grid `grid-cols-4` → `grid-cols-5` in `AppShell.tsx`.
 - [ ] Commit `feat(ui): statystyki nav tab`.
 
-### Task 5: Routes + views — PR table & history
+### Task 5: Route + view — Rekordy/Zestawienia segments
 
-**Files:** Create `src/routes/_shell/stats/index.tsx`, `src/routes/_shell/stats/$exerciseId.tsx` (auth beforeLoad + loader like `_shell/sessions/index.tsx`; pendingComponent: SessionListSkeleton); create `src/features/strength/views/StatsView.tsx`, `ExerciseHistoryView.tsx`.
+**Files:** Create `src/routes/_shell/stats/index.tsx` (auth beforeLoad + loader like `_shell/sessions/index.tsx`; pendingComponent: SessionListSkeleton; search params `?seg=rekordy|zestawienia&acc=1&dzien=0-6` as loader deps so SSR matches); create `src/features/strength/views/StatsView.tsx`.
 
-- [ ] StatsView: table — lift name + rows: `5× 112.5 kg` (ember bold), `e1RM ~131 kg`, date muted; `+ Akcesoria` toggle (Switch or chip; state `localStorage("forge-stats-accessories")`, loader deps via search param `?acc=1` so SSR matches); row = Link to `/stats/$exerciseId`; empty state („zaloguj pierwszą serię”).
-- [ ] ExerciseHistoryView: header (exercise name + best), rows per session (date, sets `kind · reps×weight`, top set ember), back via logo/tab (no Wróć — shell convention).
-- [ ] Both themes pass, dev smoke; commit `feat(strength): stats views`.
+- [ ] Segment control (Rekordy | Zestawienia) — gradient-active chips like the drawer kind chips.
+- [ ] Rekordy: PR rows — name + record date left; right: heaviest set (ember 900 tabular) over `e1RM ~X kg` muted; NOT links (drill-down dropped). `+ Akcesoria` toggle → search param + localStorage default; accessories section under a small divider.
+- [ ] Zestawienia: day chips PON–ND (default = today's weekday); matrix table in `overflow-x-auto` container — sticky first column (exercise names, `bg-card2`), one column per session date (newest first, newest header+cells ember), cells via `formatSetsCompact`, `—` when the exercise is absent; desktop full width, mobile horizontal scroll.
+- [ ] Empty states for both segments; both themes; dev smoke; commit `feat(strength): stats view with rekordy and zestawienia`.
 
-### Task 6: PR celebration wiring (closes the FRG-12 leftover)
+### Task 6: PR celebration TOAST (closes the FRG-12 leftover)
 
-**Files:** Modify `src/features/strength/server/sets.ts` (addSet returns `isNewPR` — compute from previous best before insert, batched single query); `src/features/strength/components/ExerciseDrawer.tsx` (on save when `isNewPR`: ember pulse badge `▲ Nowy rekord!` in the set list area, `motion-safe:animate-pulse`, auto-dismiss on drawer close — presentation only, no form logic changes).
+**Files:** Install sonner via shadcn (`yes n | bun x --bun shadcn@latest add sonner` — research-first: confirm command against ui.shadcn.com/docs/components/sonner; NO overwrites of existing ui files); mount `<Toaster />` in `_shell.tsx` (inside AppShell tree); modify `src/features/strength/server/sets.ts` (addSet returns `{ isNewPR, e1rm, previousE1rm }` — previous best computed via `pr.ts` in one batched query before insert); `ExerciseDrawer.tsx` onSubmit: when `isNewPR` → `toast("Nowy rekord: <bój>!", { description: "5× 112.5 kg · e1RM ~131 kg (było ~128)", duration: 4000 })` with ember styling (toast className using tokens).
 
-- [ ] Implement server part (unit-testable pure compare via `pr.ts`), then UI badge.
-- [ ] Verify save flow manually on dev + commit `feat(strength): pr celebration on record sets`.
+- [ ] Server part first (pure compare unit-tested in Task 2), then Toaster + call site. No other form logic changes.
+- [ ] Verify save flow on dev (beat a PR → toast, non-PR → silence) + commit `feat(strength): pr celebration toast on record sets`.
 
 ### Task 7: Docs (Phase E) + handoff
 
