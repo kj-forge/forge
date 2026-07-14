@@ -104,7 +104,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-footer"
-      className={cn("mt-auto flex flex-col gap-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]", className)}
+      className={cn("mt-auto flex flex-col gap-2 p-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)-1rem))]", className)}
       {...props}
     />
   );

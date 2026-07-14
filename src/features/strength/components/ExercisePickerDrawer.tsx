@@ -127,7 +127,7 @@ function ExercisePickerForm({ onPicked }: { onPicked: (exerciseId: string) => Pr
         </p>
       )}
 
-      <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto pb-[max(1rem,calc(env(safe-area-inset-bottom)-1rem))]">
         {searching && <li className="py-2 text-center text-muted-foreground text-xs">Szukam...</li>}
         {!searching && !error && query.trim().length >= 2 && results.length === 0 && (
           <li className="py-2 text-center text-muted-foreground text-xs">Brak wyników.</li>
