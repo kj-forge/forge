@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           }`}
         >
           <div className="min-h-0 overflow-hidden">
-            <nav className="grid grid-cols-4 border-t bg-background pb-[max(0.25rem,calc(env(safe-area-inset-bottom)-2rem))]">
+            <nav className="grid grid-cols-4 border-t bg-background pb-0.5">
               {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.to}
@@ -53,7 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   // the exact-active comparison and the ➕ tab never lights up.
                   activeOptions={{ exact: item.exact, includeSearch: false }}
                   aria-label={item.label}
-                  className="flex items-center justify-center py-2.5 text-foreground/70 data-[status=active]:text-foreground data-[status=active]:[&>svg]:stroke-[2.5]"
+                  className="flex items-center justify-center py-2 text-foreground/70 data-[status=active]:text-foreground data-[status=active]:[&>svg]:stroke-[2.5]"
                   tabIndex={tabBarVisible ? undefined : -1}
                 >
                   <item.icon className="size-6" />
