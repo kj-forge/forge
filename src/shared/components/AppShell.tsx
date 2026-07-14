@@ -36,7 +36,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+        {/* Bottom breathing room above the tab bar belongs to the shell, not
+            each view (their p-4 adds up with the pb-2 to 24px). Off on
+            routes without the bar — those end with sticky action footers. */}
+        <main className={`min-h-0 flex-1 overflow-y-auto ${tabBarVisible ? "pb-2 md:pb-0" : ""}`}>{children}</main>
 
         {/* Always mounted; collapses via grid-rows so show/hide slides
             instead of popping the layout. */}
@@ -46,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           }`}
         >
           <div className="min-h-0 overflow-hidden">
-            <nav className="grid grid-cols-4 border-t bg-background py-2">
+            <nav className="grid grid-cols-5 border-t bg-background py-2">
               {/* Active state from resolvedLocation (not Link's own matching,
                   which flips at navigation START): the highlight moves in the
                   same frame the new page renders, together with the bar. */}

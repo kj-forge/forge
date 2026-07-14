@@ -1,9 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
-import { ListChecks, Zap } from "lucide-react";
+import { Flame, ListChecks, Zap } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { NumericFormat } from "react-number-format";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +19,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRootMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SET_KIND_COLOR, SET_KIND_LABEL, VISIBLE_SET_KINDS } from "@/features/strength/constants";
+import { LOADED_BW_SLUGS, SET_KIND_COLOR, SET_KIND_LABEL, VISIBLE_SET_KINDS } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
 import { seedSetFields } from "@/features/strength/lib/seed-set-fields";
 import {
@@ -81,7 +82,7 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
     const weightKg = values.weightKg > 0 ? values.weightKg : undefined;
     const rpe = values.rpe ?? undefined;
     try {
-      await addSet({
+      const saved = await addSet({
         data: {
           blockMovementId: movement.id,
           reps: values.reps,
@@ -91,6 +92,17 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
         },
       });
       await router.invalidate();
+      if (saved.pr?.isNewPR && weightKg !== undefined) {
+        // Added-load exercises (pull-up/dip) celebrate the set itself —
+        // e1RM over the added weight alone would be a meaningless number.
+        const loadedBw = (LOADED_BW_SLUGS as readonly string[]).includes(movement.exerciseSlug);
+        const setLabel = `${values.reps}× ${loadedBw ? "+" : ""}${weightKg} kg`;
+        toast(`Nowy rekord: ${movement.exerciseNamePl}!`, {
+          description: loadedBw ? setLabel : `${setLabel} · e1RM ~${saved.pr.e1rm} kg (było ~${saved.pr.previousE1rm})`,
+          icon: <Flame className="size-5 text-primary" />,
+          className: "shadow-ember",
+        });
+      }
       // Carry-over for the next set: keep kind/reps/weight, clear RPE only.
       form.reset({
         kind: values.kind,
