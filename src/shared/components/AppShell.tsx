@@ -55,7 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   aria-label={item.label}
                   aria-current={isActivePath(pathname, item.to) ? "page" : undefined}
                   data-active={isActivePath(pathname, item.to) || undefined}
-                  className="flex items-center justify-center py-2 text-foreground/70 data-active:text-foreground data-active:[&>svg]:stroke-[2.5]"
+                  className="flex items-center justify-center py-2 text-foreground/70 transition-colors data-active:text-foreground data-active:[&>svg]:stroke-[2.5]"
                   tabIndex={tabBarVisible ? undefined : -1}
                 >
                   <item.icon className="size-6" />
