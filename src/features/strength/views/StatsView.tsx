@@ -1,5 +1,5 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { LOADED_BW_SLUGS } from "@/features/strength/constants";
@@ -181,10 +181,24 @@ function ZestawieniaSegment({
   // so columns are reversed and the scroll starts snapped to the newest.
   const columns = [...days].reverse();
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Scroll affordance: snapping to the newest column hides older sessions
+  // behind the sticky exercise column with nothing hinting they exist, so
+  // track both overflow directions and surface them visually below.
+  const [hiddenLeft, setHiddenLeft] = useState(false);
+  const [hiddenRight, setHiddenRight] = useState(false);
+  const updateOverflow = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setHiddenLeft(el.scrollLeft > 4);
+    setHiddenRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollLeft = el.scrollWidth;
-  }, []);
+    updateOverflow();
+    window.addEventListener("resize", updateOverflow);
+    return () => window.removeEventListener("resize", updateOverflow);
+  }, [updateOverflow]);
 
   // Row order: first appearance scanning from the NEWEST session, so the
   // current plan's exercises sit on top and dropped ones sink to the bottom.
@@ -228,52 +242,64 @@ function ZestawieniaSegment({
         </Card>
       ) : (
         <>
-          <div ref={scrollRef} className="overflow-x-auto rounded-xl border bg-card">
-            <table className="w-full min-w-max border-separate border-spacing-0 text-sm">
-              <thead>
-                <tr>
-                  <th className="sticky left-0 z-10 border-b bg-card px-3 py-2 text-left font-medium text-muted-foreground text-xs">
-                    Ćwiczenie
-                  </th>
-                  {columns.map((c, i) => (
+          <div className="relative">
+            <div ref={scrollRef} className="overflow-x-auto rounded-xl border bg-card" onScroll={updateOverflow}>
+              <table className="w-full min-w-max border-separate border-spacing-0 text-sm">
+                <thead>
+                  <tr>
                     <th
-                      key={c.sessionId}
-                      className={`border-b px-3 py-2 text-right font-semibold text-xs ${
-                        i === columns.length - 1 ? "text-primary" : "text-muted-foreground"
+                      className={`sticky left-0 z-10 border-b bg-card px-3 py-2 text-left font-medium text-muted-foreground text-xs transition-shadow ${
+                        hiddenLeft ? "shadow-[6px_0_8px_-4px_rgba(0,0,0,0.35)]" : ""
                       }`}
                     >
-                      {formatColumnDate(c.date)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rowDefs.map((row, rowIdx) => (
-                  <tr key={row.slug}>
-                    <th
-                      scope="row"
-                      className={`sticky left-0 z-10 bg-card px-3 py-2.5 text-left font-medium text-sm ${
-                        rowIdx === rowDefs.length - 1 ? "" : "border-b"
-                      }`}
-                    >
-                      {row.namePl}
+                      Ćwiczenie
                     </th>
                     {columns.map((c, i) => (
-                      <td
+                      <th
                         key={c.sessionId}
-                        className={`whitespace-nowrap px-3 py-2.5 text-right tabular-nums ${
+                        className={`border-b px-3 py-2 text-right font-semibold text-xs ${
+                          i === columns.length - 1 ? "text-primary" : "text-muted-foreground"
+                        }`}
+                      >
+                        {formatColumnDate(c.date)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rowDefs.map((row, rowIdx) => (
+                    <tr key={row.slug}>
+                      <th
+                        scope="row"
+                        className={`sticky left-0 z-10 bg-card px-3 py-2.5 text-left font-medium text-sm ${
                           rowIdx === rowDefs.length - 1 ? "" : "border-b"
                         }`}
                       >
-                        <MatrixCell parts={cellParts(c, row.slug)} newest={i === columns.length - 1} />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        {row.namePl}
+                      </th>
+                      {columns.map((c, i) => (
+                        <td
+                          key={c.sessionId}
+                          className={`whitespace-nowrap px-3 py-2.5 text-right tabular-nums ${
+                            rowIdx === rowDefs.length - 1 ? "" : "border-b"
+                          }`}
+                        >
+                          <MatrixCell parts={cellParts(c, row.slug)} newest={i === columns.length - 1} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {hiddenRight && (
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 rounded-r-xl bg-linear-to-l from-card to-transparent" />
+            )}
           </div>
           <p className="text-center text-muted-foreground text-xs">
+            {hiddenLeft && (
+              <span className="font-medium text-foreground">← przesuń — starsze treningi po lewej · </span>
+            )}
             Zakres: ostatnie 2 miesiące · „—" = ćwiczenie nie wystąpiło w tej sesji
           </p>
         </>
