@@ -19,7 +19,7 @@ export function PlanView() {
   const today = warsawWeekday();
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4">
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4 lg:max-w-6xl">
       <h1 className="pt-2 font-bold text-2xl tracking-tight">Plan tygodnia</h1>
 
       {plan.length === 0 ? (
@@ -32,17 +32,46 @@ export function PlanView() {
           </CardContent>
         </Card>
       ) : (
-        <div className="flex flex-col gap-3 md:grid md:grid-cols-2">
-          {WEEKDAY_FULL_PL.map((name, day) => (
-            <DayCard
-              key={name}
-              name={name}
-              entry={byDay.get(day)}
-              isToday={day === today}
-              onEdit={() => setEditing({ day, serial: false })}
-            />
-          ))}
-        </div>
+        <>
+          {/* Mobile/tablet: day cards. Desktop swaps to the notebook table. */}
+          <div className="flex flex-col gap-3 md:grid md:grid-cols-2 lg:hidden">
+            {WEEKDAY_FULL_PL.map((name, day) => (
+              <DayCard
+                key={name}
+                name={name}
+                entry={byDay.get(day)}
+                isToday={day === today}
+                onEdit={() => setEditing({ day, serial: false })}
+              />
+            ))}
+          </div>
+
+          {/* Desktop: KJ's notebook layout — Dzień | Trening | Cel, one row
+              per day. Long goal notes get their own column instead of
+              stacking under the training text. */}
+          <div className="hidden overflow-hidden rounded-xl border bg-card lg:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground text-xs uppercase tracking-wide">
+                  <th className="w-44 px-4 py-2.5 font-medium">Dzień</th>
+                  <th className="px-4 py-2.5 font-medium">Trening</th>
+                  <th className="w-[38%] px-4 py-2.5 font-medium">Cel</th>
+                </tr>
+              </thead>
+              <tbody>
+                {WEEKDAY_FULL_PL.map((name, day) => (
+                  <DayRow
+                    key={name}
+                    name={name}
+                    entry={byDay.get(day)}
+                    isToday={day === today}
+                    onEdit={() => setEditing({ day, serial: false })}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <PlanDayDrawer
@@ -52,6 +81,18 @@ export function PlanView() {
         onAdvance={(nextDay) => setEditing((prev) => ({ day: nextDay, serial: prev?.serial ?? false }))}
       />
     </main>
+  );
+}
+
+function IntensityPill({ intensity }: { intensity: PlanDay["intensity"] }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-0.5 font-bold text-[10px] uppercase tracking-wide ${
+        PLAN_INTENSITY_CLASS[intensity]
+      }`}
+    >
+      {PLAN_INTENSITY_LABEL[intensity]}
+    </span>
   );
 }
 
@@ -79,15 +120,7 @@ function DayCard({
           {name}
           {isToday && " · dziś"}
         </span>
-        {entry && (
-          <span
-            className={`rounded-full px-2.5 py-0.5 font-bold text-[10px] uppercase tracking-wide ${
-              PLAN_INTENSITY_CLASS[entry.intensity]
-            }`}
-          >
-            {PLAN_INTENSITY_LABEL[entry.intensity]}
-          </span>
-        )}
+        {entry && <IntensityPill intensity={entry.intensity} />}
       </div>
       {entry ? (
         <>
@@ -103,5 +136,45 @@ function DayCard({
         <p className="text-muted-foreground text-sm">uzupełnij</p>
       )}
     </button>
+  );
+}
+
+function DayRow({
+  name,
+  entry,
+  isToday,
+  onEdit,
+}: {
+  name: string;
+  entry: PlanDay | undefined;
+  isToday: boolean;
+  onEdit: () => void;
+}) {
+  return (
+    // Click-anywhere is a pointer convenience; keyboard users get the same
+    // action through the focusable day button in the first cell.
+    <tr
+      className={`cursor-pointer border-b transition-colors last:border-b-0 hover:bg-accent ${
+        isToday ? "bg-primary/5" : ""
+      }`}
+      onClick={onEdit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onEdit();
+      }}
+    >
+      <th scope="row" className="w-44 px-4 py-3 text-left align-top">
+        <button type="button" onClick={onEdit} className="flex flex-col items-start gap-1.5 text-left">
+          <span className={`font-bold text-xs uppercase tracking-wide ${isToday ? "text-primary" : ""}`}>
+            {name}
+            {isToday && " · dziś"}
+          </span>
+          {entry && <IntensityPill intensity={entry.intensity} />}
+        </button>
+      </th>
+      <td className="whitespace-pre-line px-4 py-3 align-top">
+        {entry ? entry.training : <span className="text-muted-foreground">uzupełnij</span>}
+      </td>
+      <td className="whitespace-pre-line px-4 py-3 align-top text-muted-foreground">{entry?.goal ?? "—"}</td>
+    </tr>
   );
 }
