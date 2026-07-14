@@ -44,7 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           }`}
         >
           <div className="min-h-0 overflow-hidden">
-            <nav className="grid grid-cols-4 border-t bg-background pb-0.5">
+            <nav className="grid grid-cols-4 border-t bg-background py-2">
               {/* Active state from resolvedLocation (not Link's own matching,
                   which flips at navigation START): the highlight moves in the
                   same frame the new page renders, together with the bar. */}
