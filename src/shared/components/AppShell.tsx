@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/shared/components/AppSidebar";
+import { ForgeLogo } from "@/shared/components/ForgeLogo";
 import { UserMenu } from "@/shared/components/UserMenu";
 import { isActivePath, NAV_ITEMS, showsTabBar } from "@/shared/lib/nav";
 
@@ -25,8 +26,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <SidebarInset className="flex h-dvh min-h-0 flex-col">
         <header className="flex shrink-0 items-center gap-2 border-b px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 md:py-2">
           <SidebarTrigger className="hidden md:flex" />
-          <Link to="/" className="font-heading font-semibold md:hidden">
-            Forge
+          <Link to="/" className="md:hidden" aria-label="Forge — start">
+            <ForgeLogo className="text-lg" />
           </Link>
           <div className="ml-auto flex items-center">
             <UserMenu />
