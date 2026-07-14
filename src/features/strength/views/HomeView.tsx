@@ -1,4 +1,5 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
+import { Dumbbell } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +32,10 @@ export function HomeView() {
 
       <Card>
         <CardHeader>
-          <CardTitle>🏋️ Czas na trening?</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Dumbbell className="size-5 text-primary" />
+            Czas na trening?
+          </CardTitle>
           <CardDescription>
             {lastSession ? (
               <>
@@ -49,7 +53,7 @@ export function HomeView() {
         </CardHeader>
         <CardContent>
           <Link to="/sessions/new" search={{ type: "STRENGTH" }}>
-            <Button size="lg" className="w-full">
+            <Button size="lg" className="w-full bg-ember shadow-ember">
               + Rozpocznij sesję siłową
             </Button>
           </Link>
@@ -60,7 +64,7 @@ export function HomeView() {
         <div className="flex items-center justify-between px-1">
           <h2 className="font-medium text-sm">Ostatnie sesje</h2>
           {recentSessions.some((s) => s.endedAt !== null) && (
-            <Link to="/sessions" className="text-muted-foreground text-xs underline-offset-4 hover:underline">
+            <Link to="/sessions" className="font-semibold text-primary text-xs underline-offset-4 hover:underline">
               Zobacz wszystkie →
             </Link>
           )}

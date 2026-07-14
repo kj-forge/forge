@@ -73,7 +73,7 @@ export function SessionListItem({ session, dateFormat = "long", detail = "none" 
                         </span>
                         {e.reps !== null && (
                           <span className="shrink-0 text-muted-foreground tabular-nums">
-                            {e.reps}× <span className="font-medium text-foreground">{formatWeight(e.weightKg)}</span>
+                            {e.reps}× <span className="font-bold text-primary">{formatWeight(e.weightKg)}</span>
                           </span>
                         )}
                       </li>
