@@ -4,6 +4,7 @@ import { SESSION_TYPES } from "@/features/strength/constants";
 import { listSessionTemplates } from "@/features/strength/server/sessions";
 import { NewSessionView } from "@/features/strength/views/NewSessionView";
 import { getSession } from "@/lib/session";
+import { SessionListSkeleton } from "@/shared/components/SessionListSkeleton";
 
 const searchSchema = z.object({
   type: z.enum(SESSION_TYPES).default("STRENGTH"),
@@ -17,5 +18,6 @@ export const Route = createFileRoute("/_shell/sessions/new")({
   validateSearch: searchSchema,
   loaderDeps: ({ search }) => ({ type: search.type }),
   loader: ({ deps }) => listSessionTemplates({ data: { type: deps.type } }),
+  pendingComponent: SessionListSkeleton,
   component: NewSessionView,
 });
