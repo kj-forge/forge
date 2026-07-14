@@ -905,6 +905,29 @@ export const weeklyTemplates = pgTable(
 // `template_adherence` from data-model.md is a derived view, not a table.
 // Will be implemented as a SQL VIEW once the UI needs it.
 
+export const planIntensity = pgEnum("plan_intensity", ["HARD", "MEDIUM", "EASY", "RESET"]);
+
+// The athlete's written weekly plan — one free-text row per weekday
+// (0 = poniedziałek … 6 = niedziela). Distinct from weekly_templates,
+// which models typed session SLOTS for the future template engine;
+// this is the human-readable notebook plan shown on Home and /plan.
+export const trainingPlanDays = pgTable(
+  "training_plan_days",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    athleteId: uuid()
+      .notNull()
+      .references(() => athletes.id, { onDelete: "cascade" }),
+    dayOfWeek: integer().notNull(),
+    intensity: planIntensity().notNull(),
+    training: text().notNull(),
+    goal: text(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("training_plan_days_athlete_day_idx").on(t.athleteId, t.dayOfWeek)],
+);
+
 // ============================================================================
 // 8. MONETIZATION & GDPR (ADR-0013)
 // ============================================================================
