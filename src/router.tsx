@@ -19,6 +19,10 @@ export function getRouter() {
     defaultPendingMinMs: 300,
     defaultPendingComponent: GlobalPending,
     defaultErrorComponent: RouteError,
+
+    // Cross-fade between routes via the View Transitions API — a no-op in
+    // browsers without support (and under prefers-reduced-motion, see CSS).
+    defaultViewTransition: true,
   });
 
   return router;

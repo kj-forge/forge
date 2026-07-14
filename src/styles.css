@@ -131,6 +131,19 @@
   box-shadow: 0 4px 28px #ff6a0045;
 }
 
+/* Route cross-fade (router defaultViewTransition). Short and subtle —
+   anything longer reads as lag on top of Worker latency. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 160ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
