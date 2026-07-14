@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Decisions (KJ, 2026-07-14): two-column PR metric — heaviest set (weight × reps) AND e1RM `weight × (1 + reps/30)`; accessories toggle (localStorage); drill-down history ~20 sessions.
-- Main lifts: deadlift, squat, bench press, OHP. Accessories: RDL, Bulgarian split squat, weighted pull-up, dips. Resolve exact slugs from the seed/DB before the migration (Task 1 step 1).
+- Main lifts (exact slugs verified in db/seed.ts): `back-squat`, `deadlift`, `bench-press`, `overhead-press`. Accessories: `romanian-deadlift`, `bulgarian-split-squat`, `pull-up`, `dip` (weighted variants = same exercise, weight lives on sets; loaded-bw display rule applies to pull-up/dip).
 - Ember only on numbers/icons/pills; `bw` for bodyweight (formatWeight); tabular-nums.
 - Athlete-scoped queries, batched (no N+1) — mirror `loadLastByKind`.
 - No FRG-13 in code/comments. Verify per commit: typecheck + `./node_modules/.bin/biome check` + `bun test`. Verbatim-branch, all tasks on this one branch, one PR at the end (KJ preference).
