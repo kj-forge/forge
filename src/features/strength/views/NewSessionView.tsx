@@ -63,7 +63,11 @@ export function NewSessionView() {
             <CardDescription>{t.exercises.join(" · ")}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full" onClick={() => start(t.sessionId)} disabled={creating !== null}>
+            <Button
+              className="w-full bg-ember shadow-ember"
+              onClick={() => start(t.sessionId)}
+              disabled={creating !== null}
+            >
               {creating === t.sessionId ? "Tworzę..." : "Użyj jako bazę"}
             </Button>
           </CardContent>
@@ -72,7 +76,7 @@ export function NewSessionView() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">🆕 Pusta sesja</CardTitle>
+          <CardTitle className="text-base">Pusta sesja</CardTitle>
           <CardDescription>Zacznij od zera — sam dodajesz ćwiczenia.</CardDescription>
         </CardHeader>
         <CardContent>

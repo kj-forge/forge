@@ -48,73 +48,101 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Żar kuźni — light: athletic white with a single ember accent.
+   Exact brand hexes from the design spec (docs/superpowers/specs/
+   2026-07-14-ui-redesign-zar-kuzni-design.md); warm-biased neutrals. */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: #ffffff;
+  --foreground: #111111;
+  --card: #ffffff;
+  --card-foreground: #111111;
+  --popover: #ffffff;
+  --popover-foreground: #111111;
+  --primary: #ff5a00;
+  --primary-foreground: #ffffff;
+  --secondary: #f6f4f1;
+  --secondary-foreground: #111111;
+  --muted: #f6f4f1;
+  --muted-foreground: #716c66;
+  --accent: #f6f4f1;
+  --accent-foreground: #111111;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: #eae6e1;
+  --input: #eae6e1;
+  --ring: #ff5a0080;
+  --chart-1: #ff5a00;
+  --chart-2: #716c66;
+  --chart-3: #a39d96;
+  --chart-4: #d4cfc9;
+  --chart-5: #111111;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111111;
+  --sidebar-primary: #ff5a00;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f6f4f1;
+  --sidebar-accent-foreground: #111111;
+  --sidebar-border: #eae6e1;
+  --sidebar-ring: #ff5a0080;
 }
 
+/* Żar kuźni — dark: graphite steel, glowing ember. Class-based: the
+   pre-paint script in __root applies .dark from the stored preference
+   (system by default), and ThemeToggle switches it at runtime. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: #0c0c0d;
+  --foreground: #f5f2ee;
+  --card: #161618;
+  --card-foreground: #f5f2ee;
+  --popover: #161618;
+  --popover-foreground: #f5f2ee;
+  --primary: #ff6a00;
+  --primary-foreground: #ffffff;
+  --secondary: #1c1c1f;
+  --secondary-foreground: #f5f2ee;
+  --muted: #1c1c1f;
+  --muted-foreground: #8f8a84;
+  --accent: #1c1c1f;
+  --accent-foreground: #f5f2ee;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --border: #ffffff14;
+  --input: #ffffff1f;
+  --ring: #ff6a0080;
+  --chart-1: #ff6a00;
+  --chart-2: #8f8a84;
+  --chart-3: #6b6660;
+  --chart-4: #47443f;
+  --chart-5: #f5f2ee;
+  --sidebar: #161618;
+  --sidebar-foreground: #f5f2ee;
+  --sidebar-primary: #ff6a00;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c1c1f;
+  --sidebar-accent-foreground: #f5f2ee;
+  --sidebar-border: #ffffff14;
+  --sidebar-ring: #ff6a0080;
+}
+
+@utility bg-ember {
+  background-image: linear-gradient(100deg, #ff6a00, #ffb25c);
+  color: #fff;
+}
+
+@utility shadow-ember {
+  box-shadow: 0 4px 28px #ff6a0045;
+}
+
+/* Route cross-fade (router defaultViewTransition). Short and subtle —
+   anything longer reads as lag on top of Worker latency. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 160ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
 }
 
 @layer base {

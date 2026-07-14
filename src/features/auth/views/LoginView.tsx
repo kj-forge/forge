@@ -1,13 +1,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GoogleSignInButton } from "@/features/auth/components/GoogleSignInButton";
 import { LoginForm } from "@/features/auth/forms/LoginForm";
+import { ForgeLogo } from "@/shared/components/ForgeLogo";
 
 export function LoginView() {
   return (
     <main className="flex h-dvh items-center justify-center overflow-y-auto p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Zaloguj się do Forge</CardTitle>
+          <ForgeLogo className="text-3xl" />
+          <CardTitle>Zaloguj się</CardTitle>
           <CardDescription>Wpisz email — wyślemy Ci link do logowania. Bez hasła.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

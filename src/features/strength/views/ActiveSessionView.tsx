@@ -1,5 +1,6 @@
 import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
 import dayjs from "dayjs";
+import { NotebookPen, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,10 @@ export function ActiveSessionView() {
         <Card>
           <CardContent className="space-y-2 py-3">
             <div className="flex items-center justify-between">
-              <p className="font-medium text-sm">📝 Notatki</p>
+              <p className="flex items-center gap-1.5 font-medium text-sm">
+                <NotebookPen className="size-3.5 text-primary" />
+                Notatki
+              </p>
               <button
                 type="button"
                 className="text-muted-foreground text-xs underline-offset-4 hover:underline"
@@ -108,17 +112,24 @@ export function ActiveSessionView() {
             <Button type="button" variant="outline" className="w-full" onClick={() => setPickerOpen(true)}>
               + Dodaj ćwiczenie
             </Button>
-            <Button type="button" className="w-full" onClick={() => setEndOpen(true)}>
+            <Button type="button" className="w-full bg-ember shadow-ember" onClick={() => setEndOpen(true)}>
               Zakończ sesję
             </Button>
           </>
         ) : (
           <>
-            <Button type="button" className="w-full" onClick={repeatSession} disabled={copying}>
-              {copying ? "Tworzę..." : "🔁 Trenuj na tej bazie"}
+            <Button type="button" className="w-full bg-ember shadow-ember" onClick={repeatSession} disabled={copying}>
+              {copying ? (
+                "Tworzę..."
+              ) : (
+                <>
+                  <RotateCcw className="size-4" />
+                  Trenuj na tej bazie
+                </>
+              )}
             </Button>
             <Button type="button" variant="outline" className="w-full" onClick={() => setNotesOpen(true)}>
-              ✏️ Edytuj notatki
+              Edytuj notatki
             </Button>
             {copyError && (
               <p className="text-destructive text-xs" role="alert">

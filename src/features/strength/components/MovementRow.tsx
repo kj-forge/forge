@@ -1,9 +1,10 @@
 import { useRouter } from "@tanstack/react-router";
+import { ChevronRight, Dumbbell } from "lucide-react";
 import { useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { SET_KIND_COLOR, SET_KIND_DISPLAY_ORDER } from "@/features/strength/constants";
-import { formatSet } from "@/features/strength/lib/format-set";
+import { formatSeriesCount, formatSet } from "@/features/strength/lib/format-set";
 import { removeExerciseFromSession } from "@/features/strength/server/movements";
 import type { Movement } from "@/features/strength/types";
 import { getErrorMessage } from "@/lib/error-message";
@@ -36,11 +37,8 @@ export function MovementRow({ movement, isEnded }: { movement: Movement; isEnded
     }
   };
 
-  const statusText =
-    movement.sets.length === 0 ? "Pusta" : `${workSets.length} ${workSets.length === 1 ? "seria" : "serii"}`;
-  // Green only once a working set exists — a warmup-only movement still reads
-  // "0 serii", but muted, not as if it were logged.
-  const statusClass = workSets.length === 0 ? "text-muted-foreground" : "text-emerald-600 dark:text-emerald-400";
+  const statusText = movement.sets.length === 0 ? "Pusta — tapnij, by zacząć" : formatSeriesCount(workSets.length);
+  const lastWorkSet = workSets[workSets.length - 1];
 
   return (
     <>
@@ -51,12 +49,21 @@ export function MovementRow({ movement, isEnded }: { movement: Movement; isEnded
         <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setOpen(true)}>
           <Card className="transition-colors hover:bg-accent/50">
             <CardContent className="py-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="min-w-0 flex-1 truncate font-medium text-sm">{movement.exerciseNamePl}</p>
-                <span className={`w-20 shrink-0 text-right text-xs ${statusClass}`}>{statusText}</span>
+              <div className="flex items-center gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Dumbbell className="size-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-sm">{movement.exerciseNamePl}</p>
+                  <p className="text-muted-foreground text-xs">{statusText}</p>
+                </div>
+                {lastWorkSet && (
+                  <span className="shrink-0 font-bold text-primary text-sm tabular-nums">{formatSet(lastWorkSet)}</span>
+                )}
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
               </div>
               {workSets.length > 0 && (
-                <div className="mt-1 space-y-0.5 text-xs">
+                <div className="mt-2 space-y-0.5 pl-12 text-xs">
                   {SET_KIND_DISPLAY_ORDER.filter((kind) => kind !== "WARMUP").map((kind) => {
                     const kindSets = movement.sets.filter((s) => s.kind === kind);
                     if (kindSets.length === 0) return null;
