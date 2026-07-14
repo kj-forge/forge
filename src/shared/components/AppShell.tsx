@@ -36,7 +36,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+        {/* Bottom breathing room above the tab bar belongs to the shell, not
+            each view (their p-4 adds up with the pb-2 to 24px). Off on
+            routes without the bar — those end with sticky action footers. */}
+        <main className={`min-h-0 flex-1 overflow-y-auto ${tabBarVisible ? "pb-2 md:pb-0" : ""}`}>{children}</main>
 
         {/* Always mounted; collapses via grid-rows so show/hide slides
             instead of popping the layout. */}
