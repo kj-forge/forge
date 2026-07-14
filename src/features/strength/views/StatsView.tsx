@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { LOADED_BW_SLUGS } from "@/features/strength/constants";
 import { type CompactSetsPart, formatSetsCompactParts } from "@/features/strength/lib/format-sets-compact";
-import { WEEKDAY_LABELS_PL } from "@/features/strength/lib/weekday";
 import type { PrTableRow, WeekdaySession } from "@/features/strength/server/stats";
+import { WEEKDAY_LABELS_PL } from "@/shared/lib/weekday";
 
 const route = getRouteApi("/_shell/stats/");
 

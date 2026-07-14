@@ -3,6 +3,7 @@ import { Dumbbell } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { TodayPlanCard } from "@/features/plan/components/TodayPlanCard";
 import { SessionListItem } from "@/features/strength/components/SessionListItem";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import type { SessionType } from "@/features/strength/types";
@@ -11,7 +12,7 @@ const route = getRouteApi("/_shell/");
 
 export function HomeView() {
   const { session } = route.useRouteContext();
-  const recentSessions = route.useLoaderData();
+  const { sessions: recentSessions, plan } = route.useLoaderData();
 
   const firstName = session.user.name?.split(" ")[0] ?? "athleto";
   const lastSession = recentSessions[0];
@@ -29,6 +30,8 @@ export function HomeView() {
         <p className="text-muted-foreground text-sm">Cześć,</p>
         <h1 className="font-bold text-2xl tracking-tight">{firstName} 👋</h1>
       </header>
+
+      <TodayPlanCard plan={plan} />
 
       <Card>
         <CardHeader>
