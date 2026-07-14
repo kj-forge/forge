@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
+import { ChevronLeft } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
@@ -72,7 +73,7 @@ function PlanDayDrawerBody({
 
   const isLast = editing.day === 6;
 
-  const save = async (values: PlanDayFormValues, advance: boolean) => {
+  const save = async (values: PlanDayFormValues, goTo: number | "close") => {
     try {
       await upsertPlanDay({
         data: {
@@ -83,13 +84,23 @@ function PlanDayDrawerBody({
         },
       });
       await router.invalidate();
-      if (advance && !isLast) onAdvance(editing.day + 1);
-      else onClose();
+      if (goTo === "close") onClose();
+      else onAdvance(goTo);
     } catch (err) {
       form.setError("root.serverError", {
         type: "server",
         message: getErrorMessage(err, "Nie udało się zapisać dnia."),
       });
+    }
+  };
+
+  // Backing up mid-wizard must never lose typing: a dirty form saves first
+  // (invalid input surfaces its message instead), a clean one just switches.
+  const goBack = () => {
+    if (form.formState.isDirty) {
+      form.handleSubmit((v) => save(v, editing.day - 1))();
+    } else {
+      onAdvance(editing.day - 1);
     }
   };
 
@@ -99,7 +110,7 @@ function PlanDayDrawerBody({
     <Form {...form}>
       <form
         className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden"
-        onSubmit={form.handleSubmit((v) => save(v, editing.serial))}
+        onSubmit={form.handleSubmit((v) => save(v, editing.serial && !isLast ? editing.day + 1 : "close"))}
         noValidate
       >
         <DialogHeader className="shrink-0">
@@ -111,10 +122,26 @@ function PlanDayDrawerBody({
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-2">
           {editing.serial && (
-            <div className="flex gap-1">
-              {WEEKDAY_FULL_PL.map((name, i) => (
-                <span key={name} className={`h-1 flex-1 rounded-full ${i <= editing.day ? "bg-ember" : "bg-muted"}`} />
-              ))}
+            <div className="flex items-center gap-2">
+              {editing.day > 0 && (
+                <button
+                  type="button"
+                  className="flex shrink-0 items-center gap-0.5 font-medium text-muted-foreground text-xs transition-colors hover:text-foreground"
+                  disabled={isSubmitting}
+                  onClick={goBack}
+                >
+                  <ChevronLeft className="size-3.5" />
+                  {WEEKDAY_FULL_PL[editing.day - 1]}
+                </button>
+              )}
+              <div className="flex flex-1 gap-1">
+                {WEEKDAY_FULL_PL.map((name, i) => (
+                  <span
+                    key={name}
+                    className={`h-1 flex-1 rounded-full ${i <= editing.day ? "bg-ember" : "bg-muted"}`}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
@@ -201,7 +228,7 @@ function PlanDayDrawerBody({
               variant="outline"
               className="w-full"
               disabled={isSubmitting}
-              onClick={form.handleSubmit((v) => save(v, false))}
+              onClick={form.handleSubmit((v) => save(v, "close"))}
             >
               Zapisz i zamknij
             </Button>
