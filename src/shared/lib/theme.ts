@@ -18,5 +18,14 @@ export function applyTheme(theme: Theme): void {
 
 export function setTheme(theme: Theme): void {
   localStorage.setItem(THEME_STORAGE_KEY, theme);
+  // Flip every color in ONE frame: elements carry mixed transition
+  // durations (cards ~150ms, buttons transition-all, body none), so an
+  // unsuppressed class flip repaints staggered and reads as a glitch.
+  const suppress = document.createElement("style");
+  suppress.textContent = "*,*::before,*::after{transition:none!important}";
+  document.head.appendChild(suppress);
   applyTheme(theme);
+  // Force a reflow so the flip lands while transitions are off.
+  window.getComputedStyle(document.documentElement).opacity;
+  requestAnimationFrame(() => suppress.remove());
 }
