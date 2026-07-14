@@ -15,6 +15,8 @@ These are not architecture decision records (those live in [`docs/adr/`](../adr/
 | [strength-ux.md](strength-ux.md) | The strength session logging flow — data model, set-kind enum, "from last session" template matching by day-of-week, progression suggestion heuristic, screen-by-screen UX, deliberate omissions list. |
 | [server-functions.md](server-functions.md) | TanStack Start server functions — builder pattern, Zod validation, per-fn auth, multi-tenant ownership, two DB clients (HTTP vs WebSocket pool), atomic transactions, plus the server-only-leak bug + React 19 `useEffect` / `FormEvent` anti-patterns we replaced. |
 | [deploy-and-environments.md](deploy-and-environments.md) | What "production" actually is when an app stops being local-only — V8 isolates vs Node, the Vite Cloudflare adapter, Wrangler, secrets vs vars vs `import.meta.env`, why the Neon WebSocket pool can't be a singleton on Workers, expand-then-contract migrations, `vite dev` vs `wrangler dev`. The prequel to [`docs/runbooks/deploy.md`](../runbooks/deploy.md). |
+| [app-shell-navigation.md](app-shell-navigation.md) | The fixed-viewport app shell behind [ADR-0019](../adr/ADR-0019-app-shell-fixed-viewport.md) — why the browser window stopped scrolling, sticky-in-scroll bottom bars, safe-area insets, and the resolvedLocation trick for nav active states. |
+| [estimated-1rm-and-pr-detection.md](estimated-1rm-and-pr-detection.md) | What `e1RM ~131 kg` means — the Epley formula vs alternatives, why rep-ranges need a common currency, PR semantics (warmups, bodyweight, added-load `+kg`), bestSet vs bestE1RM, the `is_main_lift` flag-vs-category call, and the Warsaw-timezone weekday default. |
 
 ## How to use these
 
