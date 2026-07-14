@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
-import { Zap } from "lucide-react";
+import { ListChecks, Zap } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { NumericFormat } from "react-number-format";
@@ -148,7 +148,9 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
           {movement.sets.length > 0 && (
             <div className="rounded-lg bg-muted/50 p-3 text-xs">
-              <p className="mb-1 font-medium">📊 W tej sesji:</p>
+              <p className="mb-1 flex items-center gap-1.5 font-medium">
+                <ListChecks className="size-3.5 text-primary" />W tej sesji:
+              </p>
               <ul className="space-y-0.5">
                 {movement.sets.map((s, i) => (
                   <li key={s.id} className="flex items-center justify-between gap-2">

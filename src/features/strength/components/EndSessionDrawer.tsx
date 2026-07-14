@@ -69,7 +69,7 @@ export function EndSessionDrawer({ open, onOpenChange, movementCount, onConfirm 
           </div>
 
           <DialogFooter className="gap-2">
-            <Button className="w-full" disabled={ending} onClick={handleConfirm}>
+            <Button className="w-full bg-ember shadow-ember" disabled={ending} onClick={handleConfirm}>
               {ending ? "Zakańczam..." : "Zakończ i zapisz"}
             </Button>
             <DialogClose asChild>
