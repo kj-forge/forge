@@ -66,7 +66,7 @@ function NotesForm({ initialNotes, onSave }: { initialNotes: string; onSave: (no
   return (
     <div className="space-y-3 px-4">
       <textarea
-        className="min-h-32 w-full resize-none rounded-md border border-border bg-background p-2 text-sm"
+        className="min-h-32 w-full resize-none rounded-md border border-border bg-background p-2 text-base md:text-sm"
         placeholder="Wnioski z dzisiejszego treningu..."
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
