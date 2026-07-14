@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { formatSetsCompact } from "./format-sets-compact";
+import { formatSetsCompact, formatSetsCompactParts } from "./format-sets-compact";
 
 const set = (weightKg: number | null, reps: number, kind = "WORK") => ({ weightKg, reps, kind });
 
@@ -42,5 +42,24 @@ describe("formatSetsCompact", () => {
   test("nothing to show renders an em dash", () => {
     expect(formatSetsCompact([])).toBe("—");
     expect(formatSetsCompact([set(60, 10, "WARMUP")])).toBe("—");
+  });
+});
+
+describe("formatSetsCompactParts", () => {
+  test("splits weight and reps per group so the view can style them apart", () => {
+    const sets = [set(50, 8), set(50, 7), set(40, 10), set(null, 12), set(null, 12)];
+    expect(formatSetsCompactParts(sets)).toEqual([
+      { weight: "50", reps: "8/7" },
+      { weight: "40", reps: "×10" },
+      { weight: null, reps: "2×12" },
+    ]);
+  });
+
+  test("loaded bodyweight weights carry the plus", () => {
+    expect(formatSetsCompactParts([set(20, 8)], { loadedBodyweight: true })).toEqual([{ weight: "+20", reps: "×8" }]);
+  });
+
+  test("empty input yields no parts", () => {
+    expect(formatSetsCompactParts([])).toEqual([]);
   });
 });
