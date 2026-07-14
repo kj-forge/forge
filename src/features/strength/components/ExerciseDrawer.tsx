@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
+import { ListChecks, Zap } from "lucide-react";
 import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { NumericFormat } from "react-number-format";
@@ -147,7 +148,9 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
           {movement.sets.length > 0 && (
             <div className="rounded-lg bg-muted/50 p-3 text-xs">
-              <p className="mb-1 font-medium">📊 W tej sesji:</p>
+              <p className="mb-1 flex items-center gap-1.5 font-medium">
+                <ListChecks className="size-3.5 text-primary" />W tej sesji:
+              </p>
               <ul className="space-y-0.5">
                 {movement.sets.map((s, i) => (
                   <li key={s.id} className="flex items-center justify-between gap-2">
@@ -189,10 +192,10 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
                         <button
                           key={k}
                           type="button"
-                          className={`rounded-md border px-2 py-1.5 font-medium text-xs transition-colors ${
+                          className={`rounded-md border px-2 py-1.5 font-semibold text-xs transition-colors ${
                             field.value === k
-                              ? "border-foreground bg-foreground text-background"
-                              : `border-border ${SET_KIND_COLOR[k]} hover:bg-accent`
+                              ? "border-transparent bg-ember"
+                              : "border-border text-muted-foreground hover:bg-accent"
                           }`}
                           onClick={() => handleKindChange(k)}
                         >
@@ -225,7 +228,7 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
                     <NumericFormat
                       id="reps"
                       customInput={Input}
-                      className="text-center text-lg"
+                      className="text-center font-extrabold text-xl tabular-nums"
                       value={field.value}
                       valueIsNumericString
                       onValueChange={(values) => field.onChange(values.value)}
@@ -269,7 +272,7 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
                     <NumericFormat
                       id="weight"
                       customInput={Input}
-                      className="text-center text-lg"
+                      className="text-center font-extrabold text-primary text-xl tabular-nums"
                       value={field.value}
                       valueIsNumericString
                       onValueChange={(values) => field.onChange(values.value)}
@@ -307,9 +310,9 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
                       <button
                         key={v}
                         type="button"
-                        className={`rounded-md border px-3 py-1 text-sm transition-colors ${
+                        className={`rounded-md border px-3 py-1 font-semibold text-sm transition-colors ${
                           field.value === v
-                            ? "border-foreground bg-foreground text-background"
+                            ? "border-primary text-primary"
                             : "border-border text-muted-foreground hover:bg-accent"
                         }`}
                         onClick={() => field.onChange(field.value === v ? null : v)}
@@ -327,8 +330,15 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
         </div>
 
         <DialogFooter className="shrink-0 gap-2">
-          <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
-            {isSubmitting ? "Zapisuję..." : `⚡ Zapisz serię (${SET_KIND_LABEL[currentKind]})`}
+          <Button type="submit" className="w-full bg-ember shadow-ember" size="lg" disabled={isSubmitting}>
+            {isSubmitting ? (
+              "Zapisuję..."
+            ) : (
+              <>
+                <Zap className="size-4" />
+                Zapisz serię ({SET_KIND_LABEL[currentKind]})
+              </>
+            )}
           </Button>
           <DialogClose asChild>
             <Button type="button" variant="outline" className="w-full">

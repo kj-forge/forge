@@ -3,8 +3,10 @@ import type { ReactNode } from "react";
 
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/shared/components/AppSidebar";
+import { ForgeLogo } from "@/shared/components/ForgeLogo";
+import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import { UserMenu } from "@/shared/components/UserMenu";
-import { NAV_ITEMS, showsTabBar } from "@/shared/lib/nav";
+import { isActivePath, NAV_ITEMS, showsTabBar } from "@/shared/lib/nav";
 
 // The window must never scroll (styles.css locks html/body): vaul's iOS
 // scroll-lock manipulates window scroll and body position on open/close,
@@ -25,10 +27,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       <SidebarInset className="flex h-dvh min-h-0 flex-col">
         <header className="flex shrink-0 items-center gap-2 border-b px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 md:py-2">
           <SidebarTrigger className="hidden md:flex" />
-          <Link to="/" className="font-heading font-semibold md:hidden">
-            Forge
+          <Link to="/" className="md:hidden" aria-label="Forge — start">
+            <ForgeLogo className="text-lg" />
           </Link>
-          <div className="ml-auto flex items-center">
+          <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
             <UserMenu />
           </div>
         </header>
@@ -43,17 +46,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           }`}
         >
           <div className="min-h-0 overflow-hidden">
-            <nav className="grid grid-cols-4 border-t bg-background pb-0.5">
+            <nav className="grid grid-cols-4 border-t bg-background py-2">
+              {/* Active state from resolvedLocation (not Link's own matching,
+                  which flips at navigation START): the highlight moves in the
+                  same frame the new page renders, together with the bar. */}
               {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
-                  // includeSearch: false — /sessions/new always carries
-                  // ?type=… (validateSearch default), which otherwise fails
-                  // the exact-active comparison and the ➕ tab never lights up.
-                  activeOptions={{ exact: item.exact, includeSearch: false }}
                   aria-label={item.label}
-                  className="flex items-center justify-center py-2 text-foreground/70 data-[status=active]:text-foreground data-[status=active]:[&>svg]:stroke-[2.5]"
+                  aria-current={isActivePath(pathname, item.to) ? "page" : undefined}
+                  data-active={isActivePath(pathname, item.to) || undefined}
+                  className="flex items-center justify-center py-2 text-foreground/70 transition-colors data-active:text-foreground data-active:[&>svg]:stroke-[2.5]"
                   tabIndex={tabBarVisible ? undefined : -1}
                 >
                   <item.icon className="size-6" />

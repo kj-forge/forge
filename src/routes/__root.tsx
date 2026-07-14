@@ -13,7 +13,8 @@ export const Route = createRootRoute({
         name: "viewport",
         content: "width=device-width, initial-scale=1, viewport-fit=cover",
       },
-      { name: "theme-color", content: "#0a0a0a" },
+      { name: "theme-color", media: "(prefers-color-scheme: light)", content: "#ffffff" },
+      { name: "theme-color", media: "(prefers-color-scheme: dark)", content: "#0c0c0d" },
       {
         name: "apple-mobile-web-app-capable",
         content: "yes",
@@ -47,10 +48,17 @@ function RootComponent() {
   );
 }
 
+// Applies .dark before first paint (stored preference, "system" falls back to
+// the OS). Must be inline in <head> — a module would run after paint and flash
+// the wrong theme. suppressHydrationWarning: the server can't know the class.
+const themeInitScript = `(function(){try{var t=localStorage.getItem("forge-theme");var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.classList.add("dark")}catch(e){}})()`;
+
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static theme bootstrap, no user input */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <HeadContent />
       </head>
       <body>

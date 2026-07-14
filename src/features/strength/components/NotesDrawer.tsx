@@ -77,7 +77,7 @@ function NotesForm({ initialNotes, onSave }: { initialNotes: string; onSave: (no
           {error}
         </p>
       )}
-      <Button className="w-full" disabled={saving} onClick={handleSave}>
+      <Button className="w-full bg-ember shadow-ember" disabled={saving} onClick={handleSave}>
         {saving ? "Zapisuję..." : "Zapisz notatki"}
       </Button>
     </div>

@@ -9,16 +9,17 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { ForgeLogo } from "@/shared/components/ForgeLogo";
 import { isActivePath, NAV_ITEMS } from "@/shared/lib/nav";
 
 export function AppSidebar() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = useRouterState({ select: (s) => (s.resolvedLocation ?? s.location).pathname });
 
   return (
     <Sidebar>
       <SidebarHeader>
-        <Link to="/" className="px-2 py-1.5 font-heading font-semibold text-lg">
-          Forge
+        <Link to="/" className="px-2 py-1.5" aria-label="Forge — start">
+          <ForgeLogo className="text-xl" />
         </Link>
       </SidebarHeader>
       <SidebarContent>
