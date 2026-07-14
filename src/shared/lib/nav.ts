@@ -9,18 +9,22 @@ export interface NavItem {
   // The thumb bar holds five; sidebar-only destinations opt out here
   // (mobile reaches them through in-page entry points, e.g. the Home card).
   inTabBar: boolean;
+  // Desktop sidebar list; Profil opts out — the avatar dropdown owns it there.
+  inSidebar: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Dziennik", icon: Home, exact: true, inTabBar: true },
-  { to: "/sessions", label: "Historia", icon: BookOpen, exact: true, inTabBar: true },
-  { to: "/sessions/new", label: "Nowa", icon: Plus, exact: true, inTabBar: true },
-  { to: "/stats", label: "Statystyki", icon: ChartNoAxesColumn, exact: true, inTabBar: true },
-  { to: "/plan", label: "Plan", icon: CalendarDays, exact: true, inTabBar: false },
-  { to: "/me", label: "Profil", icon: User, exact: true, inTabBar: true },
+  { to: "/", label: "Dziennik", icon: Home, exact: true, inTabBar: true, inSidebar: true },
+  { to: "/sessions", label: "Historia", icon: BookOpen, exact: true, inTabBar: true, inSidebar: true },
+  { to: "/sessions/new", label: "Nowa", icon: Plus, exact: true, inTabBar: true, inSidebar: true },
+  { to: "/stats", label: "Statystyki", icon: ChartNoAxesColumn, exact: true, inTabBar: true, inSidebar: true },
+  { to: "/plan", label: "Plan", icon: CalendarDays, exact: true, inTabBar: false, inSidebar: true },
+  { to: "/me", label: "Profil", icon: User, exact: true, inTabBar: true, inSidebar: false },
 ];
 
 export const TAB_BAR_ITEMS: NavItem[] = NAV_ITEMS.filter((i) => i.inTabBar);
+
+export const SIDEBAR_ITEMS: NavItem[] = NAV_ITEMS.filter((i) => i.inSidebar);
 
 // The bar stays visible on /plan even though it has no tab — it's a
 // top-level browse context, not a focused flow like an active session.

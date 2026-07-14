@@ -10,7 +10,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { ForgeLogo } from "@/shared/components/ForgeLogo";
-import { isActivePath, NAV_ITEMS } from "@/shared/lib/nav";
+import { isActivePath, SIDEBAR_ITEMS } from "@/shared/lib/nav";
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => (s.resolvedLocation ?? s.location).pathname });
@@ -25,7 +25,7 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            {NAV_ITEMS.map((item) => (
+            {SIDEBAR_ITEMS.map((item) => (
               <SidebarMenuItem key={item.to}>
                 <SidebarMenuButton asChild isActive={isActivePath(pathname, item.to)}>
                   <Link to={item.to}>

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { isActivePath, NAV_ITEMS, showsTabBar, TAB_BAR_ITEMS } from "./nav";
+import { isActivePath, NAV_ITEMS, SIDEBAR_ITEMS, showsTabBar, TAB_BAR_ITEMS } from "./nav";
 
 describe("showsTabBar", () => {
   test("visible on the top-level destinations", () => {
@@ -48,5 +48,11 @@ describe("NAV_ITEMS", () => {
 describe("TAB_BAR_ITEMS", () => {
   test("tab bar stays at five — plan is sidebar/home-card only", () => {
     expect(TAB_BAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/me"]);
+  });
+});
+
+describe("SIDEBAR_ITEMS", () => {
+  test("no profil — the avatar dropdown owns it on desktop", () => {
+    expect(SIDEBAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/plan"]);
   });
 });
