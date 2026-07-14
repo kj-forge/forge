@@ -402,6 +402,7 @@ export const exercises = pgTable(
     category: exerciseCategory().notNull(),
     muscleGroups: jsonb().$type<string[]>().notNull().default([]),
     isUnilateral: boolean().notNull().default(false),
+    isMainLift: boolean().notNull().default(false),
     defaultUnit: exerciseUnit().notNull().default("REPS"),
     progressionRuleId: uuid().references(() => progressionRules.id, {
       onDelete: "set null",

@@ -102,6 +102,7 @@ type ExerciseDef = {
   category: "MAIN_LIFT" | "ACCESSORY" | "BODYWEIGHT" | "HYROX_STATION" | "REHAB";
   muscleGroups: string[];
   isUnilateral?: boolean;
+  isMainLift?: boolean;
   defaultUnit?: "REPS" | "TIME" | "DISTANCE" | "CALORIES";
   progressionKind?: "TOP_SET_BACKOFF" | "STRAIGHT_SETS" | "ENDURANCE_STRENGTH" | "RPE_CAPPED" | "QUALITY_FIRST";
 };
@@ -114,6 +115,7 @@ const EXERCISES: ExerciseDef[] = [
     nameEn: "Back Squat",
     aliases: ["siady", "przysiady", "back squat", "squat", "BS"],
     category: "MAIN_LIFT",
+    isMainLift: true,
     muscleGroups: ["quads", "glutes", "lower back"],
     progressionKind: "TOP_SET_BACKOFF",
   },
@@ -123,6 +125,7 @@ const EXERCISES: ExerciseDef[] = [
     nameEn: "Deadlift",
     aliases: ["martwy", "DL", "deadlift", "martwy ciąg"],
     category: "MAIN_LIFT",
+    isMainLift: true,
     muscleGroups: ["posterior chain", "back", "glutes"],
     progressionKind: "TOP_SET_BACKOFF",
   },
@@ -132,6 +135,7 @@ const EXERCISES: ExerciseDef[] = [
     nameEn: "Bench Press",
     aliases: ["klata", "ława", "bench", "bench press", "BP"],
     category: "MAIN_LIFT",
+    isMainLift: true,
     muscleGroups: ["chest", "triceps", "front delts"],
     progressionKind: "TOP_SET_BACKOFF",
   },
@@ -141,6 +145,7 @@ const EXERCISES: ExerciseDef[] = [
     nameEn: "Overhead Press",
     aliases: ["OHP", "wojskowy", "military press", "press"],
     category: "MAIN_LIFT",
+    isMainLift: true,
     muscleGroups: ["shoulders", "triceps"],
     progressionKind: "TOP_SET_BACKOFF",
   },
@@ -435,6 +440,7 @@ async function seedExercises(progKindToId: Map<string, string>): Promise<void> {
       category: def.category,
       muscleGroups: def.muscleGroups,
       isUnilateral: def.isUnilateral ?? false,
+      isMainLift: def.isMainLift ?? false,
       defaultUnit: def.defaultUnit ?? "REPS",
       progressionRuleId: def.progressionKind ? (progKindToId.get(def.progressionKind) ?? null) : null,
     });
