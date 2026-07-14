@@ -1,10 +1,17 @@
 import { describe, expect, test } from "bun:test";
 
-import { WEEKDAY_LABELS_PL, warsawWeekday } from "./weekday";
+import { WEEKDAY_FULL_PL, WEEKDAY_LABELS_PL, warsawWeekday } from "./weekday";
 
 describe("WEEKDAY_LABELS_PL", () => {
   test("PON through ND", () => {
     expect(WEEKDAY_LABELS_PL).toEqual(["PON", "WTO", "ŚRO", "CZW", "PT", "SOB", "ND"]);
+  });
+});
+
+describe("WEEKDAY_FULL_PL", () => {
+  test("full names aligned with the short labels", () => {
+    expect(WEEKDAY_FULL_PL).toEqual(["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota", "Niedziela"]);
+    expect(WEEKDAY_FULL_PL.length).toBe(WEEKDAY_LABELS_PL.length);
   });
 });
 

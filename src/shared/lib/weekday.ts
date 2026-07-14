@@ -8,6 +8,16 @@ dayjs.extend(timezone);
 // Day chips index convention: 0 = poniedziałek … 6 = niedziela.
 export const WEEKDAY_LABELS_PL = ["PON", "WTO", "ŚRO", "CZW", "PT", "SOB", "ND"] as const;
 
+export const WEEKDAY_FULL_PL = [
+  "Poniedziałek",
+  "Wtorek",
+  "Środa",
+  "Czwartek",
+  "Piątek",
+  "Sobota",
+  "Niedziela",
+] as const;
+
 // The athlete's "today" is Warsaw time, not the server's UTC — this runs in
 // a route loader, which executes on the server during SSR, so the zone must
 // be pinned instead of trusting the runtime's local time. dayjs .day() is
