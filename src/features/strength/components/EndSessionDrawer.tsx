@@ -54,7 +54,7 @@ export function EndSessionDrawer({ open, onOpenChange, movementCount, onConfirm 
               <Label htmlFor="notes">Notatki (opcjonalne)</Label>
               <textarea
                 id="notes"
-                className="min-h-24 w-full resize-none rounded-md border border-border bg-background p-2 text-sm"
+                className="min-h-24 w-full resize-none rounded-md border border-border bg-background p-2 text-base md:text-sm"
                 placeholder="Wnioski z dzisiejszego treningu..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
