@@ -12,7 +12,7 @@ import {
 import { isActivePath, NAV_ITEMS } from "@/shared/lib/nav";
 
 export function AppSidebar() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const pathname = useRouterState({ select: (s) => (s.resolvedLocation ?? s.location).pathname });
 
   return (
     <Sidebar>

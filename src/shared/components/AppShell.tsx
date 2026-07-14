@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/shared/components/AppSidebar";
 import { UserMenu } from "@/shared/components/UserMenu";
-import { NAV_ITEMS, showsTabBar } from "@/shared/lib/nav";
+import { isActivePath, NAV_ITEMS, showsTabBar } from "@/shared/lib/nav";
 
 // The window must never scroll (styles.css locks html/body): vaul's iOS
 // scroll-lock manipulates window scroll and body position on open/close,
@@ -44,16 +44,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <div className="min-h-0 overflow-hidden">
             <nav className="grid grid-cols-4 border-t bg-background pb-0.5">
+              {/* Active state from resolvedLocation (not Link's own matching,
+                  which flips at navigation START): the highlight moves in the
+                  same frame the new page renders, together with the bar. */}
               {NAV_ITEMS.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
-                  // includeSearch: false — /sessions/new always carries
-                  // ?type=… (validateSearch default), which otherwise fails
-                  // the exact-active comparison and the ➕ tab never lights up.
-                  activeOptions={{ exact: item.exact, includeSearch: false }}
                   aria-label={item.label}
-                  className="flex items-center justify-center py-2 text-foreground/70 data-[status=active]:text-foreground data-[status=active]:[&>svg]:stroke-[2.5]"
+                  aria-current={isActivePath(pathname, item.to) ? "page" : undefined}
+                  data-active={isActivePath(pathname, item.to) || undefined}
+                  className="flex items-center justify-center py-2 text-foreground/70 data-active:text-foreground data-active:[&>svg]:stroke-[2.5]"
                   tabIndex={tabBarVisible ? undefined : -1}
                 >
                   <item.icon className="size-6" />
