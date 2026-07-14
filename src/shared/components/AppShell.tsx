@@ -32,13 +32,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
 
         {tabBarVisible && (
-          <nav className="grid shrink-0 grid-cols-4 border-t bg-background pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
+          <nav className="grid shrink-0 grid-cols-4 border-t bg-background pb-[max(0.25rem,env(safe-area-inset-bottom))] md:hidden">
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
                 activeOptions={{ exact: item.exact }}
-                className="flex flex-col items-center gap-0.5 pt-2 pb-1 text-muted-foreground text-xs"
+                className="flex flex-col items-center gap-0.5 pt-1.5 pb-0.5 text-muted-foreground text-xs"
                 activeProps={{ className: "text-foreground" }}
               >
                 <item.icon className="size-5" />
