@@ -117,9 +117,12 @@ function RekordySegment({
       >
         <span>Akcesoria (RDL, bułgary, drążek, dipy)</span>
         <span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${accOn ? "bg-ember" : "bg-muted"}`}>
+          {/* Explicit left anchor: without it the absolute thumb takes its
+              static position, and the button's default text-align:center
+              starts it mid-track — ON then overshoots the pill. */}
           <span
-            className={`absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform ${
-              accOn ? "translate-x-[18px]" : "translate-x-0.5"
+            className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform ${
+              accOn ? "translate-x-4" : "translate-x-0"
             }`}
           />
         </span>
