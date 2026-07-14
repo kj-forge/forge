@@ -6,7 +6,7 @@ import { AppSidebar } from "@/shared/components/AppSidebar";
 import { ForgeLogo } from "@/shared/components/ForgeLogo";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import { UserMenu } from "@/shared/components/UserMenu";
-import { isActivePath, NAV_ITEMS, showsTabBar } from "@/shared/lib/nav";
+import { isActivePath, showsTabBar, TAB_BAR_ITEMS } from "@/shared/lib/nav";
 
 // The window must never scroll (styles.css locks html/body): vaul's iOS
 // scroll-lock manipulates window scroll and body position on open/close,
@@ -53,7 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               {/* Active state from resolvedLocation (not Link's own matching,
                   which flips at navigation START): the highlight moves in the
                   same frame the new page renders, together with the bar. */}
-              {NAV_ITEMS.map((item) => (
+              {TAB_BAR_ITEMS.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}

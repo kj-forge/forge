@@ -1,20 +1,22 @@
 import { describe, expect, test } from "bun:test";
 
-import { isActivePath, NAV_ITEMS, showsTabBar } from "./nav";
+import { isActivePath, NAV_ITEMS, showsTabBar, TAB_BAR_ITEMS } from "./nav";
 
 describe("showsTabBar", () => {
-  test("visible on the five top-level destinations", () => {
+  test("visible on the top-level destinations", () => {
     expect(showsTabBar("/")).toBe(true);
     expect(showsTabBar("/sessions")).toBe(true);
     expect(showsTabBar("/sessions/")).toBe(true);
     expect(showsTabBar("/sessions/new")).toBe(true);
     expect(showsTabBar("/stats")).toBe(true);
+    expect(showsTabBar("/plan")).toBe(true);
     expect(showsTabBar("/me")).toBe(true);
   });
 
   test("hidden inside a session detail", () => {
     expect(showsTabBar("/sessions/123e4567-e89b-12d3-a456-426614174000")).toBe(false);
     expect(showsTabBar("/stats/abc")).toBe(false);
+    expect(showsTabBar("/plan/x")).toBe(false);
   });
 
   test("hidden on unknown routes (fail closed)", () => {
@@ -37,8 +39,14 @@ describe("isActivePath", () => {
 });
 
 describe("NAV_ITEMS", () => {
-  test("five tabs in thumb order", () => {
-    expect(NAV_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/me"]);
-    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Dziennik", "Historia", "Nowa", "Statystyki", "Profil"]);
+  test("six sidebar entries with plan before profil", () => {
+    expect(NAV_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/plan", "/me"]);
+    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Dziennik", "Historia", "Nowa", "Statystyki", "Plan", "Profil"]);
+  });
+});
+
+describe("TAB_BAR_ITEMS", () => {
+  test("tab bar stays at five — plan is sidebar/home-card only", () => {
+    expect(TAB_BAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/me"]);
   });
 });
