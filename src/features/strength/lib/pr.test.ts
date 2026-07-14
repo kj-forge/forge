@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { bestSet, isNewPR } from "./pr";
+import { bestE1RM, bestSet, isNewPR } from "./pr";
 
 describe("bestSet", () => {
   test("picks the heaviest set by weight, then reps", () => {
@@ -33,6 +33,23 @@ describe("bestSet", () => {
     expect(bestSet([])).toBeNull();
     expect(bestSet([{ weightKg: null, reps: 10, kind: "WORK" }])).toBeNull();
     expect(bestSet([{ weightKg: 100, reps: 1, kind: "WARMUP" }])).toBeNull();
+  });
+});
+
+describe("bestE1RM", () => {
+  test("picks the highest e1RM, not the heaviest set", () => {
+    // 110×1 → 110, but 100×10 → ~133.5 is the real record
+    const sets = [
+      { weightKg: 110, reps: 1, kind: "TOP_SET" },
+      { weightKg: 100, reps: 10, kind: "WORK" },
+    ];
+    expect(bestE1RM(sets)).toBe(133.5);
+  });
+
+  test("ignores warmups and incomplete sets, null when nothing qualifies", () => {
+    expect(bestE1RM([{ weightKg: 120, reps: 1, kind: "WARMUP" }])).toBeNull();
+    expect(bestE1RM([{ weightKg: null, reps: 12, kind: "WORK" }])).toBeNull();
+    expect(bestE1RM([])).toBeNull();
   });
 });
 

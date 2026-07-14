@@ -4,6 +4,8 @@ import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { db } from "../../../../db/client";
 import { blockMovements, sessionBlocks, sessions, sets } from "../../../../db/schema";
+import { epleyE1RM } from "../lib/e1rm";
+import { bestE1RM } from "../lib/pr";
 
 const addSetInput = z.object({
   blockMovementId: z.uuid(),
@@ -14,6 +16,8 @@ const addSetInput = z.object({
   notes: z.string().max(500).optional(),
 });
 
+export type SetPr = { isNewPR: boolean; e1rm: number; previousE1rm: number };
+
 export const addSet = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => addSetInput.parse(data))
   .handler(async ({ data }) => {
@@ -21,11 +25,28 @@ export const addSet = createServerFn({ method: "POST" })
 
     // Verify the block_movement belongs to this athlete.
     const [movement] = await db
-      .select({ id: blockMovements.id })
+      .select({ id: blockMovements.id, exerciseId: blockMovements.exerciseId })
       .from(blockMovements)
       .where(and(eq(blockMovements.id, data.blockMovementId), eq(blockMovements.athleteId, athleteId)))
       .limit(1);
     if (!movement) throw new Error("Nie znaleziono ćwiczenia w tej sesji.");
+
+    // PR check BEFORE the insert, against every set of this exercise ever
+    // logged (in-progress session included — beating today's record again
+    // is a record again). No previous history = nothing beaten, no toast.
+    let pr: SetPr | null = null;
+    if (data.kind !== "WARMUP" && data.weightKg !== undefined && data.reps !== undefined && data.reps >= 1) {
+      const priorSets = await db
+        .select({ weightKg: sets.weightKg, reps: sets.reps, kind: sets.kind })
+        .from(sets)
+        .innerJoin(blockMovements, eq(sets.blockMovementId, blockMovements.id))
+        .where(and(eq(sets.athleteId, athleteId), eq(blockMovements.exerciseId, movement.exerciseId)));
+      const previousE1rm = bestE1RM(priorSets);
+      if (previousE1rm !== null) {
+        const e1rm = epleyE1RM(data.weightKg, data.reps);
+        pr = { isNewPR: e1rm > previousE1rm, e1rm, previousE1rm };
+      }
+    }
 
     // Next setNumber for this movement.
     const [{ nextNum }] = await db
@@ -47,7 +68,7 @@ export const addSet = createServerFn({ method: "POST" })
       })
       .returning();
 
-    return row;
+    return { ...row, pr };
   });
 
 const deleteSetInput = z.object({ setId: z.uuid() });
