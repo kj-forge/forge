@@ -24,7 +24,7 @@ export function HomeView() {
   ].slice(0, 4);
 
   return (
-    <main className="mx-auto flex max-w-md flex-col gap-6 p-4 pb-6">
+    <main className="mx-auto flex max-w-md flex-col gap-6 p-4">
       <header className="pt-2">
         <p className="text-muted-foreground text-sm">Cześć,</p>
         <h1 className="font-bold text-2xl tracking-tight">{firstName} 👋</h1>

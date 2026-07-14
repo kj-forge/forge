@@ -43,6 +43,13 @@
       "when": 1781891765436,
       "tag": "0005_chilly_mister_sinister",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784053785227,
+      "tag": "0006_curly_donald_blake",
+      "breakpoints": true
     }
   ]
 }

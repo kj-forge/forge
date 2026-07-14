@@ -4,6 +4,25 @@ import type { SessionType, SetKind } from "./types";
 // even though the picker shows only the three most-used kinds.
 export const SET_KINDS = ["WARMUP", "TOP_SET", "WORK", "BACK_OFF", "FAILURE", "DROP_SET"] as const;
 
+// Accessories shown in the PR table when the toggle is on. Main lifts come
+// from the is_main_lift DB flag; this list is the product-side counterpart
+// (kept in code — it's a display preference, not a data property).
+export const ACCESSORY_SLUGS = ["romanian-deadlift", "bulgarian-split-squat", "pull-up", "dip"] as const;
+
+// Display order of the PR table (main lifts, then accessories). The DB flag
+// decides WHAT is a main lift; this list only decides where rows sit.
+export const PR_TABLE_SLUG_ORDER = [
+  "back-squat",
+  "deadlift",
+  "bench-press",
+  "overhead-press",
+  ...ACCESSORY_SLUGS,
+] as const;
+
+// weightKg on these is ADDED load on top of bodyweight ("+20"), so Epley
+// over the bar weight alone would be meaningless — e1RM is suppressed.
+export const LOADED_BW_SLUGS = ["pull-up", "dip"] as const;
+
 export const SESSION_TYPES = [
   "STRENGTH",
   "HYROX_EMOM",
