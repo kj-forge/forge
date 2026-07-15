@@ -5,91 +5,13 @@ import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete
 import { db } from "../../../../db/client";
 import { createPool } from "../../../../db/pool";
 import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
-
-const sessionCardColumns = {
-  id: sessions.id,
-  date: sessions.date,
-  type: sessions.type,
-  title: sessions.title,
-  startedAt: sessions.startedAt,
-  endedAt: sessions.endedAt,
-};
-
-// Attach each session's exercise previews (ordered, with the heaviest logged
-// set per exercise) in one batched join. Left join keeps planned-but-empty
-// exercises; the heaviest set is reduced in JS. Shared by the dashboard feed
-// and the completed-session history.
-async function attachExercises<T extends { id: string }>(athleteId: string, sessionRows: T[]) {
-  if (sessionRows.length === 0) return [] as (T & { exercises: SessionTopExercise[] })[];
-
-  const ids = sessionRows.map((s) => s.id);
-  const rows = await db
-    .select({
-      sessionId: sessionBlocks.sessionId,
-      movementId: blockMovements.id,
-      name: exercises.namePl,
-      weightKg: sets.weightKg,
-      reps: sets.reps,
-    })
-    .from(blockMovements)
-    .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
-    .innerJoin(exercises, eq(blockMovements.exerciseId, exercises.id))
-    .leftJoin(sets, eq(sets.blockMovementId, blockMovements.id))
-    .where(and(eq(blockMovements.athleteId, athleteId), inArray(sessionBlocks.sessionId, ids)))
-    .orderBy(sessionBlocks.sessionId, blockMovements.orderIndex);
-
-  type TopSet = SessionTopExercise & { hasSet: boolean };
-  const bySession = new Map<string, Map<string, TopSet>>();
-  for (const row of rows) {
-    let movements = bySession.get(row.sessionId);
-    if (!movements) {
-      movements = new Map();
-      bySession.set(row.sessionId, movements);
-    }
-    let top = movements.get(row.movementId);
-    if (!top) {
-      top = { name: row.name, weightKg: null, reps: null, setCount: 0, hasSet: false };
-      movements.set(row.movementId, top);
-    }
-    const isRealSet = row.reps !== null || row.weightKg !== null;
-    if (!isRealSet) continue;
-    top.setCount += 1;
-    const heavier =
-      !top.hasSet ||
-      (row.weightKg ?? -1) > (top.weightKg ?? -1) ||
-      ((row.weightKg ?? -1) === (top.weightKg ?? -1) && (row.reps ?? -1) > (top.reps ?? -1));
-    if (heavier) {
-      top.weightKg = row.weightKg;
-      top.reps = row.reps;
-      top.hasSet = true;
-    }
-  }
-
-  return sessionRows.map((s) => ({
-    ...s,
-    // Map preserves insertion order, and rows arrive ordered by orderIndex.
-    exercises: [...(bySession.get(s.id)?.values() ?? [])].map((m) => ({
-      name: m.name,
-      weightKg: m.weightKg,
-      reps: m.reps,
-      setCount: m.setCount,
-    })),
-  }));
-}
-
-type SessionTopExercise = { name: string; weightKg: number | null; reps: number | null; setCount: number };
+import { attachExercises, loadRecentSessions } from "./queries";
 
 // Dashboard feed: most recent sessions including the in-progress one (the badge
 // marks it). The view sorts active to the top and trims the count.
 export const listRecentSessions = createServerFn({ method: "GET" }).handler(async () => {
   const { athleteId } = await getCurrentAthleteOrThrow();
-  const sessionRows = await db
-    .select(sessionCardColumns)
-    .from(sessions)
-    .where(eq(sessions.athleteId, athleteId))
-    .orderBy(desc(sessions.date), desc(sessions.startedAt))
-    .limit(10);
-  return attachExercises(athleteId, sessionRows);
+  return loadRecentSessions(athleteId, 10);
 });
 
 // History: only ENDED sessions — an in-progress one isn't "history" yet and is
@@ -97,7 +19,14 @@ export const listRecentSessions = createServerFn({ method: "GET" }).handler(asyn
 export const listCompletedSessions = createServerFn({ method: "GET" }).handler(async () => {
   const { athleteId } = await getCurrentAthleteOrThrow();
   const sessionRows = await db
-    .select(sessionCardColumns)
+    .select({
+      id: sessions.id,
+      date: sessions.date,
+      type: sessions.type,
+      title: sessions.title,
+      startedAt: sessions.startedAt,
+      endedAt: sessions.endedAt,
+    })
     .from(sessions)
     .where(and(eq(sessions.athleteId, athleteId), isNotNull(sessions.endedAt)))
     .orderBy(desc(sessions.date), desc(sessions.startedAt))

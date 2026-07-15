@@ -1,95 +1,22 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, gte, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { db } from "../../../../db/client";
 import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
-import { ACCESSORY_SLUGS, LOADED_BW_SLUGS, PR_TABLE_SLUG_ORDER } from "../constants";
-import { epleyE1RM } from "../lib/e1rm";
+import { loadPrTable } from "./queries";
 
-export type PrTableRow = {
-  exerciseId: string;
-  slug: string;
-  namePl: string;
-  isMainLift: boolean;
-  best: { weightKg: number; reps: number; e1rm: number | null; date: string } | null;
-};
+export type { PrTableRow } from "./queries";
 
 const prTableInput = z.object({ includeAccessories: z.boolean() });
 
-const slugOrder = (slug: string) => {
-  const idx = PR_TABLE_SLUG_ORDER.indexOf(slug as (typeof PR_TABLE_SLUG_ORDER)[number]);
-  return idx === -1 ? PR_TABLE_SLUG_ORDER.length : idx;
-};
-
-// All-time bests for the main lifts (and optionally the accessory group):
-// heaviest qualifying set per exercise plus its Epley e1RM and the date it
-// was FIRST achieved. Two batched queries regardless of exercise count.
+// All-time bests for the main lifts (and optionally the accessory group) —
+// batched query logic shared with the dashboard lives in queries.ts.
 export const getPrTable = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => prTableInput.parse(data))
-  .handler(async ({ data }): Promise<PrTableRow[]> => {
+  .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
-
-    const scope = data.includeAccessories
-      ? or(eq(exercises.isMainLift, true), inArray(exercises.slug, [...ACCESSORY_SLUGS]))
-      : eq(exercises.isMainLift, true);
-    const exerciseRows = await db
-      .select({
-        exerciseId: exercises.id,
-        slug: exercises.slug,
-        namePl: exercises.namePl,
-        isMainLift: exercises.isMainLift,
-      })
-      .from(exercises)
-      .where(scope);
-    if (exerciseRows.length === 0) return [];
-
-    // Ordered by date so a tie on weight+reps keeps the FIRST achievement —
-    // that is the record's date, later repeats don't move it.
-    const setRows = await db
-      .select({
-        exerciseId: blockMovements.exerciseId,
-        weightKg: sets.weightKg,
-        reps: sets.reps,
-        date: sessions.date,
-      })
-      .from(sets)
-      .innerJoin(blockMovements, eq(sets.blockMovementId, blockMovements.id))
-      .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
-      .innerJoin(sessions, eq(sessionBlocks.sessionId, sessions.id))
-      .where(
-        and(
-          eq(sets.athleteId, athleteId),
-          isNotNull(sessions.endedAt),
-          inArray(
-            blockMovements.exerciseId,
-            exerciseRows.map((e) => e.exerciseId),
-          ),
-          ne(sets.kind, "WARMUP"),
-          isNotNull(sets.weightKg),
-          isNotNull(sets.reps),
-        ),
-      )
-      .orderBy(sessions.date, sessions.startedAt);
-
-    const bestByExercise = new Map<string, { weightKg: number; reps: number; date: string }>();
-    for (const row of setRows) {
-      if (row.weightKg === null || row.reps === null) continue;
-      const cur = bestByExercise.get(row.exerciseId);
-      const better = !cur || row.weightKg > cur.weightKg || (row.weightKg === cur.weightKg && row.reps > cur.reps);
-      if (better) bestByExercise.set(row.exerciseId, { weightKg: row.weightKg, reps: row.reps, date: row.date });
-    }
-
-    return exerciseRows
-      .sort((a, b) => slugOrder(a.slug) - slugOrder(b.slug))
-      .map((e) => {
-        const best = bestByExercise.get(e.exerciseId) ?? null;
-        const isLoadedBw = (LOADED_BW_SLUGS as readonly string[]).includes(e.slug);
-        return {
-          ...e,
-          best: best ? { ...best, e1rm: isLoadedBw ? null : epleyE1RM(best.weightKg, best.reps) } : null,
-        };
-      });
+    return loadPrTable(athleteId, data.includeAccessories);
   });
 
 export type WeekdaySession = {
