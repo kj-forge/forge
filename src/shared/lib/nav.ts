@@ -1,7 +1,7 @@
-import { BookOpen, CalendarDays, ChartNoAxesColumn, Home, type LucideIcon, Plus, User } from "lucide-react";
+import { BookOpen, CalendarDays, ChartNoAxesColumn, Home, type LucideIcon, Plus, Target } from "lucide-react";
 
 export interface NavItem {
-  to: "/" | "/sessions" | "/sessions/new" | "/stats" | "/plan" | "/me";
+  to: "/" | "/sessions" | "/sessions/new" | "/stats" | "/plan" | "/goals";
   label: string;
   icon: LucideIcon;
   // Home must match exactly, otherwise "/" lights up on every route.
@@ -16,19 +16,21 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Dziennik", icon: Home, exact: true, inTabBar: true, inSidebar: true },
   { to: "/sessions", label: "Historia", icon: BookOpen, exact: true, inTabBar: true, inSidebar: true },
-  { to: "/sessions/new", label: "Nowa", icon: Plus, exact: true, inTabBar: true, inSidebar: true },
-  { to: "/stats", label: "Statystyki", icon: ChartNoAxesColumn, exact: true, inTabBar: true, inSidebar: true },
+  { to: "/sessions/new", label: "Nowa", icon: Plus, exact: true, inTabBar: true, inSidebar: false },
+  // Non-exact: /stats/$slug details keep the Statystyki link active.
+  { to: "/stats", label: "Statystyki", icon: ChartNoAxesColumn, exact: false, inTabBar: true, inSidebar: true },
   { to: "/plan", label: "Plan", icon: CalendarDays, exact: true, inTabBar: false, inSidebar: true },
-  { to: "/me", label: "Profil", icon: User, exact: true, inTabBar: true, inSidebar: false },
+  // Profil has no nav entry — account settings live under the avatar.
+  { to: "/goals", label: "Cele", icon: Target, exact: true, inTabBar: true, inSidebar: true },
 ];
 
 export const TAB_BAR_ITEMS: NavItem[] = NAV_ITEMS.filter((i) => i.inTabBar);
 
 export const SIDEBAR_ITEMS: NavItem[] = NAV_ITEMS.filter((i) => i.inSidebar);
 
-// The bar stays visible on /plan even though it has no tab — it's a
-// top-level browse context, not a focused flow like an active session.
-const TAB_BAR_PATHS = new Set(["/", "/sessions", "/sessions/new", "/stats", "/plan", "/me"]);
+// The bar stays visible on /plan and /me even though they have no tab —
+// top-level browse contexts, not focused flows like an active session.
+const TAB_BAR_PATHS = new Set(["/", "/sessions", "/sessions/new", "/stats", "/plan", "/goals", "/me"]);
 
 function normalizePath(pathname: string): string {
   return pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
@@ -38,6 +40,8 @@ export function showsTabBar(pathname: string): boolean {
   return TAB_BAR_PATHS.has(normalizePath(pathname));
 }
 
-export function isActivePath(pathname: string, to: NavItem["to"]): boolean {
-  return normalizePath(pathname) === to;
+export function isActivePath(pathname: string, to: NavItem["to"], exact = true): boolean {
+  const path = normalizePath(pathname);
+  if (exact) return path === to;
+  return path === to || path.startsWith(`${to}/`);
 }

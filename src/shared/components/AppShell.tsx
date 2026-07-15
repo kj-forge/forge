@@ -53,19 +53,34 @@ export function AppShell({ children }: { children: ReactNode }) {
               {/* Active state from resolvedLocation (not Link's own matching,
                   which flips at navigation START): the highlight moves in the
                   same frame the new page renders, together with the bar. */}
-              {TAB_BAR_ITEMS.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  aria-label={item.label}
-                  aria-current={isActivePath(pathname, item.to) ? "page" : undefined}
-                  data-active={isActivePath(pathname, item.to) || undefined}
-                  className="flex items-center justify-center py-2 text-foreground/70 transition-colors data-active:text-foreground data-active:[&>svg]:stroke-[2.5]"
-                  tabIndex={tabBarVisible ? undefined : -1}
-                >
-                  <item.icon className="size-6" />
-                </Link>
-              ))}
+              {TAB_BAR_ITEMS.map((item) =>
+                item.to === "/sessions/new" ? (
+                  // The one action among destinations — an ember button, not a tab.
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    aria-label={item.label}
+                    className="flex items-center justify-center py-0.5"
+                    tabIndex={tabBarVisible ? undefined : -1}
+                  >
+                    <span className="grid size-11 place-items-center rounded-full bg-ember shadow-ember">
+                      <item.icon className="size-6" />
+                    </span>
+                  </Link>
+                ) : (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    aria-label={item.label}
+                    aria-current={isActivePath(pathname, item.to, item.exact) ? "page" : undefined}
+                    data-active={isActivePath(pathname, item.to, item.exact) || undefined}
+                    className="flex items-center justify-center py-2 text-foreground/70 transition-colors data-active:text-foreground data-active:[&>svg]:stroke-[2.5]"
+                    tabIndex={tabBarVisible ? undefined : -1}
+                  >
+                    <item.icon className="size-6" />
+                  </Link>
+                ),
+              )}
             </nav>
           </div>
         </div>

@@ -1,24 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
-import { asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { db } from "../../../../db/client";
 import { trainingPlanDays } from "../../../../db/schema";
 import { PLAN_INTENSITIES } from "../constants";
+import { loadTrainingPlan } from "./queries";
 
 export const getTrainingPlan = createServerFn({ method: "GET" }).handler(async () => {
   const { athleteId } = await getCurrentAthleteOrThrow();
-  return db
-    .select({
-      id: trainingPlanDays.id,
-      dayOfWeek: trainingPlanDays.dayOfWeek,
-      intensity: trainingPlanDays.intensity,
-      training: trainingPlanDays.training,
-      goal: trainingPlanDays.goal,
-    })
-    .from(trainingPlanDays)
-    .where(eq(trainingPlanDays.athleteId, athleteId))
-    .orderBy(asc(trainingPlanDays.dayOfWeek));
+  return loadTrainingPlan(athleteId);
 });
 
 const upsertPlanDayInput = z.object({

@@ -34,6 +34,13 @@ export const searchExercises = createServerFn({ method: "GET" })
       .limit(20);
   });
 
+// Full catalogue for pickers that want a plain select (e.g. the goal
+// drawer's lift dropdown) — search stays the tool for typed lookups.
+export const listAllExercises = createServerFn({ method: "GET" }).handler(async () => {
+  await getCurrentAthleteOrThrow();
+  return db.select({ id: exercises.id, namePl: exercises.namePl }).from(exercises).orderBy(exercises.namePl);
+});
+
 export const getRecentExercises = createServerFn({ method: "GET" }).handler(async () => {
   const { athleteId } = await getCurrentAthleteOrThrow();
   return db

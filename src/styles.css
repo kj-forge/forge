@@ -128,6 +128,16 @@
   color: #fff;
 }
 
+/* hover:bg-* is invisible under the ember gradient (it changes the color
+   BEHIND the background-image), so interactive ember surfaces brighten
+   the gradient itself instead. */
+:is(button, a, [role="button"]).bg-ember {
+  transition: filter 150ms;
+}
+:is(button, a, [role="button"]).bg-ember:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+
 @utility shadow-ember {
   box-shadow: 0 4px 28px #ff6a0045;
 }
@@ -164,5 +174,11 @@
   }
   html {
     @apply font-sans;
+  }
+  /* Tailwind v4 preflight no longer sets a pointer on buttons — restore it
+     app-wide so every clickable control reads as clickable. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 }
