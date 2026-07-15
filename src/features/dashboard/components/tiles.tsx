@@ -9,7 +9,7 @@ import {
   TrendingUp,
   Trophy,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import type { DashboardData, Trend } from "@/features/dashboard/server/dashboard";
 import { formatGoalTarget, goalProgress } from "@/features/goals/lib/goal-progress";
@@ -159,8 +159,18 @@ export function LastSessionTile({ sessions }: { sessions: DashboardData["session
   );
 }
 
-export function GoalTile({ goal, compact = false }: { goal: DashboardData["goal"]; compact?: boolean }) {
-  if (!goal) {
+export function GoalTile({ goals, compact = false }: { goals: DashboardData["goals"]; compact?: boolean }) {
+  // With several goals the tile becomes a slow carousel — auto-rotation is
+  // motion, so it stays off for prefers-reduced-motion users.
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    if (goals.length < 2) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = setInterval(() => setIndex((i) => (i + 1) % goals.length), 6000);
+    return () => clearInterval(id);
+  }, [goals.length]);
+
+  if (goals.length === 0) {
     return (
       <Link to="/goals" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
         <TileHeader icon={Flag} title="Cel" />
@@ -169,22 +179,42 @@ export function GoalTile({ goal, compact = false }: { goal: DashboardData["goal"
     );
   }
 
+  const goal = goals[index % goals.length];
   const progress = goalProgress(goal.targetValue, goal.currentE1rm);
   const target = formatGoalTarget(goal.targetValue, goal.targetUnit);
   return (
     <Link to="/goals" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
-      <TileHeader icon={Flag} title="Cel" action={compact ? undefined : "cele →"} />
-      <p className={`line-clamp-2 font-black text-primary ${compact ? "text-base" : "text-lg"}`}>{goal.title}</p>
-      {progress !== null && (
-        <div className="my-2 h-1.5 overflow-hidden rounded-full bg-muted">
-          <div className="h-full rounded-full bg-ember" style={{ width: `${progress}%` }} />
+      <TileHeader icon={Flag} title={goals.length > 1 ? "Cele" : "Cel"} action={compact ? undefined : "cele →"} />
+      <div
+        key={goal.id}
+        className={`motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:animate-in motion-safe:duration-300 ${
+          compact ? "" : "min-h-17"
+        }`}
+      >
+        <p className={`line-clamp-2 font-black text-primary ${compact ? "text-base" : "text-lg"}`}>{goal.title}</p>
+        {progress !== null && (
+          <div className="my-2 h-1.5 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-ember" style={{ width: `${progress}%` }} />
+          </div>
+        )}
+        <p className="mt-1 text-muted-foreground text-xs tabular-nums">
+          {goal.currentE1rm !== null ? `e1RM ${goal.currentE1rm}` : ""}
+          {goal.currentE1rm !== null && target ? " · " : ""}
+          {target ? `cel ${target}` : ""}
+        </p>
+      </div>
+      {goals.length > 1 && (
+        <div className="mt-2 flex gap-1">
+          {goals.map((g, i) => (
+            <span
+              key={g.id}
+              className={`h-1 w-3 rounded-full transition-colors ${
+                i === index % goals.length ? "bg-primary" : "bg-muted"
+              }`}
+            />
+          ))}
         </div>
       )}
-      <p className="mt-1 text-muted-foreground text-xs tabular-nums">
-        {goal.currentE1rm !== null ? `e1RM ${goal.currentE1rm}` : ""}
-        {goal.currentE1rm !== null && target ? " · " : ""}
-        {target ? `cel ${target}` : ""}
-      </p>
     </Link>
   );
 }

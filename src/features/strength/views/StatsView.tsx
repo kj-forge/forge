@@ -111,14 +111,15 @@ function RekordySegment({
         ))}
       </ul>
 
-      <button
-        type="button"
-        aria-pressed={accOn}
-        className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-muted-foreground text-sm transition-colors hover:bg-accent"
-        onClick={() => onToggleAcc(!accOn)}
-      >
+      <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-muted-foreground text-sm">
         <span>Akcesoria (RDL, bułgary, drążek, dipy)</span>
-        <span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${accOn ? "bg-ember" : "bg-muted"}`}>
+        <button
+          type="button"
+          aria-pressed={accOn}
+          aria-label="Pokaż akcesoria"
+          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${accOn ? "bg-ember" : "bg-muted"}`}
+          onClick={() => onToggleAcc(!accOn)}
+        >
           {/* Explicit left anchor: without it the absolute thumb takes its
               static position, and the button's default text-align:center
               starts it mid-track — ON then overshoots the pill. */}
@@ -127,8 +128,8 @@ function RekordySegment({
               accOn ? "translate-x-4" : "translate-x-0"
             }`}
           />
-        </span>
-      </button>
+        </button>
+      </div>
 
       {accOn && accessories.length > 0 && (
         <>

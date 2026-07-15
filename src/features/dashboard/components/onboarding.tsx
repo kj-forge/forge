@@ -88,8 +88,8 @@ export function OnboardingTiles({ data }: { data: DashboardData }) {
         </StepTile>
       )}
 
-      {data.goal ? (
-        <GoalTile goal={data.goal} />
+      {data.goals.length > 0 ? (
+        <GoalTile goals={data.goals} />
       ) : (
         <StepTile icon={Target} title="Krok 3 · Cel" text="Siła, czas wyścigu, sylwetka — wyznacz kierunek.">
           <Link to="/goals" className="font-bold text-primary text-sm">

@@ -55,7 +55,7 @@ export function DashboardView() {
           </Button>
         </Link>
         <div className="grid grid-cols-2 items-start gap-3">
-          <GoalTile goal={data.goal} compact />
+          <GoalTile goals={data.goals} compact />
           <PrTile prs={data.prs} compact />
         </div>
         <section className="space-y-2">
@@ -86,7 +86,7 @@ export function DashboardView() {
         <div className="hidden gap-4 lg:grid lg:grid-cols-4">
           <TodayTile plan={data.plan} className="lg:col-span-2" />
           <LastSessionTile sessions={data.sessions} />
-          <GoalTile goal={data.goal} />
+          <GoalTile goals={data.goals} />
           <PrTile prs={data.prs} />
           <SessionsTile sessions={data.sessions} className="lg:col-span-2" />
           <WeekTile plan={data.plan} />
@@ -96,7 +96,7 @@ export function DashboardView() {
             <GhostTile
               icon={TrendingUp}
               title="Trend e1RM"
-              text="wykres pojawi się po dwóch zakończonych sesjach z bojem głównym (rozgrzewki się nie liczą)"
+              text="wykres pojawi się po dwóch zakończonych sesjach z bojem głównym"
               className="lg:col-span-3"
             />
           )}

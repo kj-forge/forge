@@ -99,7 +99,7 @@ export const getDashboard = createServerFn({ method: "GET" }).handler(async () =
     loadActiveGoals(athleteId),
     loadWeekdayCounts(athleteId),
   ]);
-  return { sessions: recentSessions, plan, prs, trend, goal: activeGoals[0] ?? null, weekdayCounts };
+  return { sessions: recentSessions, plan, prs, trend, goals: activeGoals, weekdayCounts };
 });
 
 export type DashboardData = Awaited<ReturnType<typeof getDashboard>>;
