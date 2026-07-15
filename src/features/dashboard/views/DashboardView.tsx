@@ -1,7 +1,9 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
 
+import { TrendingUp } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { OnboardingTiles } from "@/features/dashboard/components/onboarding";
+import { GhostTile, OnboardingTiles } from "@/features/dashboard/components/onboarding";
 import {
   GoalTile,
   LastSessionTile,
@@ -89,13 +91,16 @@ export function DashboardView() {
           <SessionsTile sessions={data.sessions} className="lg:col-span-2" />
           <WeekTile plan={data.plan} />
           {data.trend ? (
-            <>
-              <TrendTile trend={data.trend} className="lg:col-span-3" />
-              <ZestawieniaTile counts={data.weekdayCounts} />
-            </>
+            <TrendTile trend={data.trend} className="lg:col-span-3" />
           ) : (
-            <ZestawieniaTile counts={data.weekdayCounts} />
+            <GhostTile
+              icon={TrendingUp}
+              title="Trend e1RM"
+              text="wykres pojawi się po dwóch zakończonych sesjach z bojem głównym (rozgrzewki się nie liczą)"
+              className="lg:col-span-3"
+            />
           )}
+          <ZestawieniaTile counts={data.weekdayCounts} />
         </div>
       )}
     </main>

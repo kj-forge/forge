@@ -36,7 +36,7 @@ function StepTile({
   );
 }
 
-function GhostTile({
+export function GhostTile({
   icon: Icon,
   title,
   text,
@@ -92,7 +92,7 @@ export function OnboardingTiles({ data }: { data: DashboardData }) {
         <GoalTile goal={data.goal} />
       ) : (
         <StepTile icon={Target} title="Krok 3 · Cel" text="Siła, czas wyścigu, sylwetka — wyznacz kierunek.">
-          <Link to="/me" className="font-bold text-primary text-sm">
+          <Link to="/goals" className="font-bold text-primary text-sm">
             Ustaw cel →
           </Link>
         </StepTile>

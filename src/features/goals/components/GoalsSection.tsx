@@ -31,7 +31,7 @@ export function GoalsSection({ goals, exercises }: { goals: GoalRow[]; exercises
               <li key={goal.id}>
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-3 py-2.5 text-left transition-colors hover:bg-accent"
+                  className="-mx-2 flex w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-accent/60"
                   onClick={() => setEditing({ goal })}
                 >
                   <span className="min-w-0">

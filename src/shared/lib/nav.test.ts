@@ -10,6 +10,7 @@ describe("showsTabBar", () => {
     expect(showsTabBar("/sessions/new")).toBe(true);
     expect(showsTabBar("/stats")).toBe(true);
     expect(showsTabBar("/plan")).toBe(true);
+    expect(showsTabBar("/goals")).toBe(true);
     expect(showsTabBar("/me")).toBe(true);
   });
 
@@ -39,20 +40,20 @@ describe("isActivePath", () => {
 });
 
 describe("NAV_ITEMS", () => {
-  test("six sidebar entries with plan before profil", () => {
-    expect(NAV_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/plan", "/me"]);
-    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Dziennik", "Historia", "Nowa", "Statystyki", "Plan", "Profil"]);
+  test("cele replace profil — account lives under the avatar", () => {
+    expect(NAV_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/plan", "/goals"]);
+    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Dziennik", "Historia", "Nowa", "Statystyki", "Plan", "Cele"]);
   });
 });
 
 describe("TAB_BAR_ITEMS", () => {
-  test("tab bar stays at five — plan is sidebar/home-card only", () => {
-    expect(TAB_BAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/me"]);
+  test("five tabs with cele instead of profil", () => {
+    expect(TAB_BAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/goals"]);
   });
 });
 
 describe("SIDEBAR_ITEMS", () => {
-  test("no profil (avatar dropdown) and no nowa (dashboard CTA)", () => {
-    expect(SIDEBAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/stats", "/plan"]);
+  test("no profil (avatar) and no nowa (CTA button)", () => {
+    expect(SIDEBAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/stats", "/plan", "/goals"]);
   });
 });

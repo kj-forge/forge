@@ -4,14 +4,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { signOut } from "@/features/auth/client";
-import { GoalsSection } from "@/features/goals/components/GoalsSection";
 import { getErrorMessage } from "@/lib/error-message";
 
 const route = getRouteApi("/_shell/me");
 
 export function MeView() {
   const { session } = route.useRouteContext();
-  const { goals, exercises } = route.useLoaderData();
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,10 +28,7 @@ export function MeView() {
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
-      <div className="mt-2">
-        <GoalsSection goals={goals} exercises={exercises} />
-      </div>
-      <Card className="w-full">
+      <Card className="mt-2 w-full">
         <CardHeader>
           <CardTitle>Twoje konto</CardTitle>
           <CardDescription>Zalogowany jako…</CardDescription>

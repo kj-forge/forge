@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 
+import { Button } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +21,11 @@ export function AppSidebar() {
       <SidebarHeader>
         <Link to="/" className="px-2 py-1.5" aria-label="Forge — start">
           <ForgeLogo className="text-xl" />
+        </Link>
+        <Link to="/sessions/new" className="px-2 pb-1">
+          <Button size="sm" className="w-full bg-ember shadow-ember">
+            + Nowa sesja
+          </Button>
         </Link>
       </SidebarHeader>
       <SidebarContent>
