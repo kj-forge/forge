@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRoo
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PLAN_INTENSITIES, PLAN_INTENSITY_LABEL } from "@/features/plan/constants";
-import { type PlanDayFormValues, planDayFormSchema } from "@/features/plan/lib/plan-day-form";
+import { type PlanDayFormValues, planDayFormSchema, trainingRequired } from "@/features/plan/lib/plan-day-form";
 import { upsertPlanDay } from "@/features/plan/server/plan";
 import type { PlanDay } from "@/features/plan/types";
 import { getErrorMessage } from "@/lib/error-message";
@@ -139,11 +139,29 @@ function PlanDayDrawerBody({
     }
   };
 
+  // Submit with the cross-field rule the schema can't see (it depends on
+  // hasStrength + picked, which are local state): a non-Rest day without a
+  // strength list needs written training.
+  const submitTo = (goTo: number | "close") =>
+    form.handleSubmit((values) => {
+      if (trainingRequired(values.intensity, hasStrength, picked.length) && values.training.trim().length === 0) {
+        form.setError("training", { type: "manual", message: "Wpisz trening albo dodaj ćwiczenia siłowe." });
+        return;
+      }
+      return save(values, goTo);
+    });
+
+  // Turning strength on can't leave the day as Rest — bump Rest → Easy.
+  const toggleStrength = () => {
+    if (!hasStrength && form.getValues("intensity") === "RESET") form.setValue("intensity", "EASY");
+    setHasStrength((v) => !v);
+  };
+
   // Backing up mid-wizard must never lose typing: a dirty form (or changed
   // strength list) saves first, a clean one just switches.
   const goBack = () => {
     if (form.formState.isDirty || strengthDirty) {
-      form.handleSubmit((v) => save(v, editing.day - 1))();
+      submitTo(editing.day - 1)();
     } else {
       onAdvance(editing.day - 1);
     }
@@ -155,7 +173,7 @@ function PlanDayDrawerBody({
     <Form {...form}>
       <form
         className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden"
-        onSubmit={form.handleSubmit((v) => save(v, editing.serial && !isLast ? editing.day + 1 : "close"))}
+        onSubmit={submitTo(editing.serial && !isLast ? editing.day + 1 : "close")}
         noValidate
       >
         <DialogHeader className="shrink-0">
@@ -198,20 +216,26 @@ function PlanDayDrawerBody({
                 <FormLabel>Intensywność</FormLabel>
                 <FormControl>
                   <div className="grid grid-cols-4 gap-1.5">
-                    {PLAN_INTENSITIES.map((intensity) => (
-                      <button
-                        key={intensity}
-                        type="button"
-                        className={`rounded-md border px-2 py-1.5 font-semibold text-xs transition-colors ${
-                          field.value === intensity
-                            ? "border-transparent bg-ember"
-                            : "border-border text-muted-foreground hover:bg-accent"
-                        }`}
-                        onClick={() => field.onChange(intensity)}
-                      >
-                        {PLAN_INTENSITY_LABEL[intensity]}
-                      </button>
-                    ))}
+                    {PLAN_INTENSITIES.map((intensity) => {
+                      // Rest is incompatible with a strength session.
+                      const disabled = intensity === "RESET" && hasStrength;
+                      return (
+                        <button
+                          key={intensity}
+                          type="button"
+                          disabled={disabled}
+                          title={disabled ? "Dzień z sesją siłową nie może być Rest" : undefined}
+                          className={`rounded-md border px-2 py-1.5 font-semibold text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                            field.value === intensity
+                              ? "border-transparent bg-ember"
+                              : "border-border text-muted-foreground hover:bg-accent"
+                          }`}
+                          onClick={() => field.onChange(intensity)}
+                        >
+                          {PLAN_INTENSITY_LABEL[intensity]}
+                        </button>
+                      );
+                    })}
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -262,7 +286,7 @@ function PlanDayDrawerBody({
                 role="switch"
                 aria-checked={hasStrength}
                 aria-label="Sesja siłowa tego dnia"
-                onClick={() => setHasStrength((v) => !v)}
+                onClick={toggleStrength}
                 className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${hasStrength ? "bg-ember" : "bg-muted"}`}
               >
                 <span
@@ -362,7 +386,7 @@ function PlanDayDrawerBody({
               variant="outline"
               className="w-full"
               disabled={isSubmitting}
-              onClick={form.handleSubmit((v) => save(v, "close"))}
+              onClick={submitTo("close")}
             >
               Zapisz i zamknij
             </Button>

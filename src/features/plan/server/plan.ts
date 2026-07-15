@@ -24,9 +24,15 @@ const upsertPlanDayInput = z
     // Ordered strength exercises; only persisted when hasStrength is true.
     exerciseIds: z.array(z.uuid()).max(30).default([]),
   })
-  .refine((v) => v.intensity === "RESET" || v.training.length > 0, {
+  // A strength session can't be a Rest day.
+  .refine((v) => !(v.hasStrength && v.intensity === "RESET"), {
+    path: ["intensity"],
+    message: "Dzień z sesją siłową nie może być Rest.",
+  })
+  // Training text required unless it's a Rest day or already has exercises.
+  .refine((v) => v.intensity === "RESET" || (v.hasStrength && v.exerciseIds.length > 0) || v.training.length > 0, {
     path: ["training"],
-    message: "Trening jest wymagany poza dniem Rest.",
+    message: "Trening jest wymagany, chyba że dzień ma ćwiczenia siłowe.",
   });
 
 interface RunUpsertArgs {

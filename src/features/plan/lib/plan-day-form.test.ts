@@ -1,21 +1,34 @@
 import { describe, expect, test } from "bun:test";
 
-import { planDayFormSchema } from "./plan-day-form";
-
-const base = { intensity: "HARD" as const, training: "", goal: "" };
+import { planDayFormSchema, trainingRequired } from "./plan-day-form";
 
 describe("planDayFormSchema", () => {
-  test("training is required for a normal day", () => {
-    const result = planDayFormSchema.safeParse(base);
-    expect(result.success).toBe(false);
+  test("accepts empty training (the required rule lives in trainingRequired)", () => {
+    expect(planDayFormSchema.safeParse({ intensity: "HARD", training: "", goal: "" }).success).toBe(true);
   });
 
-  test("a REST day may have an empty training (free day)", () => {
-    const result = planDayFormSchema.safeParse({ ...base, intensity: "RESET" });
-    expect(result.success).toBe(true);
+  test("rejects over-long training", () => {
+    expect(planDayFormSchema.safeParse({ intensity: "HARD", training: "x".repeat(2001), goal: "" }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("trainingRequired", () => {
+  test("a normal day needs training", () => {
+    expect(trainingRequired("HARD", false, 0)).toBe(true);
+    expect(trainingRequired("EASY", false, 0)).toBe(true);
   });
 
-  test("a filled training passes regardless of intensity", () => {
-    expect(planDayFormSchema.safeParse({ ...base, training: "Long Z2 90 min" }).success).toBe(true);
+  test("a Rest day never needs training", () => {
+    expect(trainingRequired("RESET", false, 0)).toBe(false);
+  });
+
+  test("a strength day WITH exercises doesn't need written training", () => {
+    expect(trainingRequired("EASY", true, 3)).toBe(false);
+  });
+
+  test("strength toggled on but no exercises yet still needs training", () => {
+    expect(trainingRequired("EASY", true, 0)).toBe(true);
   });
 });

@@ -1,21 +1,21 @@
 import { z } from "zod";
 
-import { PLAN_INTENSITIES } from "../constants";
-
-// goal stays a plain string in the form (empty = none) — RHF controlled
-// inputs dislike undefined; the submit path converts "" to undefined.
-export const planDayFormSchema = z
-  .object({
-    intensity: z.enum(PLAN_INTENSITIES),
-    training: z.string().trim().max(2000, "Maksymalnie 2000 znaków."),
-    goal: z.string().trim().max(500, "Maksymalnie 500 znaków."),
-  })
-  // A Rest day is a free day — it may carry no training text at all. Every
-  // other intensity still needs something written down.
-  .superRefine((val, ctx) => {
-    if (val.intensity !== "RESET" && val.training.length === 0) {
-      ctx.addIssue({ code: "custom", path: ["training"], message: "Wpisz trening — choćby „Wolne”." });
-    }
-  });
+// Structural only — the "training required?" rule spans fields outside RHF
+// (hasStrength + the exercise count live as local drawer state), so it's a
+// pure helper enforced by the drawer and mirrored on the server.
+export const planDayFormSchema = z.object({
+  intensity: z.enum(["HARD", "MEDIUM", "EASY", "RESET"]),
+  training: z.string().trim().max(2000, "Maksymalnie 2000 znaków."),
+  goal: z.string().trim().max(500, "Maksymalnie 500 znaków."),
+});
 
 export type PlanDayFormValues = z.infer<typeof planDayFormSchema>;
+
+// A day needs written training UNLESS it's a Rest day, or it already carries a
+// strength exercise list (the ordered list is the content). Pure so the drawer
+// and the server enforce the same rule.
+export function trainingRequired(intensity: string, hasStrength: boolean, exerciseCount: number): boolean {
+  if (intensity === "RESET") return false;
+  if (hasStrength && exerciseCount > 0) return false;
+  return true;
+}
