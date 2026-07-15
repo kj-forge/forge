@@ -1,4 +1,5 @@
-import { getRouteApi } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
+import { Table2, Trophy } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -97,7 +98,8 @@ function RekordySegment({
     <section className="flex flex-col gap-3">
       {!hasAnyBest && (
         <Card>
-          <CardContent className="py-6 text-center text-muted-foreground text-sm">
+          <CardContent className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground text-sm">
+            <Trophy className="size-8 text-muted-foreground/60" strokeWidth={1.5} />
             Brak zapisanych serii — rekordy pojawią się po pierwszej zakończonej sesji siłowej.
           </CardContent>
         </Card>
@@ -109,14 +111,15 @@ function RekordySegment({
         ))}
       </ul>
 
-      <button
-        type="button"
-        aria-pressed={accOn}
-        className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-muted-foreground text-sm transition-colors hover:bg-accent"
-        onClick={() => onToggleAcc(!accOn)}
-      >
+      <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-muted-foreground text-sm">
         <span>Akcesoria (RDL, bułgary, drążek, dipy)</span>
-        <span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${accOn ? "bg-ember" : "bg-muted"}`}>
+        <button
+          type="button"
+          aria-pressed={accOn}
+          aria-label="Pokaż akcesoria"
+          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${accOn ? "bg-ember" : "bg-muted"}`}
+          onClick={() => onToggleAcc(!accOn)}
+        >
           {/* Explicit left anchor: without it the absolute thumb takes its
               static position, and the button's default text-align:center
               starts it mid-track — ON then overshoots the pill. */}
@@ -125,8 +128,8 @@ function RekordySegment({
               accOn ? "translate-x-4" : "translate-x-0"
             }`}
           />
-        </span>
-      </button>
+        </button>
+      </div>
 
       {accOn && accessories.length > 0 && (
         <>
@@ -147,23 +150,29 @@ function PrRow({ row }: { row: PrTableRow }) {
   const weightLabel = best ? (isLoadedBw(row.slug) ? `+${best.weightKg}` : `${best.weightKg}`) : null;
 
   return (
-    <li className="flex items-center justify-between gap-3 px-4 py-3">
-      <div className="min-w-0">
-        <p className="truncate font-semibold text-sm">{row.namePl}</p>
-        <p className="text-muted-foreground text-xs">
-          {best ? PR_DATE_FMT.format(new Date(best.date)) : "brak danych"}
-        </p>
-      </div>
-      {best && (
-        <div className="shrink-0 text-right">
-          <p className="font-black text-base text-primary tabular-nums">
-            {best.reps}× {weightLabel} kg
-          </p>
-          <p className="text-muted-foreground text-xs tabular-nums">
-            e1RM {best.e1rm !== null ? `~${best.e1rm} kg` : "—"}
+    <li>
+      <Link
+        to="/stats/$slug"
+        params={{ slug: row.slug }}
+        className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-accent/60"
+      >
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-sm">{row.namePl}</p>
+          <p className="text-muted-foreground text-xs">
+            {best ? PR_DATE_FMT.format(new Date(best.date)) : "brak danych"}
           </p>
         </div>
-      )}
+        {best && (
+          <div className="shrink-0 text-right">
+            <p className="font-black text-base text-primary tabular-nums">
+              {best.reps}× {weightLabel} kg
+            </p>
+            <p className="text-muted-foreground text-xs tabular-nums">
+              e1RM {best.e1rm !== null ? `~${best.e1rm} kg` : "—"}
+            </p>
+          </div>
+        )}
+      </Link>
     </li>
   );
 }
@@ -236,7 +245,8 @@ function ZestawieniaSegment({
 
       {days.length === 0 ? (
         <Card>
-          <CardContent className="py-6 text-center text-muted-foreground text-sm">
+          <CardContent className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground text-sm">
+            <Table2 className="size-8 text-muted-foreground/60" strokeWidth={1.5} />
             Brak treningów z tego dnia w ostatnich 2 miesiącach.
           </CardContent>
         </Card>
@@ -275,7 +285,13 @@ function ZestawieniaSegment({
                           rowIdx === rowDefs.length - 1 ? "" : "border-b"
                         }`}
                       >
-                        {row.namePl}
+                        <Link
+                          to="/stats/$slug"
+                          params={{ slug: row.slug }}
+                          className="transition-colors hover:text-primary"
+                        >
+                          {row.namePl}
+                        </Link>
                       </th>
                       {columns.map((c, i) => (
                         <td

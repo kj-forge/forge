@@ -10,6 +10,7 @@ describe("showsTabBar", () => {
     expect(showsTabBar("/sessions/new")).toBe(true);
     expect(showsTabBar("/stats")).toBe(true);
     expect(showsTabBar("/plan")).toBe(true);
+    expect(showsTabBar("/goals")).toBe(true);
     expect(showsTabBar("/me")).toBe(true);
   });
 
@@ -31,28 +32,38 @@ describe("isActivePath", () => {
     expect(isActivePath("/sessions/", "/sessions")).toBe(true);
   });
 
-  test("no prefix matching — detail routes don't activate parents", () => {
+  test("no prefix matching by default — detail routes don't activate parents", () => {
     expect(isActivePath("/sessions/abc", "/sessions")).toBe(false);
     expect(isActivePath("/sessions/new", "/sessions")).toBe(false);
     expect(isActivePath("/sessions", "/")).toBe(false);
   });
+
+  test("non-exact items match their subtree (stats detail keeps the link active)", () => {
+    expect(isActivePath("/stats/back-squat", "/stats", false)).toBe(true);
+    expect(isActivePath("/stats", "/stats", false)).toBe(true);
+    expect(isActivePath("/statsy", "/stats", false)).toBe(false);
+  });
+
+  test("statystyki is the only non-exact item", () => {
+    expect(NAV_ITEMS.filter((i) => !i.exact).map((i) => i.to)).toEqual(["/stats"]);
+  });
 });
 
 describe("NAV_ITEMS", () => {
-  test("six sidebar entries with plan before profil", () => {
-    expect(NAV_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/plan", "/me"]);
-    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Dziennik", "Historia", "Nowa", "Statystyki", "Plan", "Profil"]);
+  test("cele replace profil — account lives under the avatar", () => {
+    expect(NAV_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/plan", "/goals"]);
+    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Dziennik", "Historia", "Nowa", "Statystyki", "Plan", "Cele"]);
   });
 });
 
 describe("TAB_BAR_ITEMS", () => {
-  test("tab bar stays at five — plan is sidebar/home-card only", () => {
-    expect(TAB_BAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/me"]);
+  test("five tabs with cele instead of profil", () => {
+    expect(TAB_BAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/goals"]);
   });
 });
 
 describe("SIDEBAR_ITEMS", () => {
-  test("no profil — the avatar dropdown owns it on desktop", () => {
-    expect(SIDEBAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/plan"]);
+  test("no profil (avatar) and no nowa (CTA button)", () => {
+    expect(SIDEBAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/stats", "/plan", "/goals"]);
   });
 });

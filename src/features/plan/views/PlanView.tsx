@@ -1,5 +1,5 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { Target } from "lucide-react";
+import { CalendarDays, Target } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ export function PlanView() {
       {plan.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
+            <CalendarDays className="size-8 text-muted-foreground/60" strokeWidth={1.5} />
             <p className="text-muted-foreground text-sm">Nie masz jeszcze planu tygodnia.</p>
             <Button className="bg-ember shadow-ember" size="lg" onClick={() => setEditing({ day: 0, serial: true })}>
               Uzupełnij tydzień (PON → ND)
