@@ -1,8 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { getTrainingPlan } from "@/features/plan/server/plan";
-import { listRecentSessions } from "@/features/strength/server/sessions";
-import { HomeView } from "@/features/strength/views/HomeView";
+import { getDashboard } from "@/features/dashboard/server/dashboard";
+import { DashboardView } from "@/features/dashboard/views/DashboardView";
 import { getSession } from "@/lib/session";
 import { SessionListSkeleton } from "@/shared/components/SessionListSkeleton";
 
@@ -12,10 +11,7 @@ export const Route = createFileRoute("/_shell/")({
     if (!session) throw redirect({ to: "/login" });
     return { session };
   },
-  loader: async () => {
-    const [sessions, plan] = await Promise.all([listRecentSessions(), getTrainingPlan()]);
-    return { sessions, plan };
-  },
+  loader: () => getDashboard(),
   pendingComponent: SessionListSkeleton,
-  component: HomeView,
+  component: DashboardView,
 });
