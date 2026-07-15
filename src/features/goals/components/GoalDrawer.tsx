@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRootMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { GOAL_TYPE_LABEL, GOAL_TYPES } from "@/features/goals/constants";
+import { GOAL_PLACEHOLDERS, GOAL_TYPE_LABEL, GOAL_TYPES } from "@/features/goals/constants";
 import { type GoalFormValues, goalFormSchema } from "@/features/goals/lib/goal-form";
 import { deleteGoal, upsertGoal } from "@/features/goals/server/goals";
 import type { GoalRow } from "@/features/goals/types";
@@ -64,6 +64,7 @@ function GoalDrawerBody({
   });
 
   const currentType = useWatch({ control: form.control, name: "type" });
+  const hints = GOAL_PLACEHOLDERS[currentType];
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
@@ -153,7 +154,7 @@ function GoalDrawerBody({
               <FormItem>
                 <FormLabel>Tytuł</FormLabel>
                 <FormControl>
-                  <Input placeholder="np. Wyciskanie na ławce 100 kg" {...field} />
+                  <Input placeholder={hints.title} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -199,7 +200,7 @@ function GoalDrawerBody({
                       inputMode="decimal"
                       allowNegative={false}
                       decimalScale={2}
-                      placeholder="np. 100"
+                      placeholder={hints.value}
                       value={field.value}
                       onValueChange={(v) => field.onChange(v.value)}
                       onBlur={field.onBlur}
@@ -216,7 +217,7 @@ function GoalDrawerBody({
                 <FormItem>
                   <FormLabel>Jedn.</FormLabel>
                   <FormControl>
-                    <Input placeholder="kg / min" {...field} />
+                    <Input placeholder={hints.unit} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

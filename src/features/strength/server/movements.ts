@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
+import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
 import { blockMovements, sessionBlocks, sessions, sets } from "../../../../db/schema";
 
@@ -11,7 +12,7 @@ const addExerciseInput = z.object({
 });
 
 export const addExerciseToSession = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => addExerciseInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(addExerciseInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
 
@@ -56,7 +57,7 @@ const removeExerciseInput = z.object({ blockMovementId: z.uuid() });
 // exist, but we re-check here so a stale client can't accidentally delete an
 // exercise with logged data.
 export const removeExerciseFromSession = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => removeExerciseInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(removeExerciseInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
 

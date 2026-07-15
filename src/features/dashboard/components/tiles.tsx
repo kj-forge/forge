@@ -98,7 +98,11 @@ export function TodayTile({ plan, className = "" }: { plan: DashboardData["plan"
               {PLAN_INTENSITY_LABEL[entry.intensity]}
             </span>
           </div>
-          <p className="whitespace-pre-line text-sm leading-relaxed">{entry.training}</p>
+          {entry.training ? (
+            <p className="whitespace-pre-line text-sm leading-relaxed">{entry.training}</p>
+          ) : (
+            <p className="text-muted-foreground text-sm">Brak aktywności w planie na dziś.</p>
+          )}
           {entry.goal && <p className="mt-2 text-muted-foreground text-xs">Cel: {entry.goal}</p>}
         </>
       ) : (
@@ -340,7 +344,7 @@ export function WeekTile({ plan }: { plan: DashboardData["plan"] }) {
                   className={`size-2 shrink-0 rounded-full ${entry ? PLAN_INTENSITY_DOT[entry.intensity] : "bg-muted"}`}
                 />
                 <span className="w-8 shrink-0">{label}</span>
-                <span className="truncate">{entry ? entry.training.split("\n")[0] : "—"}</span>
+                <span className="truncate">{entry?.training ? entry.training.split("\n")[0] : "—"}</span>
               </li>
             );
           })}

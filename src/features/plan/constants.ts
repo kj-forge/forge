@@ -6,7 +6,7 @@ export const PLAN_INTENSITY_LABEL: Record<PlanIntensity, string> = {
   HARD: "Hard",
   MEDIUM: "Medium",
   EASY: "Easy",
-  RESET: "Reset",
+  RESET: "Rest",
 };
 
 // Semantic pill tints — only HARD borrows the ember accent; the rest stay

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
+import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
 import { createPool } from "../../../../db/pool";
 import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
@@ -131,7 +132,7 @@ async function loadLastByKind(
 const sessionDetailsInput = z.object({ sessionId: z.uuid() });
 
 export const getSessionDetails = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => sessionDetailsInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(sessionDetailsInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
 
@@ -228,7 +229,7 @@ const listTemplatesInput = z.object({
 // each with its ordered exercise-name preview. The preview is what lets the
 // athlete recognise the day ("ah, the deadlift one") and reuse it as a base.
 export const listSessionTemplates = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => listTemplatesInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(listTemplatesInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
 
@@ -375,7 +376,7 @@ async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessi
 }
 
 export const createSession = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => createSessionInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(createSessionInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
     return runCreateSession({ athleteId, ...data });
@@ -387,7 +388,7 @@ const endSessionInput = z.object({
 });
 
 export const endSession = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => endSessionInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(endSessionInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
     const [row] = await db
@@ -411,7 +412,7 @@ const updateNotesInput = z.object({
 // Notes can be edited any time, including after the session is ended (unlike
 // `endSession` which is one-shot and refuses if already ended).
 export const updateSessionNotes = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => updateNotesInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(updateNotesInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
     const [row] = await db
@@ -427,7 +428,7 @@ const deleteSessionInput = z.object({ sessionId: z.uuid() });
 
 // Hard delete — FK cascades wipe session_blocks → block_movements → sets.
 export const deleteSession = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => deleteSessionInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(deleteSessionInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
     const [row] = await db

@@ -125,7 +125,9 @@ function DayCard({
       </div>
       {entry ? (
         <>
-          <p className="whitespace-pre-line text-sm">{entry.training}</p>
+          <p className="whitespace-pre-line text-sm">
+            {entry.training || <span className="text-muted-foreground">—</span>}
+          </p>
           {entry.goal && (
             <p className="mt-2 flex items-baseline gap-1.5 text-muted-foreground text-xs">
               <Target className="size-3 shrink-0 translate-y-px" />
@@ -173,7 +175,11 @@ function DayRow({
         </button>
       </th>
       <td className="whitespace-pre-line px-4 py-3 align-top">
-        {entry ? entry.training : <span className="text-muted-foreground">uzupełnij</span>}
+        {entry ? (
+          entry.training || <span className="text-muted-foreground">—</span>
+        ) : (
+          <span className="text-muted-foreground">uzupełnij</span>
+        )}
       </td>
       <td className="whitespace-pre-line px-4 py-3 align-top text-muted-foreground">{entry?.goal ?? "—"}</td>
     </tr>

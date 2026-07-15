@@ -43,7 +43,11 @@ export function TodayPlanCard({ plan }: { plan: PlanDay[] }) {
               {PLAN_INTENSITY_LABEL[entry.intensity]}
             </span>
           </div>
-          <p className="line-clamp-3 whitespace-pre-line text-sm">{entry.training}</p>
+          {entry.training ? (
+            <p className="line-clamp-3 whitespace-pre-line text-sm">{entry.training}</p>
+          ) : (
+            <p className="text-muted-foreground text-sm">Brak aktywności w planie na dziś.</p>
+          )}
           {entry.goal && <p className="mt-1.5 text-muted-foreground text-xs">Cel: {entry.goal}</p>}
         </>
       ) : (

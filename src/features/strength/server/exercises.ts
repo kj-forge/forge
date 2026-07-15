@@ -2,13 +2,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { desc, eq, ilike, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
+import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
 import { blockMovements, exercises } from "../../../../db/schema";
 
 const searchInput = z.object({ query: z.string().trim().min(1).max(50) });
 
 export const searchExercises = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => searchInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(searchInput, data))
   .handler(async ({ data }) => {
     await getCurrentAthleteOrThrow();
     const pattern = `%${data.query}%`;

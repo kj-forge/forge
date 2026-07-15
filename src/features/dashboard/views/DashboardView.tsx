@@ -54,7 +54,9 @@ export function DashboardView() {
             + Rozpocznij sesję siłową
           </Button>
         </Link>
-        <div className="grid grid-cols-2 items-start gap-3">
+        {/* items-stretch (grid default) so the shorter tile — usually the
+            empty goal state — matches its neighbour's height. */}
+        <div className="grid grid-cols-2 gap-3">
           <GoalTile goals={data.goals} compact />
           <PrTile prs={data.prs} compact />
         </div>

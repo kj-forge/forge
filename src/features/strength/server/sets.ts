@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
+import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
 import { blockMovements, sessionBlocks, sessions, sets } from "../../../../db/schema";
 import { epleyE1RM } from "../lib/e1rm";
@@ -19,7 +20,7 @@ const addSetInput = z.object({
 export type SetPr = { isNewPR: boolean; e1rm: number; previousE1rm: number };
 
 export const addSet = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => addSetInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(addSetInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
 
@@ -74,7 +75,7 @@ export const addSet = createServerFn({ method: "POST" })
 const deleteSetInput = z.object({ setId: z.uuid() });
 
 export const deleteSet = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => deleteSetInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(deleteSetInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
     const [row] = await db
@@ -88,7 +89,7 @@ export const deleteSet = createServerFn({ method: "POST" })
 const progressionInput = z.object({ exerciseId: z.uuid() });
 
 export const suggestProgression = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => progressionInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(progressionInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
 

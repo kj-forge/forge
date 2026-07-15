@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
+import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
 import { goals } from "../../../../db/schema";
 import { GOAL_TYPES } from "../constants";
@@ -23,7 +24,7 @@ const upsertGoalInput = z.object({
 });
 
 export const upsertGoal = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => upsertGoalInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(upsertGoalInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
     const values = {
@@ -54,7 +55,7 @@ export const upsertGoal = createServerFn({ method: "POST" })
 const deleteGoalInput = z.object({ goalId: z.uuid() });
 
 export const deleteGoal = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => deleteGoalInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(deleteGoalInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
     const [row] = await db

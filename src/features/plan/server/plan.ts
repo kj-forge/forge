@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
+import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
 import { trainingPlanDays } from "../../../../db/schema";
 import { PLAN_INTENSITIES } from "../constants";
@@ -11,17 +12,23 @@ export const getTrainingPlan = createServerFn({ method: "GET" }).handler(async (
   return loadTrainingPlan(athleteId);
 });
 
-const upsertPlanDayInput = z.object({
-  dayOfWeek: z.number().int().min(0).max(6),
-  intensity: z.enum(PLAN_INTENSITIES),
-  training: z.string().trim().min(1).max(2000),
-  goal: z.string().trim().max(500).optional(),
-});
+const upsertPlanDayInput = z
+  .object({
+    dayOfWeek: z.number().int().min(0).max(6),
+    intensity: z.enum(PLAN_INTENSITIES),
+    // Empty allowed only for a Rest (free) day; enforced below.
+    training: z.string().trim().max(2000),
+    goal: z.string().trim().max(500).optional(),
+  })
+  .refine((v) => v.intensity === "RESET" || v.training.length > 0, {
+    path: ["training"],
+    message: "Trening jest wymagany poza dniem Rest.",
+  });
 
 // One row per (athlete, weekday) — editing an existing day must not fail on
 // the unique index, hence a true upsert instead of SELECT-then-INSERT.
 export const upsertPlanDay = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => upsertPlanDayInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(upsertPlanDayInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
     const goal = data.goal ? data.goal : null;
