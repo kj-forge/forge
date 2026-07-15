@@ -23,8 +23,8 @@
 
 **Files:** Modify `db/schema.ts` (goals table); generate `db/migrations/0008_*.sql`.
 
-- [ ] Add to goals: `exerciseId: uuid().references(() => exercises.id, { onDelete: "set null" }),` after `type`. (Nullable — only STRENGTH_RM goals point at a lift; the FK is what lets progress auto-compute from that exercise's e1RM.)
-- [ ] `bun run db:generate` → `bun run format` → `bun run db:migrate`. Verify + commit `feat(db): goals reference an exercise for auto progress`.
+- [x] Add to goals: `exerciseId: uuid().references(() => exercises.id, { onDelete: "set null" }),` after `type`. (Nullable — only STRENGTH_RM goals point at a lift; the FK is what lets progress auto-compute from that exercise's e1RM.)
+- [x] `bun run db:generate` → `bun run format` → `bun run db:migrate`. Verify + commit `feat(db): goals reference an exercise for auto progress`.
 
 ### Task 2: Goals feature — constants + server fns
 
@@ -38,15 +38,15 @@
 - `goalProgress(goal): number | null` (pure, TDD): STRENGTH_RM with target+current → `min(100, current/target*100)`; others → null (no bar).
 - `listExercisesForPicker()` → `{ id, namePl }[]` ordered namePl (or reuse an existing exercises list fn if one exists — check `strength/server` first).
 
-- [ ] TDD goal-progress; implement fns; verify + commit `feat(goals): goals server fns and progress lib`.
+- [x] TDD goal-progress; implement fns; verify + commit `feat(goals): goals server fns and progress lib`.
 
 ### Task 3: Profil → Cele section + GoalDrawer
 
 **Files:** Create `src/features/goals/components/GoalDrawer.tsx`, `src/features/goals/components/GoalsSection.tsx`; modify `/me` route + view (check `src/routes/_shell/me.tsx` / its view) to load `listGoals()` alongside existing data and render the section above account settings.
 
-- [ ] GoalsSection: list rows (title, type label + termin small; right: current vs target ember tabular) + „+ Dodaj cel"; empty state with Target icon + „Nie masz jeszcze celu." + CTA.
-- [ ] GoalDrawer (RHF+zod, conditional-mount): type chips (4, gradient-active); title Input; targetValue (NumericFormat) + targetUnit Input side-by-side; targetDate (native `<input type="date">` styled like Input); exercise `<select>` shown ONLY for STRENGTH_RM. Edit mode prefills; delete button (ghost destructive) for existing.
-- [ ] Verify + dev smoke + commit `feat(goals): cele section in profil with goal drawer`.
+- [x] GoalsSection: list rows (title, type label + termin small; right: current vs target ember tabular) + „+ Dodaj cel"; empty state with Target icon + „Nie masz jeszcze celu." + CTA.
+- [x] GoalDrawer (RHF+zod, conditional-mount): type chips (4, gradient-active); title Input; targetValue (NumericFormat) + targetUnit Input side-by-side; targetDate (native `<input type="date">` styled like Input); exercise `<select>` shown ONLY for STRENGTH_RM. Edit mode prefills; delete button (ghost destructive) for existing.
+- [x] Verify + dev smoke + commit `feat(goals): cele section in profil with goal drawer`.
 
 ### Task 4: Dashboard server fn
 
@@ -60,38 +60,38 @@
 - `goal` — nearest active goal (targetDate asc nulls-last, first) with currentE1rm,
 - `weekdayCounts` — `{ weekday, count }[]` top 3 by ended-session count, last 2 months (SQL GROUP BY ISODOW).
 
-- [ ] Refactor exports (no behavior change; suite green). Implement getDashboard (athlete-scoped, all queries batched). Verify + commit `feat(dashboard): single getDashboard server fn`.
+- [x] Refactor exports (no behavior change; suite green). Implement getDashboard (athlete-scoped, all queries batched). Verify + commit `feat(dashboard): single getDashboard server fn`.
 
 ### Task 5: Desktop bento + mobile trimmed Home
 
 **Files:** Create `src/features/dashboard/views/DashboardView.tsx` + `src/features/dashboard/components/` tiles (`TodayTile`, `GoalTile`, `PrTile`, `SessionsTile`, `WeekTile`, `TrendSparkline`, `ZestawieniaTile`, `LastSessionTile`); modify `src/routes/_shell/index.tsx` (loader → `getDashboard()`, component → DashboardView); delete `src/features/strength/views/HomeView.tsx` (content absorbed); keep `TodayPlanCard` for mobile or absorb into TodayTile.
 
-- [ ] Mobile (<lg): greeting → today card → CTA → 2-col mini row (GoalTile compact + PrTile compact) → sessions list (existing SessionListItem). Desktop (lg+): greeting bar with CTA button right; bento grid `lg:grid-cols-4` per mockup (today span2 / last session / goal; prs / sessions span2 / week; sparkline span3 / zestawienia).
-- [ ] Active session: when an in-progress session exists, LastSessionTile becomes pulsing „Wróć do sesji" (StatusBadge pattern).
-- [ ] TrendSparkline: inline SVG polyline from `trend.points`, ember gradient stroke, endpoint dot, min/max labels; hidden when trend null.
-- [ ] ZestawieniaTile: weekdayCounts chips → Link `/stats?seg=zestawienia&dzien=N`.
-- [ ] Both themes; dev smoke; verify + commit `feat(dashboard): bento home for desktop, trimmed mobile`.
+- [x] Mobile (<lg): greeting → today card → CTA → 2-col mini row (GoalTile compact + PrTile compact) → sessions list (existing SessionListItem). Desktop (lg+): greeting bar with CTA button right; bento grid `lg:grid-cols-4` per mockup (today span2 / last session / goal; prs / sessions span2 / week; sparkline span3 / zestawienia).
+- [x] Active session: when an in-progress session exists, LastSessionTile becomes pulsing „Wróć do sesji" (StatusBadge pattern).
+- [x] TrendSparkline: inline SVG polyline from `trend.points`, ember gradient stroke, endpoint dot, min/max labels; hidden when trend null.
+- [x] ZestawieniaTile: weekdayCounts chips → Link `/stats?seg=zestawienia&dzien=N`.
+- [x] Both themes; dev smoke; verify + commit `feat(dashboard): bento home for desktop, trimmed mobile`.
 
 ### Task 6: First-run onboarding + ghost tiles
 
 **Files:** Modify `DashboardView.tsx` (+ small `OnboardingTiles` component in dashboard/components).
 
-- [ ] First-run predicate: `sessions.length === 0` → steps mode: Krok 1 (Dumbbell icon-chip, CTA start session), Krok 2 (CalendarDays chip → /plan), Krok 3 (Target chip → /me), ghost tiles (Trophy / BookOpen / CalendarDays watermark, `.gcenter` style) for Rekordy/Sesje/Tydzień. Partial data degrades per-tile (e.g. plan exists but no sessions → Krok 2 replaced by real today tile).
-- [ ] Mobile first-run: keep „To Twój pierwszy trening…" card + dashed plan/goal teasers with the same icons.
-- [ ] Verify + commit `feat(dashboard): first-run start path with icon tiles`.
+- [x] First-run predicate: `sessions.length === 0` → steps mode: Krok 1 (Dumbbell icon-chip, CTA start session), Krok 2 (CalendarDays chip → /plan), Krok 3 (Target chip → /me), ghost tiles (Trophy / BookOpen / CalendarDays watermark, `.gcenter` style) for Rekordy/Sesje/Tydzień. Partial data degrades per-tile (e.g. plan exists but no sessions → Krok 2 replaced by real today tile).
+- [x] Mobile first-run: keep „To Twój pierwszy trening…" card + dashed plan/goal teasers with the same icons.
+- [x] Verify + commit `feat(dashboard): first-run start path with icon tiles`.
 
 ### Task 7: Icons in existing empty states + sidebar without Nowa
 
 **Files:** Modify `PlanView.tsx`, `StatsView.tsx` (both segments), `SessionsListView.tsx` (empty Cards get a lucide icon above text: CalendarDays / Trophy / Table2 / BookOpen, `size-8 text-muted-foreground/60 mx-auto mb-2`); `src/shared/lib/nav.ts` + `nav.test.ts` (`/sessions/new` → `inSidebar: false`).
 
-- [ ] RED nav test (SIDEBAR_ITEMS without `/sessions/new`: `["/", "/sessions", "/stats", "/plan"]`), GREEN flag flip.
-- [ ] Empty-state icons in the three existing views.
-- [ ] Verify + commit `feat(ui): empty-state icons and leaner sidebar`.
+- [x] RED nav test (SIDEBAR_ITEMS without `/sessions/new`: `["/", "/sessions", "/stats", "/plan"]`), GREEN flag flip.
+- [x] Empty-state icons in the three existing views.
+- [x] Verify + commit `feat(ui): empty-state icons and leaner sidebar`.
 
 ### Task 8: Docs + handoff
 
-- [ ] `docs/learning/` — extend an existing doc or short note only if a new concept emerged (single-round-trip dashboard fn + FK-for-auto-progress rationale fits in the PR description; add `docs/learning/README.md` row only if a doc is written).
-- [ ] Update this plan's checkboxes; commit `docs: dashboard epic notes`.
+- [x] `docs/learning/` — extend an existing doc or short note only if a new concept emerged (single-round-trip dashboard fn + FK-for-auto-progress rationale fits in the PR description; add `docs/learning/README.md` row only if a doc is written).
+- [x] Update this plan's checkboxes; commit `docs: dashboard epic notes`.
 - [ ] KJ visual pass (both themes, iPhone + desktop, first-run via fresh account if possible) → push → PR (`Closes FRG-15`) → promote.
 
 ## Self-Review
