@@ -925,10 +925,37 @@ export const trainingPlanDays = pgTable(
     intensity: planIntensity().notNull(),
     training: text().notNull(),
     goal: text(),
+    // Whether this day includes a strength session; when true, the day's
+    // ordered exercise list (training_plan_day_exercises) seeds a new session.
+    hasStrength: boolean().notNull().default(false),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("training_plan_days_athlete_day_idx").on(t.athleteId, t.dayOfWeek)],
+);
+
+// The ordered strength exercises of a plan day — the sequence they'll appear
+// in when the day seeds a new session. Mirrors block_movements (orderIndex,
+// exercise FK restrict) and rehab_protocol_exercises (ordered template rows).
+export const trainingPlanDayExercises = pgTable(
+  "training_plan_day_exercises",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    athleteId: uuid()
+      .notNull()
+      .references(() => athletes.id, { onDelete: "cascade" }),
+    planDayId: uuid()
+      .notNull()
+      .references(() => trainingPlanDays.id, { onDelete: "cascade" }),
+    orderIndex: integer().notNull(),
+    exerciseId: uuid()
+      .notNull()
+      .references(() => exercises.id, { onDelete: "restrict" }),
+  },
+  (t) => [
+    index("training_plan_day_exercises_day_idx").on(t.planDayId, t.orderIndex),
+    uniqueIndex("training_plan_day_exercises_day_exercise_uq").on(t.planDayId, t.exerciseId),
+  ],
 );
 
 // ============================================================================
