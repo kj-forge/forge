@@ -7,6 +7,7 @@ import { db } from "../../../../db/client";
 import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
 import { ACCESSORY_SLUGS, LOADED_BW_SLUGS, PR_TABLE_SLUG_ORDER } from "../constants";
 import { epleyE1RM } from "../lib/e1rm";
+import { bestE1RM } from "../lib/pr";
 
 export type SessionTopExercise = { name: string; weightKg: number | null; reps: number | null; setCount: number };
 
@@ -89,6 +90,79 @@ export async function loadRecentSessions(athleteId: string, limit = 10) {
     .orderBy(desc(sessions.date), desc(sessions.startedAt))
     .limit(limit);
   return attachExercises(athleteId, sessionRows);
+}
+
+export type E1rmPoint = { date: string; e1rm: number };
+
+// Everything the per-exercise stats view needs: record, e1RM points per
+// ended session, and the recent session history with full set lists.
+export async function loadExerciseStats(athleteId: string, slug: string) {
+  const [exercise] = await db
+    .select({ id: exercises.id, slug: exercises.slug, namePl: exercises.namePl })
+    .from(exercises)
+    .where(eq(exercises.slug, slug))
+    .limit(1);
+  if (!exercise) return null;
+
+  const rows = await db
+    .select({
+      sessionId: sessions.id,
+      date: sessions.date,
+      weightKg: sets.weightKg,
+      reps: sets.reps,
+      kind: sets.kind,
+    })
+    .from(sets)
+    .innerJoin(blockMovements, eq(sets.blockMovementId, blockMovements.id))
+    .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
+    .innerJoin(sessions, eq(sessionBlocks.sessionId, sessions.id))
+    .where(and(eq(sets.athleteId, athleteId), eq(blockMovements.exerciseId, exercise.id), isNotNull(sessions.endedAt)))
+    .orderBy(sessions.date, sessions.startedAt, sets.setNumber);
+
+  const isLoadedBw = (LOADED_BW_SLUGS as readonly string[]).includes(slug);
+
+  // Group per session — rows arrive chronological, Map keeps that order.
+  const bySession = new Map<
+    string,
+    { date: string; sets: { weightKg: number | null; reps: number | null; kind: string }[] }
+  >();
+  for (const row of rows) {
+    let entry = bySession.get(row.sessionId);
+    if (!entry) {
+      entry = { date: row.date, sets: [] };
+      bySession.set(row.sessionId, entry);
+    }
+    entry.sets.push({ weightKg: row.weightKg, reps: row.reps, kind: row.kind });
+  }
+  const sessionEntries = [...bySession.values()];
+
+  const points: E1rmPoint[] = isLoadedBw
+    ? []
+    : sessionEntries.flatMap((s) => {
+        const e1rm = bestE1RM(s.sets);
+        return e1rm !== null ? [{ date: s.date, e1rm }] : [];
+      });
+
+  // Heaviest set with its FIRST-achieved date (same semantics as the PR table).
+  let best: { weightKg: number; reps: number; date: string } | null = null;
+  for (const row of rows) {
+    if (row.kind === "WARMUP" || row.weightKg === null || row.reps === null) continue;
+    const better = !best || row.weightKg > best.weightKg || (row.weightKg === best.weightKg && row.reps > best.reps);
+    if (better) best = { weightKg: row.weightKg, reps: row.reps, date: row.date };
+  }
+
+  const history = sessionEntries
+    .slice(-20)
+    .reverse()
+    .map((s) => ({ date: s.date, sets: s.sets, e1rm: isLoadedBw ? null : bestE1RM(s.sets) }));
+
+  return {
+    exercise,
+    isLoadedBw,
+    points,
+    best: best ? { ...best, e1rm: isLoadedBw ? null : epleyE1RM(best.weightKg, best.reps) } : null,
+    history,
+  };
 }
 
 export type PrTableRow = {

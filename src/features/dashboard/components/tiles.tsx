@@ -14,6 +14,7 @@ import type { ReactNode } from "react";
 import type { DashboardData, Trend } from "@/features/dashboard/server/dashboard";
 import { formatGoalTarget, goalProgress } from "@/features/goals/lib/goal-progress";
 import { PLAN_INTENSITY_CLASS, PLAN_INTENSITY_DOT, PLAN_INTENSITY_LABEL } from "@/features/plan/constants";
+import { E1rmSparkline, formatChartDate } from "@/features/strength/components/E1rmSparkline";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
 import type { SessionType } from "@/features/strength/types";
@@ -34,7 +35,9 @@ export function TileHeader({
 }: {
   icon: LucideIcon;
   title: string;
-  action?: string;
+  // String inside whole-tile links (nested anchors are invalid HTML);
+  // element-level tiles pass a real <Link> here.
+  action?: ReactNode;
   accent?: boolean;
 }) {
   return (
@@ -46,7 +49,7 @@ export function TileHeader({
       <Icon className={`size-3.5 ${accent ? "" : "text-primary"}`} />
       {title}
       {action && (
-        <span className="ml-auto font-medium text-muted-foreground normal-case tracking-normal">{action} →</span>
+        <span className="ml-auto font-medium text-muted-foreground normal-case tracking-normal">{action}</span>
       )}
     </div>
   );
@@ -61,7 +64,7 @@ export function Tile({
 }: {
   icon: LucideIcon;
   title: string;
-  action?: string;
+  action?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
@@ -82,7 +85,7 @@ export function TodayTile({ plan, className = "" }: { plan: DashboardData["plan"
       to="/plan"
       className={`min-w-0 rounded-2xl border border-primary/40 bg-linear-to-br from-primary/10 to-transparent p-4 ${TILE_INTERACTIVE_CLASS} hover:border-primary/70 ${className}`}
     >
-      <TileHeader icon={CalendarDays} title="Dziś wg planu" action="plan" accent />
+      <TileHeader icon={CalendarDays} title="Dziś wg planu" action="plan →" accent />
       {entry ? (
         <>
           <div className="mb-1 flex items-center gap-2">
@@ -159,7 +162,7 @@ export function LastSessionTile({ sessions }: { sessions: DashboardData["session
 export function GoalTile({ goal, compact = false }: { goal: DashboardData["goal"]; compact?: boolean }) {
   if (!goal) {
     return (
-      <Link to="/me" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
+      <Link to="/goals" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
         <TileHeader icon={Flag} title="Cel" />
         <p className="text-muted-foreground text-sm">Ustaw cel →</p>
       </Link>
@@ -169,8 +172,8 @@ export function GoalTile({ goal, compact = false }: { goal: DashboardData["goal"
   const progress = goalProgress(goal.targetValue, goal.currentE1rm);
   const target = formatGoalTarget(goal.targetValue, goal.targetUnit);
   return (
-    <Link to="/me" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
-      <TileHeader icon={Flag} title="Cel" action={compact ? undefined : "cele"} />
+    <Link to="/goals" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
+      <TileHeader icon={Flag} title="Cel" action={compact ? undefined : "cele →"} />
       <p className={`line-clamp-2 font-black text-primary ${compact ? "text-base" : "text-lg"}`}>{goal.title}</p>
       {progress !== null && (
         <div className="my-2 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -188,12 +191,23 @@ export function GoalTile({ goal, compact = false }: { goal: DashboardData["goal"
 
 export function PrTile({ prs, compact = false }: { prs: DashboardData["prs"]; compact?: boolean }) {
   return (
-    <Tile icon={Trophy} title="Rekordy" action={compact ? undefined : "statystyki"}>
+    <Tile
+      icon={Trophy}
+      title="Rekordy"
+      action={
+        compact ? undefined : (
+          <Link to="/stats" className="transition-colors hover:text-foreground">
+            statystyki →
+          </Link>
+        )
+      }
+    >
       <ul className={compact ? "space-y-0.5" : ""}>
         {prs.map((pr) => (
           <li key={pr.exerciseId}>
             <Link
-              to="/stats"
+              to="/stats/$slug"
+              params={{ slug: pr.slug }}
               className={`-mx-1.5 flex items-baseline justify-between gap-2 rounded-md px-1.5 transition-colors hover:bg-accent/60 ${
                 compact ? "py-0.5 text-xs" : "py-1.5 text-sm"
               }`}
@@ -220,7 +234,16 @@ export function SessionsTile({
 }) {
   const rows = sessions.filter((s) => s.endedAt !== null).slice(0, 4);
   return (
-    <Tile icon={ChartNoAxesColumn} title="Ostatnie sesje" action="historia" className={className}>
+    <Tile
+      icon={ChartNoAxesColumn}
+      title="Ostatnie sesje"
+      action={
+        <Link to="/sessions" className="transition-colors hover:text-foreground">
+          historia →
+        </Link>
+      }
+      className={className}
+    >
       {rows.length === 0 ? (
         <p className="text-muted-foreground text-sm">Jeszcze brak zakończonych sesji.</p>
       ) : (
@@ -260,7 +283,7 @@ export function WeekTile({ plan }: { plan: DashboardData["plan"] }) {
   const today = warsawWeekday();
   return (
     <Link to="/plan" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
-      <TileHeader icon={CalendarDays} title="Tydzień" action="plan" />
+      <TileHeader icon={CalendarDays} title="Tydzień" action="plan →" />
       {plan.length === 0 ? (
         <p className="text-muted-foreground text-sm">Ułóż plan tygodnia →</p>
       ) : (
@@ -290,57 +313,23 @@ export function WeekTile({ plan }: { plan: DashboardData["plan"] }) {
 }
 
 export function TrendTile({ trend, className = "" }: { trend: Trend; className?: string }) {
-  const values = trend.points.map((p) => p.e1rm);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const spread = max - min || 1;
-  const width = 600;
-  const height = 64;
-  const pad = 8;
-  const step = trend.points.length > 1 ? (width - pad * 2) / (trend.points.length - 1) : 0;
-  const coords = trend.points.map((p, i) => ({
-    x: pad + i * step,
-    y: height - pad - ((p.e1rm - min) / spread) * (height - pad * 2),
-  }));
   const first = trend.points[0];
   const last = trend.points[trend.points.length - 1];
-  const shortDate = (iso: string) => {
-    const d = new Date(iso);
-    return `${d.getUTCDate()}.${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-  };
 
   return (
-    <Link to="/stats" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS} ${className}`}>
-      <TileHeader icon={TrendingUp} title={`${trend.namePl} — trend e1RM`} action="statystyki" />
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
-        className="h-16 w-full"
-        role="img"
-        aria-label={`Trend e1RM: ${trend.namePl}`}
-      >
-        <defs>
-          <linearGradient id="trend-stroke" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="var(--primary)" stopOpacity="0.45" />
-            <stop offset="1" stopColor="var(--primary)" />
-          </linearGradient>
-        </defs>
-        <polyline
-          points={coords.map((c) => `${c.x},${c.y}`).join(" ")}
-          fill="none"
-          stroke="url(#trend-stroke)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <circle cx={coords[coords.length - 1].x} cy={coords[coords.length - 1].y} r="3.5" fill="var(--primary)" />
-      </svg>
+    <Link
+      to="/stats/$slug"
+      params={{ slug: trend.slug }}
+      className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS} ${className}`}
+    >
+      <TileHeader icon={TrendingUp} title={`${trend.namePl} — trend e1RM`} action="szczegóły →" />
+      <E1rmSparkline points={trend.points} />
       <div className="flex justify-between text-[10.5px] text-muted-foreground tabular-nums">
         <span>
-          {shortDate(first.date)} · {first.e1rm}
+          {formatChartDate(first.date)} · {first.e1rm}
         </span>
         <span>
-          {shortDate(last.date)} · <b className="text-primary">{last.e1rm}</b>
+          {formatChartDate(last.date)} · <b className="text-primary">{last.e1rm}</b>
         </span>
       </div>
     </Link>

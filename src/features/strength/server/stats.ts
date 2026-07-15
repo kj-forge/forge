@@ -4,9 +4,18 @@ import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { db } from "../../../../db/client";
 import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
-import { loadPrTable } from "./queries";
+import { loadExerciseStats, loadPrTable } from "./queries";
 
 export type { PrTableRow } from "./queries";
+
+const exerciseStatsInput = z.object({ slug: z.string().trim().min(1).max(80) });
+
+export const getExerciseStats = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => exerciseStatsInput.parse(data))
+  .handler(async ({ data }) => {
+    const { athleteId } = await getCurrentAthleteOrThrow();
+    return loadExerciseStats(athleteId, data.slug);
+  });
 
 const prTableInput = z.object({ includeAccessories: z.boolean() });
 
