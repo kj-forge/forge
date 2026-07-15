@@ -1,5 +1,5 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { CalendarDays, Target } from "lucide-react";
+import { CalendarDays, Dumbbell, Target } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { WEEKDAY_FULL_PL, warsawWeekday } from "@/shared/lib/weekday";
 const route = getRouteApi("/_shell/plan/");
 
 export function PlanView() {
-  const plan = route.useLoaderData();
+  const { plan, allExercises } = route.useLoaderData();
   const [editing, setEditing] = useState<PlanEditing | null>(null);
   const byDay = new Map(plan.map((d) => [d.dayOfWeek, d]));
   // Deterministic across SSR and client — both pin Europe/Warsaw.
@@ -78,6 +78,7 @@ export function PlanView() {
       <PlanDayDrawer
         editing={editing}
         byDay={byDay}
+        allExercises={allExercises}
         onClose={() => setEditing(null)}
         onAdvance={(nextDay) => setEditing((prev) => ({ day: nextDay, serial: prev?.serial ?? false }))}
       />
@@ -128,6 +129,12 @@ function DayCard({
           <p className="whitespace-pre-line text-sm">
             {entry.training || <span className="text-muted-foreground">—</span>}
           </p>
+          {entry.hasStrength && entry.exercises.length > 0 && (
+            <p className="mt-2 flex items-baseline gap-1.5 text-muted-foreground text-xs">
+              <Dumbbell className="size-3 shrink-0 translate-y-px text-primary" />
+              {entry.exercises.map((e) => e.namePl).join(" · ")}
+            </p>
+          )}
           {entry.goal && (
             <p className="mt-2 flex items-baseline gap-1.5 text-muted-foreground text-xs">
               <Target className="size-3 shrink-0 translate-y-px" />
@@ -176,7 +183,15 @@ function DayRow({
       </th>
       <td className="whitespace-pre-line px-4 py-3 align-top">
         {entry ? (
-          entry.training || <span className="text-muted-foreground">—</span>
+          <>
+            {entry.training || <span className="text-muted-foreground">—</span>}
+            {entry.hasStrength && entry.exercises.length > 0 && (
+              <span className="mt-1.5 flex items-baseline gap-1.5 text-muted-foreground text-xs">
+                <Dumbbell className="size-3 shrink-0 translate-y-px text-primary" />
+                {entry.exercises.map((e) => e.namePl).join(" · ")}
+              </span>
+            )}
+          </>
         ) : (
           <span className="text-muted-foreground">uzupełnij</span>
         )}
