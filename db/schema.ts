@@ -841,6 +841,9 @@ export const goals = pgTable(
       .notNull()
       .references(() => athletes.id, { onDelete: "cascade" }),
     type: goalType().notNull(),
+    // STRENGTH_RM goals point at a lift so progress can auto-derive from
+    // that exercise's e1RM; other goal types leave it null.
+    exerciseId: uuid().references(() => exercises.id, { onDelete: "set null" }),
     title: text().notNull(),
     targetValue: doublePrecision(),
     targetUnit: text(),
