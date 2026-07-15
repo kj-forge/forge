@@ -16,7 +16,7 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Dziennik", icon: Home, exact: true, inTabBar: true, inSidebar: true },
   { to: "/sessions", label: "Historia", icon: BookOpen, exact: true, inTabBar: true, inSidebar: true },
-  { to: "/sessions/new", label: "Nowa", icon: Plus, exact: true, inTabBar: true, inSidebar: true },
+  { to: "/sessions/new", label: "Nowa", icon: Plus, exact: true, inTabBar: true, inSidebar: false },
   { to: "/stats", label: "Statystyki", icon: ChartNoAxesColumn, exact: true, inTabBar: true, inSidebar: true },
   { to: "/plan", label: "Plan", icon: CalendarDays, exact: true, inTabBar: false, inSidebar: true },
   { to: "/me", label: "Profil", icon: User, exact: true, inTabBar: true, inSidebar: false },

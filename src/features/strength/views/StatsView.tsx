@@ -1,4 +1,5 @@
 import { getRouteApi } from "@tanstack/react-router";
+import { Table2, Trophy } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -97,7 +98,8 @@ function RekordySegment({
     <section className="flex flex-col gap-3">
       {!hasAnyBest && (
         <Card>
-          <CardContent className="py-6 text-center text-muted-foreground text-sm">
+          <CardContent className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground text-sm">
+            <Trophy className="size-8 text-muted-foreground/60" strokeWidth={1.5} />
             Brak zapisanych serii — rekordy pojawią się po pierwszej zakończonej sesji siłowej.
           </CardContent>
         </Card>
@@ -236,7 +238,8 @@ function ZestawieniaSegment({
 
       {days.length === 0 ? (
         <Card>
-          <CardContent className="py-6 text-center text-muted-foreground text-sm">
+          <CardContent className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground text-sm">
+            <Table2 className="size-8 text-muted-foreground/60" strokeWidth={1.5} />
             Brak treningów z tego dnia w ostatnich 2 miesiącach.
           </CardContent>
         </Card>

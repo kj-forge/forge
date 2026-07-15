@@ -1,4 +1,5 @@
 import { getRouteApi } from "@tanstack/react-router";
+import { BookOpen } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { SessionListItem } from "@/features/strength/components/SessionListItem";
@@ -14,7 +15,10 @@ export function SessionsListView() {
 
       {sessionsList.length === 0 ? (
         <Card>
-          <CardContent className="py-6 text-center text-muted-foreground text-sm">Brak zakończonych sesji.</CardContent>
+          <CardContent className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground text-sm">
+            <BookOpen className="size-8 text-muted-foreground/60" strokeWidth={1.5} />
+            Brak zakończonych sesji.
+          </CardContent>
         </Card>
       ) : (
         <ul className="space-y-2">

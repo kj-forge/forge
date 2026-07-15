@@ -52,7 +52,7 @@ describe("TAB_BAR_ITEMS", () => {
 });
 
 describe("SIDEBAR_ITEMS", () => {
-  test("no profil — the avatar dropdown owns it on desktop", () => {
-    expect(SIDEBAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/plan"]);
+  test("no profil (avatar dropdown) and no nowa (dashboard CTA)", () => {
+    expect(SIDEBAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/stats", "/plan"]);
   });
 });
