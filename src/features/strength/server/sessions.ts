@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
+import { loadPlanDayExerciseIds } from "@/features/plan/server/queries";
 import { parseInput } from "@/lib/validate";
+import { warsawWeekday } from "@/shared/lib/weekday";
 import { db } from "../../../../db/client";
 import { createPool } from "../../../../db/pool";
 import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
@@ -212,63 +214,6 @@ export const getSessionDetails = createServerFn({ method: "GET" })
     };
   });
 
-const listTemplatesInput = z.object({
-  type: z.enum([
-    "STRENGTH",
-    "HYROX_EMOM",
-    "HYROX_AMRAP",
-    "HYROX_WORK",
-    "CARDIO",
-    "COMPROMISED_RUN",
-    "REHAB",
-    "MOBILITY",
-  ]),
-});
-
-// The two most recent ENDED sessions of this type that actually have exercises,
-// each with its ordered exercise-name preview. The preview is what lets the
-// athlete recognise the day ("ah, the deadlift one") and reuse it as a base.
-export const listSessionTemplates = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => parseInput(listTemplatesInput, data))
-  .handler(async ({ data }) => {
-    const { athleteId } = await getCurrentAthleteOrThrow();
-
-    // Most recent ended sessions of the type; the inner join drops empty ones,
-    // groupBy collapses to one row per session.
-    const sessionRows = await db
-      .select({ id: sessions.id, date: sessions.date, startedAt: sessions.startedAt })
-      .from(sessions)
-      .innerJoin(sessionBlocks, eq(sessionBlocks.sessionId, sessions.id))
-      .innerJoin(blockMovements, eq(blockMovements.blockId, sessionBlocks.id))
-      .where(and(eq(sessions.athleteId, athleteId), eq(sessions.type, data.type), isNotNull(sessions.endedAt)))
-      .groupBy(sessions.id, sessions.date, sessions.startedAt)
-      .orderBy(desc(sessions.date), desc(sessions.startedAt))
-      .limit(2);
-    if (sessionRows.length === 0) return [];
-
-    const ids = sessionRows.map((s) => s.id);
-    const exerciseRows = await db
-      .select({ sessionId: sessionBlocks.sessionId, namePl: exercises.namePl })
-      .from(blockMovements)
-      .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
-      .innerJoin(exercises, eq(blockMovements.exerciseId, exercises.id))
-      .where(and(eq(blockMovements.athleteId, athleteId), inArray(sessionBlocks.sessionId, ids)))
-      .orderBy(sessionBlocks.sessionId, blockMovements.orderIndex);
-
-    const exercisesBySession = new Map<string, string[]>();
-    for (const row of exerciseRows) {
-      const arr = exercisesBySession.get(row.sessionId) ?? [];
-      arr.push(row.namePl);
-      exercisesBySession.set(row.sessionId, arr);
-    }
-
-    return sessionRows.map((s) => ({
-      sessionId: s.id,
-      date: s.date,
-      exercises: exercisesBySession.get(s.id) ?? [],
-    }));
-  });
-
 const createSessionInput = z.object({
   type: z.enum([
     "STRENGTH",
@@ -282,6 +227,8 @@ const createSessionInput = z.object({
   ]),
   date: z.iso.date(),
   fromTemplateSessionId: z.uuid().optional(),
+  // Seed the session from today's plan day (resolved server-side by weekday).
+  fromPlanDay: z.boolean().optional(),
 });
 
 interface RunCreateSessionArgs {
@@ -289,6 +236,8 @@ interface RunCreateSessionArgs {
   type: z.infer<typeof createSessionInput>["type"];
   date: string;
   fromTemplateSessionId?: string;
+  // Ordered exercise ids to seed the block with (from the plan day).
+  seedExerciseIds?: string[];
 }
 
 interface CreateSessionResult {
@@ -311,11 +260,12 @@ async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessi
   const { db: tx_db, end } = await createPool();
   try {
     return await tx_db.transaction(async (tx) => {
-      // 1. Clone the EXERCISE LIST from the template session (just the exercises
-      // and their order). Per-set defaults are no longer copied here — the
+      // 1. Seed the EXERCISE LIST — either cloned from a template session
+      // (repeat) or from the day's plan (seedExerciseIds, resolved by the
+      // caller). Just exercises + order; per-set defaults are NOT copied — the
       // drawer derives them at load time from the athlete's per-kind history
-      // (loadLastByKind), which decouples "what to train" from "how much".
-      const templateMovements = args.fromTemplateSessionId
+      // (loadLastByKind), decoupling "what to train" from "how much".
+      const seedMovements = args.fromTemplateSessionId
         ? await tx
             .select({
               exerciseId: blockMovements.exerciseId,
@@ -330,7 +280,7 @@ async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessi
               ),
             )
             .orderBy(blockMovements.orderIndex)
-        : [];
+        : (args.seedExerciseIds ?? []).map((exerciseId, orderIndex) => ({ exerciseId, orderIndex }));
 
       // 2. INSERT the session row.
       const [session] = await tx
@@ -356,10 +306,10 @@ async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessi
         })
         .returning({ id: sessionBlocks.id });
 
-      // 4. Optionally INSERT the cloned movements (exercise + order only).
-      if (templateMovements.length > 0) {
+      // 4. Optionally INSERT the seeded movements (exercise + order only).
+      if (seedMovements.length > 0) {
         await tx.insert(blockMovements).values(
-          templateMovements.map((m) => ({
+          seedMovements.map((m) => ({
             athleteId: args.athleteId,
             blockId: block.id,
             orderIndex: m.orderIndex,
@@ -379,7 +329,10 @@ export const createSession = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => parseInput(createSessionInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
-    return runCreateSession({ athleteId, ...data });
+    // Resolve the plan day's exercises server-side (by weekday) rather than
+    // trusting client-passed ids.
+    const seedExerciseIds = data.fromPlanDay ? await loadPlanDayExerciseIds(athleteId, warsawWeekday()) : undefined;
+    return runCreateSession({ athleteId, ...data, seedExerciseIds });
   });
 
 const endSessionInput = z.object({

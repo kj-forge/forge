@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
+import { getTrainingPlan } from "@/features/plan/server/plan";
 import { SESSION_TYPES } from "@/features/strength/constants";
-import { listSessionTemplates } from "@/features/strength/server/sessions";
 import { NewSessionView } from "@/features/strength/views/NewSessionView";
 import { getSession } from "@/lib/session";
 import { SessionListSkeleton } from "@/shared/components/SessionListSkeleton";
@@ -16,8 +16,9 @@ export const Route = createFileRoute("/_shell/sessions/new")({
     if (!session) throw redirect({ to: "/login" });
   },
   validateSearch: searchSchema,
-  loaderDeps: ({ search }) => ({ type: search.type }),
-  loader: ({ deps }) => listSessionTemplates({ data: { type: deps.type } }),
+  // The plan drives the suggestion now (today's strength day), not the last
+  // sessions. The view picks today's weekday from the returned plan.
+  loader: () => getTrainingPlan(),
   pendingComponent: SessionListSkeleton,
   component: NewSessionView,
 });
