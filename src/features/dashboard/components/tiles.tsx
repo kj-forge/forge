@@ -140,6 +140,7 @@ export function LastSessionTile({ sessions }: { sessions: DashboardData["session
   }
 
   const top = last.exercises.find((e) => e.weightKg !== null || e.reps !== null);
+
   return (
     <Link
       to="/sessions/$sessionId"
@@ -163,6 +164,7 @@ export function GoalTile({ goals, compact = false }: { goals: DashboardData["goa
   // With several goals the tile becomes a slow carousel — auto-rotation is
   // motion, so it stays off for prefers-reduced-motion users.
   const [index, setIndex] = useState(0);
+
   useEffect(() => {
     if (goals.length < 2) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -182,6 +184,7 @@ export function GoalTile({ goals, compact = false }: { goals: DashboardData["goa
   const goal = goals[index % goals.length];
   const progress = goalProgress(goal.targetValue, goal.currentE1rm);
   const target = formatGoalTarget(goal.targetValue, goal.targetUnit);
+
   return (
     <Link to="/goals" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
       <TileHeader icon={Flag} title={goals.length > 1 ? "Cele" : "Cel"} action={compact ? undefined : "cele →"} />
@@ -226,6 +229,7 @@ export function GoalTile({ goals, compact = false }: { goals: DashboardData["goa
 export function PrTile({ prs, compact = false }: { prs: DashboardData["prs"]; compact?: boolean }) {
   return (
     <Tile
+      className={compact ? "h-full" : ""}
       icon={Trophy}
       title="Rekordy"
       action={
