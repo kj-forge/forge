@@ -17,7 +17,8 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Dziennik", icon: Home, exact: true, inTabBar: true, inSidebar: true },
   { to: "/sessions", label: "Historia", icon: BookOpen, exact: true, inTabBar: true, inSidebar: true },
   { to: "/sessions/new", label: "Nowa", icon: Plus, exact: true, inTabBar: true, inSidebar: false },
-  { to: "/stats", label: "Statystyki", icon: ChartNoAxesColumn, exact: true, inTabBar: true, inSidebar: true },
+  // Non-exact: /stats/$slug details keep the Statystyki link active.
+  { to: "/stats", label: "Statystyki", icon: ChartNoAxesColumn, exact: false, inTabBar: true, inSidebar: true },
   { to: "/plan", label: "Plan", icon: CalendarDays, exact: true, inTabBar: false, inSidebar: true },
   // Profil has no nav entry — account settings live under the avatar.
   { to: "/goals", label: "Cele", icon: Target, exact: true, inTabBar: true, inSidebar: true },
@@ -39,6 +40,8 @@ export function showsTabBar(pathname: string): boolean {
   return TAB_BAR_PATHS.has(normalizePath(pathname));
 }
 
-export function isActivePath(pathname: string, to: NavItem["to"]): boolean {
-  return normalizePath(pathname) === to;
+export function isActivePath(pathname: string, to: NavItem["to"], exact = true): boolean {
+  const path = normalizePath(pathname);
+  if (exact) return path === to;
+  return path === to || path.startsWith(`${to}/`);
 }

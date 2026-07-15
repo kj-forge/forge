@@ -1,4 +1,4 @@
-import { getRouteApi } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { Table2, Trophy } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -150,23 +150,29 @@ function PrRow({ row }: { row: PrTableRow }) {
   const weightLabel = best ? (isLoadedBw(row.slug) ? `+${best.weightKg}` : `${best.weightKg}`) : null;
 
   return (
-    <li className="flex items-center justify-between gap-3 px-4 py-3">
-      <div className="min-w-0">
-        <p className="truncate font-semibold text-sm">{row.namePl}</p>
-        <p className="text-muted-foreground text-xs">
-          {best ? PR_DATE_FMT.format(new Date(best.date)) : "brak danych"}
-        </p>
-      </div>
-      {best && (
-        <div className="shrink-0 text-right">
-          <p className="font-black text-base text-primary tabular-nums">
-            {best.reps}× {weightLabel} kg
-          </p>
-          <p className="text-muted-foreground text-xs tabular-nums">
-            e1RM {best.e1rm !== null ? `~${best.e1rm} kg` : "—"}
+    <li>
+      <Link
+        to="/stats/$slug"
+        params={{ slug: row.slug }}
+        className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-accent/60"
+      >
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-sm">{row.namePl}</p>
+          <p className="text-muted-foreground text-xs">
+            {best ? PR_DATE_FMT.format(new Date(best.date)) : "brak danych"}
           </p>
         </div>
-      )}
+        {best && (
+          <div className="shrink-0 text-right">
+            <p className="font-black text-base text-primary tabular-nums">
+              {best.reps}× {weightLabel} kg
+            </p>
+            <p className="text-muted-foreground text-xs tabular-nums">
+              e1RM {best.e1rm !== null ? `~${best.e1rm} kg` : "—"}
+            </p>
+          </div>
+        )}
+      </Link>
     </li>
   );
 }
@@ -279,7 +285,13 @@ function ZestawieniaSegment({
                           rowIdx === rowDefs.length - 1 ? "" : "border-b"
                         }`}
                       >
-                        {row.namePl}
+                        <Link
+                          to="/stats/$slug"
+                          params={{ slug: row.slug }}
+                          className="transition-colors hover:text-primary"
+                        >
+                          {row.namePl}
+                        </Link>
                       </th>
                       {columns.map((c, i) => (
                         <td

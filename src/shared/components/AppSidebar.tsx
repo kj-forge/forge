@@ -33,7 +33,7 @@ export function AppSidebar() {
           <SidebarMenu>
             {SIDEBAR_ITEMS.map((item) => (
               <SidebarMenuItem key={item.to}>
-                <SidebarMenuButton asChild isActive={isActivePath(pathname, item.to)}>
+                <SidebarMenuButton asChild isActive={isActivePath(pathname, item.to, item.exact)}>
                   <Link to={item.to}>
                     <item.icon />
                     {item.label}
