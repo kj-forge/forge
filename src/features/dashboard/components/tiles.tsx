@@ -188,10 +188,14 @@ export function GoalTile({ goals, compact = false }: { goals: DashboardData["goa
       <div
         key={goal.id}
         className={`motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:animate-in motion-safe:duration-300 ${
-          compact ? "min-h-14" : "min-h-17"
+          compact ? "min-h-23" : "min-h-25"
         }`}
       >
-        <p className={`truncate font-black text-primary ${compact ? "text-base" : "text-lg"}`}>{goal.title}</p>
+        {/* Fixed two-line box: short titles don't shrink it, long ones clamp
+            with an ellipsis — carousel slides keep one height either way. */}
+        <p className={`line-clamp-2 font-black text-primary ${compact ? "h-12 text-base" : "h-14 text-lg"}`}>
+          {goal.title}
+        </p>
         {progress !== null && (
           <div className="my-2 h-1.5 overflow-hidden rounded-full bg-muted">
             <div className="h-full rounded-full bg-ember" style={{ width: `${progress}%` }} />
