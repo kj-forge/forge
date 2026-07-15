@@ -12,7 +12,7 @@ import {
 import type { ReactNode } from "react";
 
 import type { DashboardData, Trend } from "@/features/dashboard/server/dashboard";
-import { goalProgress } from "@/features/goals/lib/goal-progress";
+import { formatGoalTarget, goalProgress } from "@/features/goals/lib/goal-progress";
 import { PLAN_INTENSITY_CLASS, PLAN_INTENSITY_DOT, PLAN_INTENSITY_LABEL } from "@/features/plan/constants";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
@@ -21,8 +21,39 @@ import { WEEKDAY_FULL_PL, WEEKDAY_LABELS_PL, warsawWeekday } from "@/shared/lib/
 
 const DATE_FMT = new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "long", timeZone: "UTC" });
 
-export function Tile({
+// One look for every tile; whole-tile links add the interactive hover, tiles
+// with clickable rows/chips inside stay static (the elements carry hover).
+export const TILE_CLASS = "min-w-0 rounded-2xl border bg-card p-4";
+export const TILE_INTERACTIVE_CLASS = "block transition-colors hover:border-foreground/25 hover:bg-accent/30";
+
+export function TileHeader({
   icon: Icon,
+  title,
+  action,
+  accent = false,
+}: {
+  icon: LucideIcon;
+  title: string;
+  action?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={`mb-2.5 flex items-center gap-1.5 font-bold text-[10.5px] uppercase tracking-widest ${
+        accent ? "text-primary" : "text-muted-foreground"
+      }`}
+    >
+      <Icon className={`size-3.5 ${accent ? "" : "text-primary"}`} />
+      {title}
+      {action && (
+        <span className="ml-auto font-medium text-muted-foreground normal-case tracking-normal">{action} →</span>
+      )}
+    </div>
+  );
+}
+
+export function Tile({
+  icon,
   title,
   action,
   children,
@@ -30,27 +61,15 @@ export function Tile({
 }: {
   icon: LucideIcon;
   title: string;
-  action?: ReactNode;
+  action?: string;
   children: ReactNode;
   className?: string;
 }) {
   return (
-    <section className={`min-w-0 rounded-2xl border bg-card p-4 ${className}`}>
-      <div className="mb-2.5 flex items-center gap-1.5 font-bold text-[10.5px] text-muted-foreground uppercase tracking-widest">
-        <Icon className="size-3.5 text-primary" />
-        {title}
-        {action && <span className="ml-auto font-medium normal-case tracking-normal">{action}</span>}
-      </div>
+    <section className={`${TILE_CLASS} ${className}`}>
+      <TileHeader icon={icon} title={title} action={action} />
       {children}
     </section>
-  );
-}
-
-function TileLink({ to, label }: { to: "/stats" | "/plan" | "/sessions" | "/me"; label: string }) {
-  return (
-    <Link to={to} className="text-muted-foreground text-xs transition-colors hover:text-foreground">
-      {label} →
-    </Link>
   );
 }
 
@@ -59,37 +78,32 @@ export function TodayTile({ plan, className = "" }: { plan: DashboardData["plan"
   const entry = plan.find((d) => d.dayOfWeek === today);
 
   return (
-    <section
-      className={`min-w-0 rounded-2xl border border-primary/40 bg-linear-to-br from-primary/10 to-transparent p-4 ${className}`}
+    <Link
+      to="/plan"
+      className={`min-w-0 rounded-2xl border border-primary/40 bg-linear-to-br from-primary/10 to-transparent p-4 ${TILE_INTERACTIVE_CLASS} hover:border-primary/70 ${className}`}
     >
-      <Link to="/plan" className="block">
-        <div className="mb-2.5 flex items-center gap-1.5 font-bold text-[10.5px] text-primary uppercase tracking-widest">
-          <CalendarDays className="size-3.5" />
-          Dziś wg planu
-          <span className="ml-auto font-medium text-muted-foreground normal-case tracking-normal">plan →</span>
-        </div>
-        {entry ? (
-          <>
-            <div className="mb-1 flex items-center gap-2">
-              <span className="font-black text-lg">{WEEKDAY_FULL_PL[today]}</span>
-              <span
-                className={`rounded-full px-2.5 py-0.5 font-bold text-[10px] uppercase tracking-wide ${
-                  PLAN_INTENSITY_CLASS[entry.intensity]
-                }`}
-              >
-                {PLAN_INTENSITY_LABEL[entry.intensity]}
-              </span>
-            </div>
-            <p className="whitespace-pre-line text-sm leading-relaxed">{entry.training}</p>
-            {entry.goal && <p className="mt-2 text-muted-foreground text-xs">Cel: {entry.goal}</p>}
-          </>
-        ) : (
-          <p className="text-muted-foreground text-sm">
-            {plan.length === 0 ? "Ułóż plan tygodnia — Home podpowie, co dziś robisz." : "Brak planu na dziś."}
-          </p>
-        )}
-      </Link>
-    </section>
+      <TileHeader icon={CalendarDays} title="Dziś wg planu" action="plan" accent />
+      {entry ? (
+        <>
+          <div className="mb-1 flex items-center gap-2">
+            <span className="font-black text-lg">{WEEKDAY_FULL_PL[today]}</span>
+            <span
+              className={`rounded-full px-2.5 py-0.5 font-bold text-[10px] uppercase tracking-wide ${
+                PLAN_INTENSITY_CLASS[entry.intensity]
+              }`}
+            >
+              {PLAN_INTENSITY_LABEL[entry.intensity]}
+            </span>
+          </div>
+          <p className="whitespace-pre-line text-sm leading-relaxed">{entry.training}</p>
+          {entry.goal && <p className="mt-2 text-muted-foreground text-xs">Cel: {entry.goal}</p>}
+        </>
+      ) : (
+        <p className="text-muted-foreground text-sm">
+          {plan.length === 0 ? "Ułóż plan tygodnia — Home podpowie, co dziś robisz." : "Brak planu na dziś."}
+        </p>
+      )}
+    </Link>
   );
 }
 
@@ -99,95 +113,100 @@ export function LastSessionTile({ sessions }: { sessions: DashboardData["session
 
   if (active) {
     return (
-      <Tile icon={Clock} title="Aktywna sesja">
-        <Link
-          to="/sessions/$sessionId"
-          params={{ sessionId: active.id }}
-          className="flex flex-col gap-1 font-semibold text-sm"
-        >
-          <span className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-primary motion-safe:animate-pulse" />
-            {SESSION_TYPE_LABEL_PL[active.type as SessionType] ?? active.type}
-          </span>
-          <span className="font-black text-base text-primary">Wróć do sesji →</span>
-        </Link>
+      <Link
+        to="/sessions/$sessionId"
+        params={{ sessionId: active.id }}
+        className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}
+      >
+        <TileHeader icon={Clock} title="Aktywna sesja" />
+        <p className="flex items-center gap-2 font-semibold text-sm">
+          <span className="size-2 rounded-full bg-primary motion-safe:animate-pulse" />
+          {SESSION_TYPE_LABEL_PL[active.type as SessionType] ?? active.type}
+        </p>
+        <p className="mt-1 font-black text-base text-primary">Wróć do sesji →</p>
+      </Link>
+    );
+  }
+
+  if (!last) {
+    return (
+      <Tile icon={Clock} title="Ostatnia sesja">
+        <p className="text-muted-foreground text-sm">Jeszcze brak sesji.</p>
       </Tile>
     );
   }
 
-  const top = last?.exercises.find((e) => e.weightKg !== null || e.reps !== null);
+  const top = last.exercises.find((e) => e.weightKg !== null || e.reps !== null);
   return (
-    <Tile icon={Clock} title="Ostatnia sesja">
-      {last ? (
-        <Link to="/sessions/$sessionId" params={{ sessionId: last.id }} className="block">
-          <p className="font-semibold text-sm">{SESSION_TYPE_LABEL_PL[last.type as SessionType] ?? last.type}</p>
-          <p className="text-muted-foreground text-xs">{DATE_FMT.format(new Date(last.date))}</p>
-          {top && (
-            <p className="mt-2 font-black text-base text-primary tabular-nums">
-              {formatSet(top)}
-              <span className="ml-1.5 font-normal text-muted-foreground text-xs">{top.name}</span>
-            </p>
-          )}
-        </Link>
-      ) : (
-        <p className="text-muted-foreground text-sm">Jeszcze brak sesji.</p>
+    <Link
+      to="/sessions/$sessionId"
+      params={{ sessionId: last.id }}
+      className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}
+    >
+      <TileHeader icon={Clock} title="Ostatnia sesja" />
+      <p className="font-semibold text-sm">{SESSION_TYPE_LABEL_PL[last.type as SessionType] ?? last.type}</p>
+      <p className="text-muted-foreground text-xs">{DATE_FMT.format(new Date(last.date))}</p>
+      {top && (
+        <p className="mt-2 font-black text-base text-primary tabular-nums">
+          {formatSet(top)}
+          <span className="ml-1.5 font-normal text-muted-foreground text-xs">{top.name}</span>
+        </p>
       )}
-    </Tile>
+    </Link>
   );
 }
 
 export function GoalTile({ goal, compact = false }: { goal: DashboardData["goal"]; compact?: boolean }) {
   if (!goal) {
     return (
-      <Tile icon={Flag} title="Cel">
-        <Link to="/me" className="block text-muted-foreground text-sm transition-colors hover:text-foreground">
-          Ustaw cel →
-        </Link>
-      </Tile>
+      <Link to="/me" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
+        <TileHeader icon={Flag} title="Cel" />
+        <p className="text-muted-foreground text-sm">Ustaw cel →</p>
+      </Link>
     );
   }
 
   const progress = goalProgress(goal.targetValue, goal.currentE1rm);
+  const target = formatGoalTarget(goal.targetValue, goal.targetUnit);
   return (
-    <Tile icon={Flag} title="Cel" action={compact ? undefined : <TileLink to="/me" label="cele" />}>
-      <Link to="/me" className="block">
-        <p className={`truncate font-black text-primary tabular-nums ${compact ? "text-base" : "text-xl"}`}>
-          {goal.title}
-        </p>
-        {progress !== null && (
-          <div className="my-2 h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-ember" style={{ width: `${progress}%` }} />
-          </div>
-        )}
-        <p className="text-muted-foreground text-xs tabular-nums">
-          {goal.currentE1rm !== null ? `e1RM ${goal.currentE1rm}` : ""}
-          {goal.currentE1rm !== null && goal.targetValue != null ? " · " : ""}
-          {goal.targetValue != null ? `cel ${goal.targetValue} ${goal.targetUnit ?? ""}` : ""}
-        </p>
-      </Link>
-    </Tile>
+    <Link to="/me" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
+      <TileHeader icon={Flag} title="Cel" action={compact ? undefined : "cele"} />
+      <p className={`line-clamp-2 font-black text-primary ${compact ? "text-base" : "text-lg"}`}>{goal.title}</p>
+      {progress !== null && (
+        <div className="my-2 h-1.5 overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-ember" style={{ width: `${progress}%` }} />
+        </div>
+      )}
+      <p className="mt-1 text-muted-foreground text-xs tabular-nums">
+        {goal.currentE1rm !== null ? `e1RM ${goal.currentE1rm}` : ""}
+        {goal.currentE1rm !== null && target ? " · " : ""}
+        {target ? `cel ${target}` : ""}
+      </p>
+    </Link>
   );
 }
 
 export function PrTile({ prs, compact = false }: { prs: DashboardData["prs"]; compact?: boolean }) {
   return (
-    <Tile icon={Trophy} title="Rekordy" action={compact ? undefined : <TileLink to="/stats" label="statystyki" />}>
-      <Link to="/stats" className="block">
-        <ul className={compact ? "space-y-0.5" : "divide-y"}>
-          {prs.map((pr) => (
-            <li
-              key={pr.exerciseId}
-              className={`flex items-baseline justify-between gap-2 ${compact ? "text-xs" : "py-1.5 text-sm"}`}
+    <Tile icon={Trophy} title="Rekordy" action={compact ? undefined : "statystyki"}>
+      <ul className={compact ? "space-y-0.5" : ""}>
+        {prs.map((pr) => (
+          <li key={pr.exerciseId}>
+            <Link
+              to="/stats"
+              className={`-mx-1.5 flex items-baseline justify-between gap-2 rounded-md px-1.5 transition-colors hover:bg-accent/60 ${
+                compact ? "py-0.5 text-xs" : "py-1.5 text-sm"
+              }`}
             >
               <span className="truncate">{pr.namePl}</span>
               <span className="font-black text-primary tabular-nums">
                 {pr.best ? (pr.best.e1rm ?? `${pr.best.reps}×${pr.best.weightKg}`) : "—"}
               </span>
-            </li>
-          ))}
-        </ul>
-        {!compact && <p className="mt-1.5 text-[10px] text-muted-foreground uppercase tracking-wide">e1RM · kg</p>}
-      </Link>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {!compact && <p className="mt-1.5 text-[10px] text-muted-foreground uppercase tracking-wide">e1RM · kg</p>}
     </Tile>
   );
 }
@@ -201,16 +220,11 @@ export function SessionsTile({
 }) {
   const rows = sessions.filter((s) => s.endedAt !== null).slice(0, 4);
   return (
-    <Tile
-      icon={ChartNoAxesColumn}
-      title="Ostatnie sesje"
-      action={<TileLink to="/sessions" label="historia" />}
-      className={className}
-    >
+    <Tile icon={ChartNoAxesColumn} title="Ostatnie sesje" action="historia" className={className}>
       {rows.length === 0 ? (
         <p className="text-muted-foreground text-sm">Jeszcze brak zakończonych sesji.</p>
       ) : (
-        <ul className="divide-y">
+        <ul>
           {rows.map((s) => {
             const top = s.exercises.find((e) => e.weightKg !== null || e.reps !== null);
             return (
@@ -218,7 +232,7 @@ export function SessionsTile({
                 <Link
                   to="/sessions/$sessionId"
                   params={{ sessionId: s.id }}
-                  className="flex items-center justify-between gap-3 py-2 text-sm transition-colors hover:bg-accent"
+                  className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-accent/60"
                 >
                   <span className="min-w-0">
                     <span className="block truncate font-semibold">
@@ -245,11 +259,10 @@ export function SessionsTile({
 export function WeekTile({ plan }: { plan: DashboardData["plan"] }) {
   const today = warsawWeekday();
   return (
-    <Tile icon={CalendarDays} title="Tydzień" action={<TileLink to="/plan" label="plan" />}>
+    <Link to="/plan" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
+      <TileHeader icon={CalendarDays} title="Tydzień" action="plan" />
       {plan.length === 0 ? (
-        <Link to="/plan" className="block text-muted-foreground text-sm transition-colors hover:text-foreground">
-          Ułóż plan tygodnia →
-        </Link>
+        <p className="text-muted-foreground text-sm">Ułóż plan tygodnia →</p>
       ) : (
         <ul className="space-y-1.5">
           {WEEKDAY_LABELS_PL.map((label, day) => {
@@ -272,7 +285,7 @@ export function WeekTile({ plan }: { plan: DashboardData["plan"] }) {
           })}
         </ul>
       )}
-    </Tile>
+    </Link>
   );
 }
 
@@ -297,12 +310,8 @@ export function TrendTile({ trend, className = "" }: { trend: Trend; className?:
   };
 
   return (
-    <Tile
-      icon={TrendingUp}
-      title={`${trend.namePl} — trend e1RM`}
-      action={<TileLink to="/stats" label="statystyki" />}
-      className={className}
-    >
+    <Link to="/stats" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS} ${className}`}>
+      <TileHeader icon={TrendingUp} title={`${trend.namePl} — trend e1RM`} action="statystyki" />
       <svg
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
@@ -334,7 +343,7 @@ export function TrendTile({ trend, className = "" }: { trend: Trend; className?:
           {shortDate(last.date)} · <b className="text-primary">{last.e1rm}</b>
         </span>
       </div>
-    </Tile>
+    </Link>
   );
 }
 

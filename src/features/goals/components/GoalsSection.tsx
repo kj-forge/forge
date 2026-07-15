@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { type ExerciseOption, GoalDrawer } from "@/features/goals/components/GoalDrawer";
 import { GOAL_TYPE_LABEL } from "@/features/goals/constants";
+import { formatGoalTarget } from "@/features/goals/lib/goal-progress";
 import type { GoalRow } from "@/features/goals/types";
 
 const GOAL_DATE_FMT = new Intl.DateTimeFormat("pl-PL", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -46,12 +47,12 @@ export function GoalsSection({ goals, exercises }: { goals: GoalRow[]; exercises
                       <>
                         <span className="block font-black text-base text-primary tabular-nums">{goal.currentE1rm}</span>
                         <span className="block text-muted-foreground text-xs tabular-nums">
-                          cel {goal.targetValue ?? "—"} {goal.targetUnit ?? ""}
+                          cel {formatGoalTarget(goal.targetValue, goal.targetUnit) ?? "—"}
                         </span>
                       </>
                     ) : (
                       <span className="font-semibold text-sm tabular-nums">
-                        {goal.targetValue != null ? `${goal.targetValue} ${goal.targetUnit ?? ""}` : "—"}
+                        {formatGoalTarget(goal.targetValue, goal.targetUnit) ?? "—"}
                       </span>
                     )}
                   </span>
