@@ -1,6 +1,7 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
+import { OnboardingTiles } from "@/features/dashboard/components/onboarding";
 import {
   GoalTile,
   LastSessionTile,
@@ -20,6 +21,7 @@ export function DashboardView() {
   const { session } = route.useRouteContext();
   const data = route.useLoaderData();
   const firstName = session.user.name?.split(" ")[0] ?? "athleto";
+  const firstRun = data.sessions.length === 0;
 
   // In-progress sessions first (their badge marks them), then most recent.
   const visibleSessions = [
@@ -33,6 +35,9 @@ export function DashboardView() {
         <div>
           <p className="text-muted-foreground text-sm">Cześć,</p>
           <h1 className="font-bold text-2xl tracking-tight">{firstName} 👋</h1>
+          {firstRun && (
+            <p className="mt-1 text-muted-foreground text-sm">Witaj w Forge — trzy kroki i dziennik żyje.</p>
+          )}
         </div>
         <Link to="/sessions/new" search={{ type: "STRENGTH" }} className="hidden lg:block">
           <Button className="bg-ember shadow-ember">+ Rozpocznij sesję</Button>
@@ -72,23 +77,27 @@ export function DashboardView() {
         </section>
       </div>
 
-      {/* Desktop: full bento. */}
-      <div className="hidden gap-4 lg:grid lg:grid-cols-4">
-        <TodayTile plan={data.plan} className="lg:col-span-2" />
-        <LastSessionTile sessions={data.sessions} />
-        <GoalTile goal={data.goal} />
-        <PrTile prs={data.prs} />
-        <SessionsTile sessions={data.sessions} className="lg:col-span-2" />
-        <WeekTile plan={data.plan} />
-        {data.trend ? (
-          <>
-            <TrendTile trend={data.trend} className="lg:col-span-3" />
+      {/* Desktop: full bento, or the 1-2-3 start path before any session. */}
+      {firstRun ? (
+        <OnboardingTiles data={data} />
+      ) : (
+        <div className="hidden gap-4 lg:grid lg:grid-cols-4">
+          <TodayTile plan={data.plan} className="lg:col-span-2" />
+          <LastSessionTile sessions={data.sessions} />
+          <GoalTile goal={data.goal} />
+          <PrTile prs={data.prs} />
+          <SessionsTile sessions={data.sessions} className="lg:col-span-2" />
+          <WeekTile plan={data.plan} />
+          {data.trend ? (
+            <>
+              <TrendTile trend={data.trend} className="lg:col-span-3" />
+              <ZestawieniaTile counts={data.weekdayCounts} />
+            </>
+          ) : (
             <ZestawieniaTile counts={data.weekdayCounts} />
-          </>
-        ) : (
-          <ZestawieniaTile counts={data.weekdayCounts} />
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </main>
   );
 }
