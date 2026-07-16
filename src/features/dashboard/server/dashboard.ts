@@ -34,6 +34,7 @@ async function loadTrend(athleteId: string): Promise<Trend | null> {
         // Owned rows only (ADR-0020) — the flag is per-athlete now.
         eq(exercises.athleteId, athleteId),
         eq(exercises.isMainLift, true),
+        eq(exercises.isArchived, false),
         isNotNull(sessions.endedAt),
         ne(sets.kind, "WARMUP"),
         isNotNull(sets.weightKg),

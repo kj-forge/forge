@@ -415,6 +415,10 @@ export const exercises = pgTable(
     // weightKg on sets of this exercise is ADDED load ("+20") — e1RM over it
     // alone is meaningless and gets suppressed. Replaces LOADED_BW_SLUGS.
     isLoadedBodyweight: boolean().notNull().default(false),
+    // Soft-hide: an exercise with logged history can't be hard-deleted
+    // (block_movements RESTRICT), so "delete" archives it instead. Archived
+    // rows vanish from search/pickers/PR table; history stays readable.
+    isArchived: boolean().notNull().default(false),
     defaultUnit: exerciseUnit().notNull().default("REPS"),
     progressionRuleId: uuid().references(() => progressionRules.id, {
       onDelete: "set null",

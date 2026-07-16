@@ -9,6 +9,27 @@ export const SET_KINDS = ["WARMUP", "TOP_SET", "WORK", "BACK_OFF", "FAILURE", "D
 // rows now, so those behaviours live on per-row flags (isMainLift,
 // isLoadedBodyweight) instead of hardcoded slugs.
 
+export const EXERCISE_CATEGORIES = ["MAIN_LIFT", "ACCESSORY", "BODYWEIGHT", "HYROX_STATION", "REHAB"] as const;
+export type ExerciseCategory = (typeof EXERCISE_CATEGORIES)[number];
+
+export const EXERCISE_CATEGORY_LABEL: Record<ExerciseCategory, string> = {
+  MAIN_LIFT: "Bój główny",
+  ACCESSORY: "Akcesoryjne",
+  BODYWEIGHT: "Masa ciała",
+  HYROX_STATION: "Stacja Hyrox",
+  REHAB: "Rehab",
+};
+
+export const EXERCISE_UNITS = ["REPS", "TIME", "DISTANCE", "CALORIES"] as const;
+export type ExerciseUnit = (typeof EXERCISE_UNITS)[number];
+
+export const EXERCISE_UNIT_LABEL: Record<ExerciseUnit, string> = {
+  REPS: "Powtórzenia",
+  TIME: "Czas",
+  DISTANCE: "Dystans",
+  CALORIES: "Kalorie",
+};
+
 export const SESSION_TYPES = [
   "STRENGTH",
   "HYROX_EMOM",

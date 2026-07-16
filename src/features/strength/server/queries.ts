@@ -185,8 +185,8 @@ export type PrTableRow = {
 // queries regardless of exercise count. Ordered by namePl within each group.
 export async function loadPrTable(athleteId: string, includeAccessories: boolean): Promise<PrTableRow[]> {
   const scope = includeAccessories
-    ? eq(exercises.athleteId, athleteId)
-    : and(eq(exercises.athleteId, athleteId), eq(exercises.isMainLift, true));
+    ? and(eq(exercises.athleteId, athleteId), eq(exercises.isArchived, false))
+    : and(eq(exercises.athleteId, athleteId), eq(exercises.isArchived, false), eq(exercises.isMainLift, true));
   const exerciseRows = await db
     .select({
       exerciseId: exercises.id,
