@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DeleteSessionDrawer } from "@/features/strength/components/DeleteSessionDrawer";
 import { EndSessionDrawer } from "@/features/strength/components/EndSessionDrawer";
+import { ExerciseDrawer } from "@/features/strength/components/ExerciseDrawer";
 import { ExercisePickerDrawer } from "@/features/strength/components/ExercisePickerDrawer";
 import { MovementRow } from "@/features/strength/components/MovementRow";
 import { NotesDrawer } from "@/features/strength/components/NotesDrawer";
+import { ViewOnlyExerciseDrawer } from "@/features/strength/components/ViewOnlyExerciseDrawer";
 import { addExerciseToSession } from "@/features/strength/server/movements";
 import { createSession, deleteSession, endSession, updateSessionNotes } from "@/features/strength/server/sessions";
 import { getErrorMessage } from "@/lib/error-message";
@@ -27,8 +29,13 @@ export function ActiveSessionView() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [copying, setCopying] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
+  // One drawer for the whole session, selected by movement id — lets it
+  // navigate across exercises (arrows/dots) without closing. Id, not index,
+  // so it survives router.invalidate() after add/remove.
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const isEnded = session.endedAt !== null;
+  const openMovement = movements.find((m) => m.id === openId) ?? null;
 
   // Same-day repeat of an ended session: new session cloned from this one's
   // exercise list (sets start empty; the drawer seeds weights from history).
@@ -72,7 +79,7 @@ export function ActiveSessionView() {
         <ul className="space-y-2">
           {movements.map((m) => (
             <li key={m.id}>
-              <MovementRow movement={m} isEnded={isEnded} />
+              <MovementRow movement={m} isEnded={isEnded} onOpen={() => setOpenId(m.id)} />
             </li>
           ))}
         </ul>
@@ -146,6 +153,28 @@ export function ActiveSessionView() {
           Usuń sesję
         </button>
       </div>
+
+      {isEnded ? (
+        <ViewOnlyExerciseDrawer
+          open={openMovement !== null}
+          onOpenChange={(o) => {
+            if (!o) setOpenId(null);
+          }}
+          movement={openMovement}
+          movements={movements}
+          onNavigate={setOpenId}
+        />
+      ) : (
+        <ExerciseDrawer
+          open={openMovement !== null}
+          onOpenChange={(o) => {
+            if (!o) setOpenId(null);
+          }}
+          movement={openMovement}
+          movements={movements}
+          onNavigate={setOpenId}
+        />
+      )}
 
       <ExercisePickerDrawer
         open={pickerOpen}

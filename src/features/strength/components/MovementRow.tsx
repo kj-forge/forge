@@ -10,12 +10,18 @@ import type { Movement } from "@/features/strength/types";
 import { getErrorMessage } from "@/lib/error-message";
 import { Spinner } from "@/shared/components/Spinner";
 
-import { ExerciseDrawer } from "./ExerciseDrawer";
-import { ViewOnlyExerciseDrawer } from "./ViewOnlyExerciseDrawer";
-
-export function MovementRow({ movement, isEnded }: { movement: Movement; isEnded: boolean }) {
+// The drawer itself is rendered once at the view level (ActiveSessionView) so
+// it can navigate across exercises; the row only asks to open its movement.
+export function MovementRow({
+  movement,
+  isEnded,
+  onOpen,
+}: {
+  movement: Movement;
+  isEnded: boolean;
+  onOpen: () => void;
+}) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const workSets = movement.sets.filter((s) => s.kind !== "WARMUP");
@@ -46,7 +52,7 @@ export function MovementRow({ movement, isEnded }: { movement: Movement; isEnded
           separate <button>s side by side (not nested — that would be
           invalid HTML and would steal the card's tap target). */}
       <div className="flex items-stretch gap-1">
-        <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setOpen(true)}>
+        <button type="button" className="min-w-0 flex-1 text-left" onClick={onOpen}>
           <Card className="transition-colors hover:bg-accent/50">
             <CardContent className="py-3">
               <div className="flex items-center gap-3">
@@ -96,12 +102,6 @@ export function MovementRow({ movement, isEnded }: { movement: Movement; isEnded
         <p className="mt-1 px-1 text-destructive text-xs" role="alert">
           {removeError}
         </p>
-      )}
-
-      {isEnded ? (
-        <ViewOnlyExerciseDrawer open={open} onOpenChange={setOpen} movement={movement} />
-      ) : (
-        <ExerciseDrawer open={open} onOpenChange={setOpen} movement={movement} />
       )}
     </>
   );

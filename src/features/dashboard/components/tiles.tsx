@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ChartNoAxesColumn,
   Clock,
+  Dumbbell,
   Flag,
   type LucideIcon,
   Table2,
@@ -14,6 +15,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import type { DashboardData, Trend } from "@/features/dashboard/server/dashboard";
 import { formatGoalTarget, goalProgress } from "@/features/goals/lib/goal-progress";
 import { PLAN_INTENSITY_CLASS, PLAN_INTENSITY_DOT, PLAN_INTENSITY_LABEL } from "@/features/plan/constants";
+import { planTrainingLabel } from "@/features/plan/lib/plan-display";
 import { E1rmSparkline, formatChartDate } from "@/features/strength/components/E1rmSparkline";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
@@ -98,7 +100,17 @@ export function TodayTile({ plan, className = "" }: { plan: DashboardData["plan"
               {PLAN_INTENSITY_LABEL[entry.intensity]}
             </span>
           </div>
-          <p className="whitespace-pre-line text-sm leading-relaxed">{entry.training}</p>
+          {planTrainingLabel(entry) ? (
+            <p className="whitespace-pre-line text-sm leading-relaxed">{planTrainingLabel(entry)}</p>
+          ) : (
+            <p className="text-muted-foreground text-sm">Brak aktywności w planie na dziś.</p>
+          )}
+          {entry.hasStrength && entry.exercises.length > 0 && (
+            <p className="mt-2 flex items-baseline gap-1.5 text-muted-foreground text-xs">
+              <Dumbbell className="size-3 shrink-0 translate-y-px text-primary" />
+              {entry.exercises.map((e) => e.namePl).join(" · ")}
+            </p>
+          )}
           {entry.goal && <p className="mt-2 text-muted-foreground text-xs">Cel: {entry.goal}</p>}
         </>
       ) : (
@@ -340,7 +352,7 @@ export function WeekTile({ plan }: { plan: DashboardData["plan"] }) {
                   className={`size-2 shrink-0 rounded-full ${entry ? PLAN_INTENSITY_DOT[entry.intensity] : "bg-muted"}`}
                 />
                 <span className="w-8 shrink-0">{label}</span>
-                <span className="truncate">{entry ? entry.training.split("\n")[0] : "—"}</span>
+                <span className="truncate">{entry ? (planTrainingLabel(entry)?.split("\n")[0] ?? "—") : "—"}</span>
               </li>
             );
           })}

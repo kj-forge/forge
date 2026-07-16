@@ -10,7 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { searchExercises } from "@/features/strength/server/exercises";
+import { EXERCISE_CATEGORY_LABEL } from "@/features/strength/constants";
+import { createExercise, searchExercises } from "@/features/strength/server/exercises";
 import { getErrorMessage } from "@/lib/error-message";
 import { Spinner } from "@/shared/components/Spinner";
 
@@ -108,6 +109,31 @@ function ExercisePickerForm({ onPicked }: { onPicked: (exerciseId: string) => Pr
     }
   };
 
+  // Inline create (ADR-0020): the typed query becomes a new custom exercise
+  // with sensible defaults — details are editable later on /exercises.
+  const handleCreate = async () => {
+    const namePl = query.trim();
+    if (namePl.length === 0) return;
+    setError(null);
+    setPickingId("__create__");
+    try {
+      const created = await createExercise({
+        data: {
+          namePl,
+          category: "ACCESSORY",
+          defaultUnit: "REPS",
+          isMainLift: false,
+          isLoadedBodyweight: false,
+          aliases: [],
+        },
+      });
+      await onPicked(created.id);
+    } catch (err) {
+      setError(getErrorMessage(err, "Nie udało się utworzyć ćwiczenia."));
+      setPickingId(null);
+    }
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col space-y-3 px-4">
       <Input
@@ -142,14 +168,28 @@ function ExercisePickerForm({ onPicked }: { onPicked: (exerciseId: string) => Pr
             >
               <div>
                 <p className="font-medium">{ex.namePl}</p>
-                <p className="text-muted-foreground text-xs">
-                  {ex.nameEn} · {ex.category}
-                </p>
+                <p className="text-muted-foreground text-xs">{EXERCISE_CATEGORY_LABEL[ex.category]}</p>
               </div>
               {pickingId === ex.id && <Spinner size="sm" className="text-muted-foreground" />}
             </button>
           </li>
         ))}
+        {!searching && query.trim().length >= 2 && (
+          <li>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between rounded-md border border-dashed p-2 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50"
+              onClick={handleCreate}
+              disabled={pickingId !== null}
+            >
+              <div>
+                <p className="font-medium text-primary">+ Dodaj „{query.trim()}”</p>
+                <p className="text-muted-foreground text-xs">nowe ćwiczenie — szczegóły uzupełnisz w Ćwiczeniach</p>
+              </div>
+              {pickingId === "__create__" && <Spinner size="sm" className="text-muted-foreground" />}
+            </button>
+          </li>
+        )}
       </ul>
     </div>
   );

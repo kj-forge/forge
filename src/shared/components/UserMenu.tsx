@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Settings } from "lucide-react";
+import { Dumbbell, Settings } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -37,6 +37,12 @@ export function UserMenu() {
             <DropdownMenuSeparator />
           </>
         )}
+        <DropdownMenuItem asChild>
+          <Link to="/exercises">
+            <Dumbbell />
+            Ćwiczenia
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <Link to="/me">
             <Settings />

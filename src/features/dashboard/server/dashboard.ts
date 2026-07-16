@@ -3,7 +3,6 @@ import { and, eq, gte, isNotNull, ne, sql } from "drizzle-orm";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { loadActiveGoals } from "@/features/goals/server/queries";
 import { loadTrainingPlan } from "@/features/plan/server/queries";
-import { PR_TABLE_SLUG_ORDER } from "@/features/strength/constants";
 import { epleyE1RM } from "@/features/strength/lib/e1rm";
 import { loadPrTable, loadRecentSessions } from "@/features/strength/server/queries";
 import { db } from "../../../../db/client";
@@ -12,8 +11,8 @@ import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../
 export type TrendPoint = { date: string; e1rm: number };
 export type Trend = { slug: string; namePl: string; points: TrendPoint[] };
 
-// Sparkline data: per-session best e1RM for the highest-priority main lift
-// that has at least two sessions of history (canonical PR-table order).
+// Sparkline data: per-session best e1RM for the athlete's most-trained main
+// lift with at least two sessions of history (ties broken by name).
 async function loadTrend(athleteId: string): Promise<Trend | null> {
   const rows = await db
     .select({
@@ -32,7 +31,10 @@ async function loadTrend(athleteId: string): Promise<Trend | null> {
     .where(
       and(
         eq(sets.athleteId, athleteId),
+        // Owned rows only (ADR-0020) — the flag is per-athlete now.
+        eq(exercises.athleteId, athleteId),
         eq(exercises.isMainLift, true),
+        eq(exercises.isArchived, false),
         isNotNull(sessions.endedAt),
         ne(sets.kind, "WARMUP"),
         isNotNull(sets.weightKg),
@@ -54,14 +56,24 @@ async function loadTrend(athleteId: string): Promise<Trend | null> {
     if (!point || e1rm > point.e1rm) entry.bySession.set(row.sessionId, { date: row.date, e1rm });
   }
 
-  for (const slug of PR_TABLE_SLUG_ORDER) {
-    const entry = bySlug.get(slug);
-    if (entry && entry.bySession.size >= 2) {
-      // Rows arrive date-ordered, so insertion order IS chronological.
-      return { slug, namePl: entry.namePl, points: [...entry.bySession.values()].slice(-10) };
+  // Pick the most-trained qualifying lift (was: canonical slug order, retired
+  // with the per-user catalogue — slugs are user-editable data now).
+  let bestSlug: string | null = null;
+  let bestEntry: { namePl: string; bySession: Map<string, TrendPoint> } | null = null;
+  for (const [slug, entry] of bySlug) {
+    if (entry.bySession.size < 2) continue;
+    const better =
+      !bestEntry ||
+      entry.bySession.size > bestEntry.bySession.size ||
+      (entry.bySession.size === bestEntry.bySession.size && entry.namePl.localeCompare(bestEntry.namePl, "pl") < 0);
+    if (better) {
+      bestSlug = slug;
+      bestEntry = entry;
     }
   }
-  return null;
+  if (!bestSlug || !bestEntry) return null;
+  // Rows arrive date-ordered, so insertion order IS chronological.
+  return { slug: bestSlug, namePl: bestEntry.namePl, points: [...bestEntry.bySession.values()].slice(-10) };
 }
 
 // The athlete's most-trained weekdays (ended sessions, last 2 months) —

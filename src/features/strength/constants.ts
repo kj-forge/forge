@@ -4,24 +4,31 @@ import type { SessionType, SetKind } from "./types";
 // even though the picker shows only the three most-used kinds.
 export const SET_KINDS = ["WARMUP", "TOP_SET", "WORK", "BACK_OFF", "FAILURE", "DROP_SET"] as const;
 
-// Accessories shown in the PR table when the toggle is on. Main lifts come
-// from the is_main_lift DB flag; this list is the product-side counterpart
-// (kept in code — it's a display preference, not a data property).
-export const ACCESSORY_SLUGS = ["romanian-deadlift", "bulgarian-split-squat", "pull-up", "dip"] as const;
+// NOTE (ADR-0020): the old ACCESSORY_SLUGS / PR_TABLE_SLUG_ORDER /
+// LOADED_BW_SLUGS constants are gone — exercises are per-athlete, editable
+// rows now, so those behaviours live on per-row flags (isMainLift,
+// isLoadedBodyweight) instead of hardcoded slugs.
 
-// Display order of the PR table (main lifts, then accessories). The DB flag
-// decides WHAT is a main lift; this list only decides where rows sit.
-export const PR_TABLE_SLUG_ORDER = [
-  "back-squat",
-  "deadlift",
-  "bench-press",
-  "overhead-press",
-  ...ACCESSORY_SLUGS,
-] as const;
+export const EXERCISE_CATEGORIES = ["MAIN_LIFT", "ACCESSORY", "BODYWEIGHT", "HYROX_STATION", "REHAB"] as const;
+export type ExerciseCategory = (typeof EXERCISE_CATEGORIES)[number];
 
-// weightKg on these is ADDED load on top of bodyweight ("+20"), so Epley
-// over the bar weight alone would be meaningless — e1RM is suppressed.
-export const LOADED_BW_SLUGS = ["pull-up", "dip"] as const;
+export const EXERCISE_CATEGORY_LABEL: Record<ExerciseCategory, string> = {
+  MAIN_LIFT: "Bój główny",
+  ACCESSORY: "Akcesoryjne",
+  BODYWEIGHT: "Masa ciała",
+  HYROX_STATION: "Stacja Hyrox",
+  REHAB: "Rehab",
+};
+
+export const EXERCISE_UNITS = ["REPS", "TIME", "DISTANCE", "CALORIES"] as const;
+export type ExerciseUnit = (typeof EXERCISE_UNITS)[number];
+
+export const EXERCISE_UNIT_LABEL: Record<ExerciseUnit, string> = {
+  REPS: "Powtórzenia",
+  TIME: "Czas",
+  DISTANCE: "Dystans",
+  CALORIES: "Kalorie",
+};
 
 export const SESSION_TYPES = [
   "STRENGTH",

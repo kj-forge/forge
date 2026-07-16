@@ -3,7 +3,6 @@ import { Table2, Trophy } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { LOADED_BW_SLUGS } from "@/features/strength/constants";
 import { type CompactSetsPart, formatSetsCompactParts } from "@/features/strength/lib/format-sets-compact";
 import type { PrTableRow, WeekdaySession } from "@/features/strength/server/stats";
 import { WEEKDAY_LABELS_PL } from "@/shared/lib/weekday";
@@ -22,10 +21,6 @@ const PR_DATE_FMT = new Intl.DateTimeFormat("pl-PL", {
 function formatColumnDate(isoDate: string): string {
   const d = new Date(isoDate);
   return `${d.getUTCDate()}.${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-function isLoadedBw(slug: string): boolean {
-  return (LOADED_BW_SLUGS as readonly string[]).includes(slug);
 }
 
 export function StatsView() {
@@ -112,11 +107,11 @@ function RekordySegment({
       </ul>
 
       <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-muted-foreground text-sm">
-        <span>Akcesoria (RDL, bułgary, drążek, dipy)</span>
+        <span>Pozostałe ćwiczenia (z zapisaną historią)</span>
         <button
           type="button"
           aria-pressed={accOn}
-          aria-label="Pokaż akcesoria"
+          aria-label="Pokaż pozostałe ćwiczenia"
           className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${accOn ? "bg-ember" : "bg-muted"}`}
           onClick={() => onToggleAcc(!accOn)}
         >
@@ -133,7 +128,7 @@ function RekordySegment({
 
       {accOn && accessories.length > 0 && (
         <>
-          <p className="px-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">Akcesoria</p>
+          <p className="px-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">Pozostałe</p>
           <ul className="divide-y rounded-xl border bg-card">
             {accessories.map((row) => (
               <PrRow key={row.exerciseId} row={row} />
@@ -147,7 +142,7 @@ function RekordySegment({
 
 function PrRow({ row }: { row: PrTableRow }) {
   const best = row.best;
-  const weightLabel = best ? (isLoadedBw(row.slug) ? `+${best.weightKg}` : `${best.weightKg}`) : null;
+  const weightLabel = best ? (row.isLoadedBodyweight ? `+${best.weightKg}` : `${best.weightKg}`) : null;
 
   return (
     <li>
@@ -222,8 +217,9 @@ function ZestawieniaSegment({
   }
 
   const cellParts = (session: WeekdaySession, slug: string): CompactSetsPart[] => {
-    const sets = session.exercises.filter((e) => e.slug === slug).flatMap((e) => e.sets);
-    return formatSetsCompactParts(sets, { loadedBodyweight: isLoadedBw(slug) });
+    const matching = session.exercises.filter((e) => e.slug === slug);
+    const sets = matching.flatMap((e) => e.sets);
+    return formatSetsCompactParts(sets, { loadedBodyweight: matching[0]?.isLoadedBodyweight ?? false });
   };
 
   return (

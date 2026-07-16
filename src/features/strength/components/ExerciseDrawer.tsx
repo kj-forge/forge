@@ -19,7 +19,8 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRootMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LOADED_BW_SLUGS, SET_KIND_COLOR, SET_KIND_LABEL, VISIBLE_SET_KINDS } from "@/features/strength/constants";
+import { ExerciseNav } from "@/features/strength/components/ExerciseNav";
+import { SET_KIND_COLOR, SET_KIND_LABEL, VISIBLE_SET_KINDS } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
 import { seedSetFields } from "@/features/strength/lib/seed-set-fields";
 import {
@@ -39,21 +40,37 @@ import { Spinner } from "@/shared/components/Spinner";
 interface ExerciseDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  movement: Movement;
+  // Null while closed (the drawer is rendered once at the view level and the
+  // open movement is selected by id) — the body only mounts when non-null.
+  movement: Movement | null;
+  movements: Movement[];
+  onNavigate: (id: string) => void;
 }
 
-export function ExerciseDrawer({ open, onOpenChange, movement }: ExerciseDrawerProps) {
-  // Conditional-mount the body so the form re-seeds its defaults every time
-  // the drawer opens: this session's latest set of the kind first, then the
-  // historical lastByKind reference.
+export function ExerciseDrawer({ open, onOpenChange, movement, movements, onNavigate }: ExerciseDrawerProps) {
+  // key={movement.id}: switching exercise while the drawer stays open remounts
+  // the body so the set form re-seeds from the new movement (this session's
+  // latest set of the kind first, then the historical lastByKind reference).
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>{open ? <ExerciseDrawerBody movement={movement} /> : null}</DialogContent>
+      <DialogContent>
+        {open && movement ? (
+          <ExerciseDrawerBody key={movement.id} movement={movement} movements={movements} onNavigate={onNavigate} />
+        ) : null}
+      </DialogContent>
     </Dialog>
   );
 }
 
-function ExerciseDrawerBody({ movement }: { movement: Movement }) {
+function ExerciseDrawerBody({
+  movement,
+  movements,
+  onNavigate,
+}: {
+  movement: Movement;
+  movements: Movement[];
+  onNavigate: (id: string) => void;
+}) {
   const router = useRouter();
 
   const initialKind = suggestKind(movement);
@@ -95,7 +112,7 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
       if (saved.pr?.isNewPR && weightKg !== undefined) {
         // Added-load exercises (pull-up/dip) celebrate the set itself —
         // e1RM over the added weight alone would be a meaningless number.
-        const loadedBw = (LOADED_BW_SLUGS as readonly string[]).includes(movement.exerciseSlug);
+        const loadedBw = movement.exerciseIsLoadedBodyweight;
         const setLabel = `${values.reps}× ${loadedBw ? "+" : ""}${weightKg} kg`;
         toast(`Nowy rekord: ${movement.exerciseNamePl}!`, {
           description: loadedBw ? setLabel : `${setLabel} · e1RM ~${saved.pr.e1rm} kg (było ~${saved.pr.previousE1rm})`,
@@ -156,6 +173,10 @@ function ExerciseDrawerBody({ movement }: { movement: Movement }) {
               : `${movement.sets.length} ${movement.sets.length === 1 ? "seria" : "serii"} w tej sesji`}
           </DialogDescription>
         </DialogHeader>
+
+        <div className="shrink-0 px-4 pt-1 pb-2">
+          <ExerciseNav movements={movements} currentId={movement.id} onNavigate={onNavigate} />
+        </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
           {movement.sets.length > 0 && (

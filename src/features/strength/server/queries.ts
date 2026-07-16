@@ -2,10 +2,9 @@
 // dashboard). NEVER import this file from views/routes — it touches
 // db/client at call time and must stay out of the client bundle
 // (see the tree-shaking note in sessions.ts).
-import { and, desc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, ne } from "drizzle-orm";
 import { db } from "../../../../db/client";
 import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
-import { ACCESSORY_SLUGS, LOADED_BW_SLUGS, PR_TABLE_SLUG_ORDER } from "../constants";
 import { epleyE1RM } from "../lib/e1rm";
 import { bestE1RM } from "../lib/pr";
 
@@ -98,9 +97,15 @@ export type E1rmPoint = { date: string; e1rm: number };
 // ended session, and the recent session history with full set lists.
 export async function loadExerciseStats(athleteId: string, slug: string) {
   const [exercise] = await db
-    .select({ id: exercises.id, slug: exercises.slug, namePl: exercises.namePl })
+    .select({
+      id: exercises.id,
+      slug: exercises.slug,
+      namePl: exercises.namePl,
+      isLoadedBodyweight: exercises.isLoadedBodyweight,
+    })
     .from(exercises)
-    .where(eq(exercises.slug, slug))
+    // Owned rows only — slugs are per-athlete namespaces since ADR-0020.
+    .where(and(eq(exercises.athleteId, athleteId), eq(exercises.slug, slug)))
     .limit(1);
   if (!exercise) return null;
 
@@ -119,7 +124,7 @@ export async function loadExerciseStats(athleteId: string, slug: string) {
     .where(and(eq(sets.athleteId, athleteId), eq(blockMovements.exerciseId, exercise.id), isNotNull(sessions.endedAt)))
     .orderBy(sessions.date, sessions.startedAt, sets.setNumber);
 
-  const isLoadedBw = (LOADED_BW_SLUGS as readonly string[]).includes(slug);
+  const isLoadedBw = exercise.isLoadedBodyweight;
 
   // Group per session — rows arrive chronological, Map keeps that order.
   const bySession = new Map<
@@ -170,27 +175,25 @@ export type PrTableRow = {
   slug: string;
   namePl: string;
   isMainLift: boolean;
+  isLoadedBodyweight: boolean;
   best: { weightKg: number; reps: number; e1rm: number | null; date: string } | null;
 };
 
-const slugOrder = (slug: string) => {
-  const idx = PR_TABLE_SLUG_ORDER.indexOf(slug as (typeof PR_TABLE_SLUG_ORDER)[number]);
-  return idx === -1 ? PR_TABLE_SLUG_ORDER.length : idx;
-};
-
-// All-time bests for the main lifts (and optionally the accessory group):
-// heaviest qualifying set per exercise plus its Epley e1RM and the date it
-// was FIRST achieved. Two batched queries regardless of exercise count.
+// All-time bests: the athlete's main lifts always (flag on their own rows,
+// user-editable since ADR-0020); with includeAccessories every OTHER owned
+// exercise that actually has logged history joins below them. Two batched
+// queries regardless of exercise count. Ordered by namePl within each group.
 export async function loadPrTable(athleteId: string, includeAccessories: boolean): Promise<PrTableRow[]> {
   const scope = includeAccessories
-    ? or(eq(exercises.isMainLift, true), inArray(exercises.slug, [...ACCESSORY_SLUGS]))
-    : eq(exercises.isMainLift, true);
+    ? and(eq(exercises.athleteId, athleteId), eq(exercises.isArchived, false))
+    : and(eq(exercises.athleteId, athleteId), eq(exercises.isArchived, false), eq(exercises.isMainLift, true));
   const exerciseRows = await db
     .select({
       exerciseId: exercises.id,
       slug: exercises.slug,
       namePl: exercises.namePl,
       isMainLift: exercises.isMainLift,
+      isLoadedBodyweight: exercises.isLoadedBodyweight,
     })
     .from(exercises)
     .where(scope);
@@ -232,14 +235,18 @@ export async function loadPrTable(athleteId: string, includeAccessories: boolean
     if (better) bestByExercise.set(row.exerciseId, { weightKg: row.weightKg, reps: row.reps, date: row.date });
   }
 
-  return exerciseRows
-    .sort((a, b) => slugOrder(a.slug) - slugOrder(b.slug))
-    .map((e) => {
-      const best = bestByExercise.get(e.exerciseId) ?? null;
-      const isLoadedBw = (LOADED_BW_SLUGS as readonly string[]).includes(e.slug);
-      return {
-        ...e,
-        best: best ? { ...best, e1rm: isLoadedBw ? null : epleyE1RM(best.weightKg, best.reps) } : null,
-      };
-    });
+  return (
+    exerciseRows
+      .map((e) => {
+        const best = bestByExercise.get(e.exerciseId) ?? null;
+        return {
+          ...e,
+          best: best ? { ...best, e1rm: e.isLoadedBodyweight ? null : epleyE1RM(best.weightKg, best.reps) } : null,
+        };
+      })
+      // Main lifts always show (even data-less); accessories only earn a row
+      // once they have history — 30 "brak danych" lines help nobody.
+      .filter((e) => e.isMainLift || e.best !== null)
+      .sort((a, b) => Number(b.isMainLift) - Number(a.isMainLift) || a.namePl.localeCompare(b.namePl, "pl"))
+  );
 }

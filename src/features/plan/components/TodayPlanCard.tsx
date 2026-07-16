@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { CalendarDays, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronRight, Dumbbell } from "lucide-react";
 
 import { PLAN_INTENSITY_CLASS, PLAN_INTENSITY_LABEL } from "@/features/plan/constants";
+import { planTrainingLabel } from "@/features/plan/lib/plan-display";
 import type { PlanDay } from "@/features/plan/types";
 import { WEEKDAY_FULL_PL, warsawWeekday } from "@/shared/lib/weekday";
 
@@ -43,7 +44,17 @@ export function TodayPlanCard({ plan }: { plan: PlanDay[] }) {
               {PLAN_INTENSITY_LABEL[entry.intensity]}
             </span>
           </div>
-          <p className="line-clamp-3 whitespace-pre-line text-sm">{entry.training}</p>
+          {planTrainingLabel(entry) ? (
+            <p className="line-clamp-3 whitespace-pre-line text-sm">{planTrainingLabel(entry)}</p>
+          ) : (
+            <p className="text-muted-foreground text-sm">Brak aktywności w planie na dziś.</p>
+          )}
+          {entry.hasStrength && entry.exercises.length > 0 && (
+            <p className="mt-1.5 flex items-baseline gap-1.5 text-muted-foreground text-xs">
+              <Dumbbell className="size-3 shrink-0 translate-y-px text-primary" />
+              {entry.exercises.map((e) => e.namePl).join(" · ")}
+            </p>
+          )}
           {entry.goal && <p className="mt-1.5 text-muted-foreground text-xs">Cel: {entry.goal}</p>}
         </>
       ) : (

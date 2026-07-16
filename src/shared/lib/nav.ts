@@ -28,9 +28,9 @@ export const TAB_BAR_ITEMS: NavItem[] = NAV_ITEMS.filter((i) => i.inTabBar);
 
 export const SIDEBAR_ITEMS: NavItem[] = NAV_ITEMS.filter((i) => i.inSidebar);
 
-// The bar stays visible on /plan and /me even though they have no tab —
-// top-level browse contexts, not focused flows like an active session.
-const TAB_BAR_PATHS = new Set(["/", "/sessions", "/sessions/new", "/stats", "/plan", "/goals", "/me"]);
+// The bar stays visible on /plan, /me and /exercises even though they have
+// no tab — top-level browse contexts, not focused flows like an active session.
+const TAB_BAR_PATHS = new Set(["/", "/sessions", "/sessions/new", "/stats", "/plan", "/goals", "/me", "/exercises"]);
 
 function normalizePath(pathname: string): string {
   return pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;

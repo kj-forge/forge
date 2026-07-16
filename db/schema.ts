@@ -25,7 +25,9 @@
 // `leftJoin`/`innerJoin` for now.
 // ============================================================================
 
+import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   date,
   doublePrecision,
@@ -389,11 +391,18 @@ export const progressionRules = pgTable("progression_rules", {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 
+// Athlete-owned since ADR-0020 (copy-on-provision): rows with a NULL
+// athleteId are the global starter TEMPLATES (seed-maintained, never shown
+// in the app); every athlete gets their own copies at signup and all app
+// reads/writes are scoped to athleteId = me.
 export const exercises = pgTable(
   "exercises",
   {
     id: uuid().primaryKey().defaultRandom(),
-    slug: text().notNull().unique(),
+    athleteId: uuid().references(() => athletes.id, { onDelete: "cascade" }),
+    // The template this owned row was copied from (data-migration lineage).
+    sourceExerciseId: uuid().references((): AnyPgColumn => exercises.id, { onDelete: "set null" }),
+    slug: text().notNull(),
     namePl: text().notNull(),
     nameEn: text().notNull(),
     // Aliases: any spelling variations the user might type. PL-first.
@@ -403,13 +412,27 @@ export const exercises = pgTable(
     muscleGroups: jsonb().$type<string[]>().notNull().default([]),
     isUnilateral: boolean().notNull().default(false),
     isMainLift: boolean().notNull().default(false),
+    // weightKg on sets of this exercise is ADDED load ("+20") — e1RM over it
+    // alone is meaningless and gets suppressed. Replaces LOADED_BW_SLUGS.
+    isLoadedBodyweight: boolean().notNull().default(false),
+    // Soft-hide: an exercise with logged history can't be hard-deleted
+    // (block_movements RESTRICT), so "delete" archives it instead. Archived
+    // rows vanish from search/pickers/PR table; history stays readable.
+    isArchived: boolean().notNull().default(false),
     defaultUnit: exerciseUnit().notNull().default("REPS"),
     progressionRuleId: uuid().references(() => progressionRules.id, {
       onDelete: "set null",
     }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("exercises_slug_idx").on(t.slug), index("exercises_category_idx").on(t.category)],
+  (t) => [
+    // Slug uniqueness is per-scope now: one namespace for templates, one per
+    // athlete. Identification is by id — slugs are seed/display artifacts.
+    uniqueIndex("exercises_template_slug_uq").on(t.slug).where(sql`${t.athleteId} IS NULL`),
+    uniqueIndex("exercises_athlete_slug_uq").on(t.athleteId, t.slug).where(sql`${t.athleteId} IS NOT NULL`),
+    index("exercises_athlete_idx").on(t.athleteId),
+    index("exercises_category_idx").on(t.category),
+  ],
 );
 
 export const hyroxStations = pgTable(
@@ -925,10 +948,37 @@ export const trainingPlanDays = pgTable(
     intensity: planIntensity().notNull(),
     training: text().notNull(),
     goal: text(),
+    // Whether this day includes a strength session; when true, the day's
+    // ordered exercise list (training_plan_day_exercises) seeds a new session.
+    hasStrength: boolean().notNull().default(false),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("training_plan_days_athlete_day_idx").on(t.athleteId, t.dayOfWeek)],
+);
+
+// The ordered strength exercises of a plan day — the sequence they'll appear
+// in when the day seeds a new session. Mirrors block_movements (orderIndex,
+// exercise FK restrict) and rehab_protocol_exercises (ordered template rows).
+export const trainingPlanDayExercises = pgTable(
+  "training_plan_day_exercises",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    athleteId: uuid()
+      .notNull()
+      .references(() => athletes.id, { onDelete: "cascade" }),
+    planDayId: uuid()
+      .notNull()
+      .references(() => trainingPlanDays.id, { onDelete: "cascade" }),
+    orderIndex: integer().notNull(),
+    exerciseId: uuid()
+      .notNull()
+      .references(() => exercises.id, { onDelete: "restrict" }),
+  },
+  (t) => [
+    index("training_plan_day_exercises_day_idx").on(t.planDayId, t.orderIndex),
+    uniqueIndex("training_plan_day_exercises_day_exercise_uq").on(t.planDayId, t.exerciseId),
+  ],
 );
 
 // ============================================================================

@@ -18,6 +18,7 @@ These are not architecture decision records (those live in [`docs/adr/`](../adr/
 | [app-shell-navigation.md](app-shell-navigation.md) | The fixed-viewport app shell behind [ADR-0019](../adr/ADR-0019-app-shell-fixed-viewport.md) — why the browser window stopped scrolling, sticky-in-scroll bottom bars, safe-area insets, and the resolvedLocation trick for nav active states. |
 | [estimated-1rm-and-pr-detection.md](estimated-1rm-and-pr-detection.md) | What `e1RM ~131 kg` means — the Epley formula vs alternatives, why rep-ranges need a common currency, PR semantics (warmups, bodyweight, added-load `+kg`), bestSet vs bestE1RM, the `is_main_lift` flag-vs-category call, and the Warsaw-timezone weekday default. |
 | [upsert-and-composite-unique.md](upsert-and-composite-unique.md) | One row per (athlete, weekday) — composite unique constraints, the three save-or-update patterns (SELECT-then-INSERT vs DO NOTHING vs DO UPDATE) and their race conditions, manual `updatedAt`, and why the free-text plan didn't reuse `weekly_templates`. |
+| [per-user-catalogue.md](per-user-catalogue.md) | How `exercises` became a personal catalogue ([ADR-0020](../adr/ADR-0020-per-user-exercise-catalogue.md)) — copy-on-provision vs overlay, `NULL` athlete_id as the template namespace, partial unique indexes, `INSERT ... SELECT` provisioning + FK repointing, moving behaviour off code constants onto per-row flags, and the archive-not-delete exception to §9. |
 
 ## How to use these
 

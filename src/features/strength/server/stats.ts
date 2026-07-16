@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
+import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
 import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
 import { loadExerciseStats, loadPrTable } from "./queries";
@@ -11,7 +12,7 @@ export type { PrTableRow } from "./queries";
 const exerciseStatsInput = z.object({ slug: z.string().trim().min(1).max(80) });
 
 export const getExerciseStats = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => exerciseStatsInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(exerciseStatsInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
     return loadExerciseStats(athleteId, data.slug);
@@ -22,7 +23,7 @@ const prTableInput = z.object({ includeAccessories: z.boolean() });
 // All-time bests for the main lifts (and optionally the accessory group) —
 // batched query logic shared with the dashboard lives in queries.ts.
 export const getPrTable = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => prTableInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(prTableInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
     return loadPrTable(athleteId, data.includeAccessories);
@@ -34,6 +35,7 @@ export type WeekdaySession = {
   exercises: {
     namePl: string;
     slug: string;
+    isLoadedBodyweight: boolean;
     sets: { weightKg: number | null; reps: number | null; kind: string }[];
   }[];
 };
@@ -45,7 +47,7 @@ const weekdayInput = z.object({ weekday: z.number().int().min(0).max(6) });
 // at least one exercise, newest first, with full set lists per exercise.
 // The matrix pivot (exercise rows × session columns) happens client-side.
 export const getWeekdayComparison = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => weekdayInput.parse(data))
+  .inputValidator((data: unknown) => parseInput(weekdayInput, data))
   .handler(async ({ data }): Promise<WeekdaySession[]> => {
     const { athleteId } = await getCurrentAthleteOrThrow();
 
@@ -78,6 +80,7 @@ export const getWeekdayComparison = createServerFn({ method: "GET" })
         movementId: blockMovements.id,
         namePl: exercises.namePl,
         slug: exercises.slug,
+        isLoadedBodyweight: exercises.isLoadedBodyweight,
       })
       .from(blockMovements)
       .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
@@ -108,7 +111,12 @@ export const getWeekdayComparison = createServerFn({ method: "GET" })
     const movementsBySession = new Map<string, WeekdaySession["exercises"]>();
     for (const row of movementRows) {
       const arr = movementsBySession.get(row.sessionId) ?? [];
-      arr.push({ namePl: row.namePl, slug: row.slug, sets: setsByMovement.get(row.movementId) ?? [] });
+      arr.push({
+        namePl: row.namePl,
+        slug: row.slug,
+        isLoadedBodyweight: row.isLoadedBodyweight,
+        sets: setsByMovement.get(row.movementId) ?? [],
+      });
       movementsBySession.set(row.sessionId, arr);
     }
 
