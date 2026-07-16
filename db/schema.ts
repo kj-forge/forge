@@ -25,7 +25,9 @@
 // `leftJoin`/`innerJoin` for now.
 // ============================================================================
 
+import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   date,
   doublePrecision,
@@ -389,11 +391,18 @@ export const progressionRules = pgTable("progression_rules", {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 
+// Athlete-owned since ADR-0020 (copy-on-provision): rows with a NULL
+// athleteId are the global starter TEMPLATES (seed-maintained, never shown
+// in the app); every athlete gets their own copies at signup and all app
+// reads/writes are scoped to athleteId = me.
 export const exercises = pgTable(
   "exercises",
   {
     id: uuid().primaryKey().defaultRandom(),
-    slug: text().notNull().unique(),
+    athleteId: uuid().references(() => athletes.id, { onDelete: "cascade" }),
+    // The template this owned row was copied from (data-migration lineage).
+    sourceExerciseId: uuid().references((): AnyPgColumn => exercises.id, { onDelete: "set null" }),
+    slug: text().notNull(),
     namePl: text().notNull(),
     nameEn: text().notNull(),
     // Aliases: any spelling variations the user might type. PL-first.
@@ -403,13 +412,23 @@ export const exercises = pgTable(
     muscleGroups: jsonb().$type<string[]>().notNull().default([]),
     isUnilateral: boolean().notNull().default(false),
     isMainLift: boolean().notNull().default(false),
+    // weightKg on sets of this exercise is ADDED load ("+20") — e1RM over it
+    // alone is meaningless and gets suppressed. Replaces LOADED_BW_SLUGS.
+    isLoadedBodyweight: boolean().notNull().default(false),
     defaultUnit: exerciseUnit().notNull().default("REPS"),
     progressionRuleId: uuid().references(() => progressionRules.id, {
       onDelete: "set null",
     }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("exercises_slug_idx").on(t.slug), index("exercises_category_idx").on(t.category)],
+  (t) => [
+    // Slug uniqueness is per-scope now: one namespace for templates, one per
+    // athlete. Identification is by id — slugs are seed/display artifacts.
+    uniqueIndex("exercises_template_slug_uq").on(t.slug).where(sql`${t.athleteId} IS NULL`),
+    uniqueIndex("exercises_athlete_slug_uq").on(t.athleteId, t.slug).where(sql`${t.athleteId} IS NOT NULL`),
+    index("exercises_athlete_idx").on(t.athleteId),
+    index("exercises_category_idx").on(t.category),
+  ],
 );
 
 export const hyroxStations = pgTable(
