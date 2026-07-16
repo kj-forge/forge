@@ -12,6 +12,7 @@ describe("showsTabBar", () => {
     expect(showsTabBar("/plan")).toBe(true);
     expect(showsTabBar("/goals")).toBe(true);
     expect(showsTabBar("/me")).toBe(true);
+    expect(showsTabBar("/exercises")).toBe(true);
   });
 
   test("hidden inside a session detail", () => {
