@@ -50,10 +50,12 @@ function RootComponent() {
   );
 }
 
-// Applies .dark before first paint (stored preference, "system" falls back to
-// the OS). Must be inline in <head> — a module would run after paint and flash
-// the wrong theme. suppressHydrationWarning: the server can't know the class.
-const themeInitScript = `(function(){try{var t=localStorage.getItem("forge-theme");var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.classList.add("dark")}catch(e){}})()`;
+// Applies .dark before first paint (stored preference; no explicit choice
+// falls back to the device default: dark on mobile, light on desktop — keep
+// the 768px breakpoint in sync with shared/lib/theme.ts). Must be inline in
+// <head> — a module would run after paint and flash the wrong theme.
+// suppressHydrationWarning: the server can't know the class.
+const themeInitScript = `(function(){try{var t=localStorage.getItem("forge-theme");var d=t==="dark"||(t!=="light"&&!matchMedia("(min-width: 768px)").matches);if(d)document.documentElement.classList.add("dark")}catch(e){}})()`;
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (

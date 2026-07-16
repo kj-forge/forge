@@ -1,9 +1,15 @@
+// "system" is the stored value of the "Auto" option: dark on mobile, light on
+// desktop (device class, not OS preference — a phone in a gym wants dark, a
+// desk browser wants light). Explicit "light"/"dark" are absolute.
 export type Theme = "light" | "dark" | "system";
 
 export const THEME_STORAGE_KEY = "forge-theme";
 
-export function resolveIsDark(theme: Theme, systemPrefersDark: boolean): boolean {
-  return theme === "dark" || (theme === "system" && systemPrefersDark);
+// Complement of Tailwind's md breakpoint — keep in sync with the shell.
+export const MOBILE_DEFAULT_DARK_QUERY = "(min-width: 768px)";
+
+export function resolveIsDark(theme: Theme, autoDark: boolean): boolean {
+  return theme === "dark" || (theme === "system" && autoDark);
 }
 
 export function getStoredTheme(): Theme {
@@ -12,8 +18,8 @@ export function getStoredTheme(): Theme {
 }
 
 export function applyTheme(theme: Theme): void {
-  const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-  document.documentElement.classList.toggle("dark", resolveIsDark(theme, systemDark));
+  const autoDark = !window.matchMedia(MOBILE_DEFAULT_DARK_QUERY).matches;
+  document.documentElement.classList.toggle("dark", resolveIsDark(theme, autoDark));
 }
 
 export function setTheme(theme: Theme): void {
