@@ -76,9 +76,15 @@ export function ExerciseStatsView() {
       )}
 
       <section className="rounded-2xl border bg-card p-4">
-        <p className="mb-1.5 font-bold text-[10.5px] text-muted-foreground uppercase tracking-widest">
-          Historia · ostatnie {history.length} sesji
-        </p>
+        <div className="mb-1.5 flex items-baseline justify-between gap-3">
+          <p className="font-bold text-[10.5px] text-muted-foreground uppercase tracking-widest">
+            Historia · ostatnie {history.length} sesji
+          </p>
+          {/* Column caption sits over the values it describes (right column). */}
+          {history.length > 0 && !isLoadedBw && (
+            <p className="shrink-0 text-[10px] text-muted-foreground uppercase tracking-wide">e1RM · kg</p>
+          )}
+        </div>
         {history.length === 0 ? (
           <p className="py-4 text-center text-muted-foreground text-sm">
             Jeszcze brak zakończonych sesji z tym ćwiczeniem.
@@ -105,9 +111,6 @@ export function ExerciseStatsView() {
               </li>
             ))}
           </ul>
-        )}
-        {history.length > 0 && !isLoadedBw && (
-          <p className="mt-1.5 text-[10px] text-muted-foreground uppercase tracking-wide">e1RM sesji · kg</p>
         )}
       </section>
     </main>
