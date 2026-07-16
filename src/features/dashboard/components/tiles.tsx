@@ -239,28 +239,44 @@ export function GoalTile({ goals, compact = false }: { goals: DashboardData["goa
 }
 
 export function PrTile({ prs, compact = false }: { prs: DashboardData["prs"]; compact?: boolean }) {
+  // Mobile bento: the rows are too small to be individual tap targets — the
+  // whole tile is one link to the stats list (like GoalTile). Desktop keeps
+  // per-row deep links to /stats/$slug plus the header action.
+  if (compact) {
+    return (
+      <Link to="/stats" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS} h-full`}>
+        <TileHeader icon={Trophy} title="Rekordy" />
+        <ul className="space-y-0.5">
+          {prs.map((pr) => (
+            <li key={pr.exerciseId} className="flex items-baseline justify-between gap-2 py-0.5 text-xs">
+              <span className="truncate">{pr.namePl}</span>
+              <span className="font-black text-primary tabular-nums">
+                {pr.best ? (pr.best.e1rm ?? `${pr.best.reps}×${pr.best.weightKg}`) : "—"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Link>
+    );
+  }
+
   return (
     <Tile
-      className={compact ? "h-full" : ""}
       icon={Trophy}
       title="Rekordy"
       action={
-        compact ? undefined : (
-          <Link to="/stats" className="transition-colors hover:text-foreground">
-            statystyki →
-          </Link>
-        )
+        <Link to="/stats" className="transition-colors hover:text-foreground">
+          statystyki →
+        </Link>
       }
     >
-      <ul className={compact ? "space-y-0.5" : ""}>
+      <ul>
         {prs.map((pr) => (
           <li key={pr.exerciseId}>
             <Link
               to="/stats/$slug"
               params={{ slug: pr.slug }}
-              className={`-mx-1.5 flex items-baseline justify-between gap-2 rounded-md px-1.5 transition-colors hover:bg-accent/60 ${
-                compact ? "py-0.5 text-xs" : "py-1.5 text-sm"
-              }`}
+              className="-mx-1.5 flex items-baseline justify-between gap-2 rounded-md px-1.5 py-1.5 text-sm transition-colors hover:bg-accent/60"
             >
               <span className="truncate">{pr.namePl}</span>
               <span className="font-black text-primary tabular-nums">
@@ -270,7 +286,7 @@ export function PrTile({ prs, compact = false }: { prs: DashboardData["prs"]; co
           </li>
         ))}
       </ul>
-      {!compact && <p className="mt-1.5 text-[10px] text-muted-foreground uppercase tracking-wide">e1RM · kg</p>}
+      <p className="mt-1.5 text-[10px] text-muted-foreground uppercase tracking-wide">e1RM · kg</p>
     </Tile>
   );
 }
