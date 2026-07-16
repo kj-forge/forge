@@ -27,6 +27,7 @@ ADRs are immutable once accepted. To change a decision, write a new ADR that sup
 | [ADR-0017](ADR-0017-cloudflare-workers-deploy-pipeline.md) | Cloudflare Workers deploy pipeline + Workers-compatible runtime refactor | Accepted |
 | [ADR-0018](ADR-0018-folder-architecture.md) | Folder architecture — feature-first with thin routes | Accepted |
 | [ADR-0019](ADR-0019-app-shell-fixed-viewport.md) | App shell with a fixed viewport and inner scroll container | Proposed |
+| [ADR-0020](ADR-0020-per-user-exercise-catalogue.md) | Per-user exercise catalogue (copy-on-provision) | Proposed |
 
 ## How to add an ADR
 
