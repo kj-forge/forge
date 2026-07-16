@@ -1,8 +1,21 @@
 import { describe, expect, test } from "bun:test";
 
-import { formatSetsCompact, formatSetsCompactParts } from "./format-sets-compact";
+import { formatSetsCompact, formatSetsCompactParts, hasWorkingSets } from "./format-sets-compact";
 
 const set = (weightKg: number | null, reps: number, kind = "WORK") => ({ weightKg, reps, kind });
+
+describe("hasWorkingSets", () => {
+  test("true when at least one non-warmup set has reps", () => {
+    expect(hasWorkingSets([set(100, 5, "WARMUP"), set(120, 3)])).toBe(true);
+    expect(hasWorkingSets([set(null, 12)])).toBe(true);
+  });
+
+  test("false for warmup-only or reps-less sessions", () => {
+    expect(hasWorkingSets([set(100, 5, "WARMUP"), set(110, 3, "WARMUP")])).toBe(false);
+    expect(hasWorkingSets([{ weightKg: 100, reps: null, kind: "WORK" }])).toBe(false);
+    expect(hasWorkingSets([])).toBe(false);
+  });
+});
 
 describe("formatSetsCompact", () => {
   test("equal sets at one weight collapse to N×R", () => {

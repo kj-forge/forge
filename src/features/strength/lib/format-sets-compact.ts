@@ -19,10 +19,15 @@ export type CompactSetsPart = {
 // set), "12/12/10" (bodyweight — reps only), groups per weight joined by
 // " · " in set order. Warmups are noise here and are dropped. The parts
 // variant keeps weight and reps separate so cells can bold the weight.
+const isWorkingSet = (s: SetLike): s is SetLike & { reps: number } => s.kind !== "WARMUP" && s.reps != null;
+
+/** A session with no working sets renders as an empty line — filter it out upstream. */
+export function hasWorkingSets(sets: SetLike[]): boolean {
+  return sets.some(isWorkingSet);
+}
+
 export function formatSetsCompactParts(sets: SetLike[], opts: Options = {}): CompactSetsPart[] {
-  const working = sets.flatMap((s) =>
-    s.kind !== "WARMUP" && s.reps != null ? [{ weightKg: s.weightKg, reps: s.reps }] : [],
-  );
+  const working = sets.filter(isWorkingSet).map((s) => ({ weightKg: s.weightKg, reps: s.reps }));
 
   const groups: { weightKg: number | null; reps: number[] }[] = [];
   for (const s of working) {
