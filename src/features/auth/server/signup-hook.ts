@@ -7,7 +7,7 @@
 // `runSignupTransaction()` directly against a real Postgres connection.
 // ============================================================================
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { db } from "../../../../db/client";
 import { createPool } from "../../../../db/pool";
@@ -185,6 +185,23 @@ export async function runSignupTransaction(args: RunSignupTransactionArgs): Prom
       if (args.forceFailureAt === "audit") {
         throw new Error("forceFailureAt: audit (test-only)");
       }
+
+      // 4. Provision the starter exercise catalogue (ADR-0020): copy every
+      // global template (athlete_id IS NULL) into rows owned by the new
+      // athlete, keeping the template lineage in source_exercise_id.
+      await tx.execute(sql`
+        INSERT INTO exercises (
+          athlete_id, source_exercise_id, slug, name_pl, name_en, aliases, category,
+          muscle_groups, is_unilateral, is_main_lift, is_loaded_bodyweight,
+          default_unit, progression_rule_id
+        )
+        SELECT
+          ${athleteId}, e.id, e.slug, e.name_pl, e.name_en, e.aliases, e.category,
+          e.muscle_groups, e.is_unilateral, e.is_main_lift, e.is_loaded_bodyweight,
+          e.default_unit, e.progression_rule_id
+        FROM exercises e
+        WHERE e.athlete_id IS NULL
+      `);
 
       return { athleteId, username };
     });
