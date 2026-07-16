@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PlanDayDrawer, type PlanEditing } from "@/features/plan/components/PlanDayDrawer";
 import { PLAN_INTENSITY_CLASS, PLAN_INTENSITY_LABEL } from "@/features/plan/constants";
+import { planTrainingLabel } from "@/features/plan/lib/plan-display";
 import type { PlanDay } from "@/features/plan/types";
 import { WEEKDAY_FULL_PL, warsawWeekday } from "@/shared/lib/weekday";
 
@@ -127,7 +128,7 @@ function DayCard({
       {entry ? (
         <>
           <p className="whitespace-pre-line text-sm">
-            {entry.training || <span className="text-muted-foreground">—</span>}
+            {planTrainingLabel(entry) ?? <span className="text-muted-foreground">—</span>}
           </p>
           {entry.hasStrength && entry.exercises.length > 0 && (
             <p className="mt-2 flex items-baseline gap-1.5 text-muted-foreground text-xs">
@@ -184,7 +185,7 @@ function DayRow({
       <td className="whitespace-pre-line px-4 py-3 align-top">
         {entry ? (
           <>
-            {entry.training || <span className="text-muted-foreground">—</span>}
+            {planTrainingLabel(entry) ?? <span className="text-muted-foreground">—</span>}
             {entry.hasStrength && entry.exercises.length > 0 && (
               <span className="mt-1.5 flex items-baseline gap-1.5 text-muted-foreground text-xs">
                 <Dumbbell className="size-3 shrink-0 translate-y-px text-primary" />
