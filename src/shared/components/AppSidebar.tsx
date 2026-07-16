@@ -5,13 +5,14 @@ import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { ForgeLogo } from "@/shared/components/ForgeLogo";
-import { isActivePath, SIDEBAR_ITEMS } from "@/shared/lib/nav";
+import { isActivePath, MANAGE_SECTIONS, SIDEBAR_ITEMS } from "@/shared/lib/nav";
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => (s.resolvedLocation ?? s.location).pathname });
@@ -34,6 +35,21 @@ export function AppSidebar() {
             {SIDEBAR_ITEMS.map((item) => (
               <SidebarMenuItem key={item.to}>
                 <SidebarMenuButton asChild isActive={isActivePath(pathname, item.to, item.exact)}>
+                  <Link to={item.to}>
+                    <item.icon />
+                    {item.label}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Zarządzanie</SidebarGroupLabel>
+          <SidebarMenu>
+            {MANAGE_SECTIONS.flatMap((section) => section.items).map((item) => (
+              <SidebarMenuItem key={item.to}>
+                <SidebarMenuButton asChild isActive={isActivePath(pathname, item.to)}>
                   <Link to={item.to}>
                     <item.icon />
                     {item.label}

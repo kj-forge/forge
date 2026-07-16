@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/shared/components/AppSidebar";
 import { ForgeLogo } from "@/shared/components/ForgeLogo";
+import { ProfileLink } from "@/shared/components/ProfileLink";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
-import { UserMenu } from "@/shared/components/UserMenu";
 import { isActivePath, showsTabBar, TAB_BAR_ITEMS } from "@/shared/lib/nav";
 
 // The window must never scroll (styles.css locks html/body): vaul's iOS
@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
-            <UserMenu />
+            <ProfileLink />
           </div>
         </header>
 

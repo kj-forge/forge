@@ -1,36 +1,25 @@
-import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { getRouteApi, Link } from "@tanstack/react-router";
+import { ChevronLeft } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { signOut } from "@/features/auth/client";
-import { getErrorMessage } from "@/lib/error-message";
 
-const route = getRouteApi("/_shell/me");
+const route = getRouteApi("/_shell/me/konto");
 
 export function MeView() {
   const { session } = route.useRouteContext();
-  const navigate = useNavigate();
-  const [signingOut, setSigningOut] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSignOut = async () => {
-    setError(null);
-    setSigningOut(true);
-    try {
-      await signOut();
-      navigate({ to: "/login" });
-    } catch (err) {
-      setError(getErrorMessage(err, "Nie udało się wylogować."));
-      setSigningOut(false);
-    }
-  };
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
-      <Card className="mt-2 w-full">
+      <Link
+        to="/me"
+        className="inline-flex items-center gap-0.5 pt-2 text-muted-foreground text-xs transition-colors hover:text-foreground"
+      >
+        <ChevronLeft className="size-3.5" />
+        Profil
+      </Link>
+      <Card className="w-full">
         <CardHeader>
-          <CardTitle>Twoje konto</CardTitle>
+          <CardTitle>Dane konta</CardTitle>
           <CardDescription>Zalogowany jako…</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
@@ -56,14 +45,6 @@ export function MeView() {
               </dd>
             </div>
           </dl>
-          <Button type="button" variant="outline" className="w-full" onClick={handleSignOut} disabled={signingOut}>
-            {signingOut ? "Wylogowuję..." : "Wyloguj"}
-          </Button>
-          {error && (
-            <p className="text-destructive text-sm" role="alert">
-              {error}
-            </p>
-          )}
         </CardContent>
       </Card>
     </main>
