@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { isActivePath, NAV_ITEMS, SIDEBAR_ITEMS, showsTabBar, TAB_BAR_ITEMS } from "./nav";
+import { isActivePath, MANAGE_SECTIONS, NAV_ITEMS, SIDEBAR_ITEMS, showsTabBar, TAB_BAR_ITEMS } from "./nav";
 
 describe("showsTabBar", () => {
   test("visible on the top-level destinations", () => {
@@ -13,6 +13,10 @@ describe("showsTabBar", () => {
     expect(showsTabBar("/goals")).toBe(true);
     expect(showsTabBar("/me")).toBe(true);
     expect(showsTabBar("/exercises")).toBe(true);
+  });
+
+  test("visible on the profil hub children (derived from MANAGE_SECTIONS)", () => {
+    expect(showsTabBar("/me/konto")).toBe(true);
   });
 
   test("hidden inside a session detail", () => {
@@ -66,5 +70,12 @@ describe("TAB_BAR_ITEMS", () => {
 describe("SIDEBAR_ITEMS", () => {
   test("no profil (avatar) and no nowa (CTA button)", () => {
     expect(SIDEBAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/stats", "/plan", "/goals"]);
+  });
+});
+
+describe("MANAGE_SECTIONS", () => {
+  test("biblioteka + konto, in hub order", () => {
+    expect(MANAGE_SECTIONS.map((s) => s.label)).toEqual(["Biblioteka", "Konto"]);
+    expect(MANAGE_SECTIONS.flatMap((s) => s.items.map((i) => i.to))).toEqual(["/exercises", "/me/konto"]);
   });
 });
