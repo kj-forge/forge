@@ -8,6 +8,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       className="toaster group"
+      // Clear the notch / status bar in standalone PWA — sonner's default
+      // offsets don't know about safe areas.
+      offset={{ top: "max(env(safe-area-inset-top), 16px)" }}
+      mobileOffset={{ top: "max(env(safe-area-inset-top), 12px)" }}
       icons={{
         success: <CircleCheckIcon className="size-4" />,
         info: <InfoIcon className="size-4" />,

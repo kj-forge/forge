@@ -8,9 +8,8 @@ import { ProfileLink } from "@/shared/components/ProfileLink";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import { isActivePath, showsTabBar, TAB_BAR_ITEMS } from "@/shared/lib/nav";
 
-// The window must never scroll (styles.css locks html/body): vaul's iOS
-// scroll-lock manipulates window scroll and body position on open/close,
-// which visibly shifts a scrolled page. All scrolling lives in <main>.
+// The window must never scroll (styles.css locks html/body): all scrolling
+// lives in <main>, and modals bring their own scroll regions.
 // Mobile never renders a SidebarTrigger, so the sidebar's Sheet variant
 // stays closed — the tab bar is the mobile navigation.
 export function AppShell({ children }: { children: ReactNode }) {

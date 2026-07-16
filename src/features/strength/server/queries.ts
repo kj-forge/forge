@@ -6,6 +6,7 @@ import { and, desc, eq, inArray, isNotNull, ne } from "drizzle-orm";
 import { db } from "../../../../db/client";
 import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
 import { epleyE1RM } from "../lib/e1rm";
+import { hasWorkingSets } from "../lib/format-sets-compact";
 import { bestE1RM } from "../lib/pr";
 
 export type SessionTopExercise = { name: string; weightKg: number | null; reps: number | null; setCount: number };
@@ -156,7 +157,9 @@ export async function loadExerciseStats(athleteId: string, slug: string) {
     if (better) best = { weightKg: row.weightKg, reps: row.reps, date: row.date };
   }
 
+  // Warmup-only appearances would render as an empty line in the history.
   const history = sessionEntries
+    .filter((s) => hasWorkingSets(s.sets))
     .slice(-20)
     .reverse()
     .map((s) => ({ date: s.date, sets: s.sets, e1rm: isLoadedBw ? null : bestE1RM(s.sets) }));

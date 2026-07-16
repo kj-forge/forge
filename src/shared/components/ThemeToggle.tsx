@@ -8,21 +8,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { applyTheme, getStoredTheme, setTheme, type Theme } from "@/shared/lib/theme";
+import { applyTheme, getStoredTheme, MOBILE_DEFAULT_DARK_QUERY, setTheme, type Theme } from "@/shared/lib/theme";
 
 const OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
   { value: "light", label: "Jasny", icon: Sun },
   { value: "dark", label: "Ciemny", icon: Moon },
-  { value: "system", label: "System", icon: Monitor },
+  { value: "system", label: "Auto", icon: Monitor },
 ];
 
 export function ThemeToggle() {
   const [theme, setThemeState] = useState<Theme>(() => (typeof window === "undefined" ? "system" : getStoredTheme()));
 
-  // While on "system", live-follow OS theme changes.
+  // While on "Auto", live-follow the device default across the breakpoint.
   useEffect(() => {
     if (theme !== "system") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const mql = window.matchMedia(MOBILE_DEFAULT_DARK_QUERY);
     const onChange = () => applyTheme("system");
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);

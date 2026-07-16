@@ -11,7 +11,9 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       {
         name: "viewport",
-        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+        // interactive-widget: Android resizes the layout under the keyboard
+        // (CTAs stay visible while typing); iOS ignores it and pans instead.
+        content: "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content",
       },
       { name: "theme-color", media: "(prefers-color-scheme: light)", content: "#ffffff" },
       { name: "theme-color", media: "(prefers-color-scheme: dark)", content: "#0c0c0d" },
@@ -48,10 +50,12 @@ function RootComponent() {
   );
 }
 
-// Applies .dark before first paint (stored preference, "system" falls back to
-// the OS). Must be inline in <head> — a module would run after paint and flash
-// the wrong theme. suppressHydrationWarning: the server can't know the class.
-const themeInitScript = `(function(){try{var t=localStorage.getItem("forge-theme");var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);if(d)document.documentElement.classList.add("dark")}catch(e){}})()`;
+// Applies .dark before first paint (stored preference; no explicit choice
+// falls back to the device default: dark on mobile, light on desktop — keep
+// the 768px breakpoint in sync with shared/lib/theme.ts). Must be inline in
+// <head> — a module would run after paint and flash the wrong theme.
+// suppressHydrationWarning: the server can't know the class.
+const themeInitScript = `(function(){try{var t=localStorage.getItem("forge-theme");var d=t==="dark"||(t!=="light"&&!matchMedia("(min-width: 768px)").matches);if(d)document.documentElement.classList.add("dark")}catch(e){}})()`;
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
