@@ -13,7 +13,7 @@ The product has outgrown this: athletes need to add their own exercises (belt sq
 
 A second, quieter problem: product behaviour hangs off **hardcoded slugs** (`ACCESSORY_SLUGS`, `PR_TABLE_SLUG_ORDER`, `LOADED_BW_SLUGS` in `strength/constants.ts`) and a global `is_main_lift` flag. These assume every athlete's catalogue is spelled identically forever — which per-user editing breaks by definition, so the decision must also cover where those behaviours move.
 
-Constraints: two real users exist (both on the Neon `main` branch), so the data migration is trivial today and only gets harder; `block_movements.exercise_id` (RESTRICT) and `goals.exercise_id` (SET NULL) are the only FKs into the catalogue; solo-dev velocity favours the simplest queries at runtime.
+Constraints: two real users exist (both on the Neon `main` branch), so the data migration is trivial today and only gets harder; `block_movements.exercise_id` (RESTRICT), `training_plan_day_exercises.exercise_id` (RESTRICT) and `goals.exercise_id` (SET NULL) are the only FKs into the catalogue; solo-dev velocity favours the simplest queries at runtime.
 
 ## Decision
 
