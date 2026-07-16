@@ -162,10 +162,10 @@
   body {
     @apply bg-background text-foreground;
   }
-  /* The window itself must never scroll: vaul's iOS scroll-lock replays
-     window scroll state on drawer open/close, visibly jumping a scrolled
-     page. Scrolling happens inside the shell's <main>. Safe-area insets
-     are owned by the shell chrome (top bar / tab bar), not body. */
+  /* The window itself must never scroll: a fixed-viewport shell keeps the
+     iOS keyboard from shifting the page. Scrolling happens inside the
+     shell's <main> (and inside modals). Safe-area insets are owned by the
+     shell chrome (top bar / tab bar), not body. */
   html,
   body {
     height: 100dvh;

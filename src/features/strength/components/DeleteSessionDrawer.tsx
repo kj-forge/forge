@@ -36,7 +36,7 @@ export function DeleteSessionDrawer({ open, onOpenChange, isEnded, onConfirm }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent mobileSheet>
         <div className="mx-auto w-full max-w-md">
           <DialogHeader>
             <DialogTitle>⚠️ Usunąć sesję?</DialogTitle>

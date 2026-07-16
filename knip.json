@@ -17,5 +17,5 @@
     "db/client.ts",
     "db/seed-personal.local.example.ts"
   ],
-  "ignoreDependencies": ["lucide-react", "vaul"]
+  "ignoreDependencies": ["lucide-react"]
 }

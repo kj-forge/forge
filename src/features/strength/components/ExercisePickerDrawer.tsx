@@ -28,14 +28,10 @@ interface ExercisePickerDrawerProps {
 export function ExercisePickerDrawer({ open, onOpenChange, onPicked }: ExercisePickerDrawerProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* Full-screen on mobile: with the input pinned near the top of the
-          screen it stays visible regardless of what the keyboard does to the
-          viewport — we don't depend on vaul's reposition math (flaky on iOS 26).
+      {/* Input pinned near the top of the full-screen page so it stays
+          visible regardless of what the keyboard does to the viewport.
           "Anuluj" lives in the header so no footer competes for space. */}
-      <DialogContent
-        className="h-dvh pt-[env(safe-area-inset-top)] data-[vaul-drawer-direction=bottom]:max-h-none md:h-auto md:min-h-96"
-        showCloseButton={false}
-      >
+      <DialogContent className="md:min-h-96" showCloseButton={false}>
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden">
           <DialogHeader className="shrink-0 flex-row items-start justify-between text-left md:pr-4">
             <div className="flex flex-col gap-0.5">

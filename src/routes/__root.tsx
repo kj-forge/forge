@@ -11,7 +11,9 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       {
         name: "viewport",
-        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+        // interactive-widget: Android resizes the layout under the keyboard
+        // (CTAs stay visible while typing); iOS ignores it and pans instead.
+        content: "width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content",
       },
       { name: "theme-color", media: "(prefers-color-scheme: light)", content: "#ffffff" },
       { name: "theme-color", media: "(prefers-color-scheme: dark)", content: "#0c0c0d" },
