@@ -35,6 +35,7 @@ export type WeekdaySession = {
   exercises: {
     namePl: string;
     slug: string;
+    isLoadedBodyweight: boolean;
     sets: { weightKg: number | null; reps: number | null; kind: string }[];
   }[];
 };
@@ -79,6 +80,7 @@ export const getWeekdayComparison = createServerFn({ method: "GET" })
         movementId: blockMovements.id,
         namePl: exercises.namePl,
         slug: exercises.slug,
+        isLoadedBodyweight: exercises.isLoadedBodyweight,
       })
       .from(blockMovements)
       .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
@@ -109,7 +111,12 @@ export const getWeekdayComparison = createServerFn({ method: "GET" })
     const movementsBySession = new Map<string, WeekdaySession["exercises"]>();
     for (const row of movementRows) {
       const arr = movementsBySession.get(row.sessionId) ?? [];
-      arr.push({ namePl: row.namePl, slug: row.slug, sets: setsByMovement.get(row.movementId) ?? [] });
+      arr.push({
+        namePl: row.namePl,
+        slug: row.slug,
+        isLoadedBodyweight: row.isLoadedBodyweight,
+        sets: setsByMovement.get(row.movementId) ?? [],
+      });
       movementsBySession.set(row.sessionId, arr);
     }
 

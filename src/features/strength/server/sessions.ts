@@ -170,6 +170,7 @@ export const getSessionDetails = createServerFn({ method: "GET" })
             exerciseSlug: exercises.slug,
             exerciseNamePl: exercises.namePl,
             exerciseDefaultUnit: exercises.defaultUnit,
+            exerciseIsLoadedBodyweight: exercises.isLoadedBodyweight,
           })
           .from(blockMovements)
           .innerJoin(exercises, eq(blockMovements.exerciseId, exercises.id))
