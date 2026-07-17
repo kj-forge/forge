@@ -412,6 +412,9 @@ export const exercises = pgTable(
     muscleGroups: jsonb().$type<string[]>().notNull().default([]),
     isUnilateral: boolean().notNull().default(false),
     isMainLift: boolean().notNull().default(false),
+    // Non-main exercises only: eligible for the "Pozostałe" PR list. Main
+    // lifts sit in the PR table unconditionally and ignore this flag.
+    isPrTracked: boolean().notNull().default(true),
     // weightKg on sets of this exercise is ADDED load ("+20") — e1RM over it
     // alone is meaningless and gets suppressed. Replaces LOADED_BW_SLUGS.
     isLoadedBodyweight: boolean().notNull().default(false),
@@ -869,6 +872,9 @@ export const goals = pgTable(
     exerciseId: uuid().references(() => exercises.id, { onDelete: "set null" }),
     title: text().notNull(),
     targetValue: doublePrecision(),
+    // STRENGTH_RM: the target weight must be lifted for at least this many
+    // reps (3 = a 3RM goal). Progress compares REAL sets, not estimates.
+    targetReps: integer().notNull().default(1),
     targetUnit: text(),
     targetDate: date(),
     startedAt: date(),
