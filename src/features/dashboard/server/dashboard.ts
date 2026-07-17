@@ -77,13 +77,16 @@ async function loadTrend(athleteId: string): Promise<Trend | null> {
 }
 
 // The athlete's most-trained weekdays (ended sessions, last 2 months) —
-// feeds the generic Zestawienia shortcut chips.
+// feeds the Zestawienia shortcut chips. Strength days take priority (that's
+// what the comparison view compares); only an athlete with no strength
+// sessions at all falls back to any-training days.
 async function loadWeekdayCounts(athleteId: string) {
   const floor = new Date();
   floor.setMonth(floor.getMonth() - 2);
-  return db
+  const rows = await db
     .select({
       weekday: sql<number>`(extract(isodow from ${sessions.date}))::int - 1`,
+      strengthCount: sql<number>`(count(*) filter (where ${sessions.type} = 'STRENGTH'))::int`,
       count: sql<number>`count(*)::int`,
     })
     .from(sessions)
@@ -94,9 +97,14 @@ async function loadWeekdayCounts(athleteId: string) {
         gte(sessions.date, floor.toISOString().slice(0, 10)),
       ),
     )
-    .groupBy(sql`extract(isodow from ${sessions.date})`)
-    .orderBy(sql`count(*) desc`)
-    .limit(3);
+    .groupBy(sql`extract(isodow from ${sessions.date})`);
+
+  const strengthDays = rows.filter((r) => r.strengthCount > 0);
+  const picked = strengthDays.length > 0 ? strengthDays : rows;
+  return picked
+    .map((r) => ({ weekday: r.weekday, count: strengthDays.length > 0 ? r.strengthCount : r.count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
 }
 
 // Everything Home needs in ONE round-trip — on Workers each server fn call
