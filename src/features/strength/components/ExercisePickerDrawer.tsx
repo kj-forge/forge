@@ -119,6 +119,7 @@ function ExercisePickerForm({ onPicked }: { onPicked: (exerciseId: string) => Pr
           category: "ACCESSORY",
           defaultUnit: "REPS",
           isMainLift: false,
+          isPrTracked: true,
           isLoadedBodyweight: false,
           aliases: [],
         },
