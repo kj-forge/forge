@@ -47,7 +47,7 @@ export const searchExercises = createServerFn({ method: "GET" })
 export const listAllExercises = createServerFn({ method: "GET" }).handler(async () => {
   const { athleteId } = await getCurrentAthleteOrThrow();
   return db
-    .select({ id: exercises.id, namePl: exercises.namePl })
+    .select({ id: exercises.id, namePl: exercises.namePl, aliases: exercises.aliases })
     .from(exercises)
     .where(and(eq(exercises.athleteId, athleteId), eq(exercises.isArchived, false)))
     .orderBy(exercises.namePl);

@@ -13,13 +13,14 @@ import { PLAN_INTENSITIES, PLAN_INTENSITY_LABEL } from "@/features/plan/constant
 import { type PlanDayFormValues, planDayFormSchema, trainingRequired } from "@/features/plan/lib/plan-day-form";
 import { upsertPlanDay } from "@/features/plan/server/plan";
 import type { PlanDay } from "@/features/plan/types";
+import { createExercise } from "@/features/strength/server/exercises";
 import { getErrorMessage } from "@/lib/error-message";
 import { Spinner } from "@/shared/components/Spinner";
 import { WEEKDAY_FULL_PL } from "@/shared/lib/weekday";
 
 export type PlanEditing = { day: number; serial: boolean };
 
-type ExerciseOption = { id: string; namePl: string };
+type ExerciseOption = { id: string; namePl: string; aliases: string[] };
 
 interface PlanDayDrawerProps {
   editing: PlanEditing | null;
@@ -85,11 +86,43 @@ function PlanDayDrawerBody({
   const [picked, setPicked] = useState<{ exerciseId: string; namePl: string }[]>(entry?.exercises ?? []);
   const [query, setQuery] = useState("");
 
-  const addExercise = (e: ExerciseOption) => {
+  const addExercise = (e: { id: string; namePl: string }) => {
     setPicked((prev) =>
       prev.some((p) => p.exerciseId === e.id) ? prev : [...prev, { exerciseId: e.id, namePl: e.namePl }],
     );
     setQuery("");
+  };
+
+  // Inline create, same defaults as the session picker — details are
+  // editable later on /exercises.
+  const [creating, setCreating] = useState(false);
+  const handleCreate = async () => {
+    const namePl = query.trim();
+    if (namePl.length === 0 || creating) return;
+    setCreating(true);
+    try {
+      const created = await createExercise({
+        data: {
+          namePl,
+          category: "ACCESSORY",
+          defaultUnit: "REPS",
+          isMainLift: false,
+          isPrTracked: true,
+          isLoadedBodyweight: false,
+          aliases: [],
+        },
+      });
+      addExercise({ id: created.id, namePl });
+      // Refresh the loader-fed catalogue so the new exercise is findable.
+      await router.invalidate();
+    } catch (err) {
+      form.setError("root.serverError", {
+        type: "server",
+        message: getErrorMessage(err, "Nie udało się utworzyć ćwiczenia."),
+      });
+    } finally {
+      setCreating(false);
+    }
   };
   const removeExercise = (id: string) => setPicked((prev) => prev.filter((p) => p.exerciseId !== id));
   const moveExercise = (i: number, dir: -1 | 1) =>
@@ -102,9 +135,15 @@ function PlanDayDrawerBody({
     });
 
   const q = query.trim().toLowerCase();
+  // Same match surface as the session picker: name OR any alias ("dip" must
+  // find "Pompki na poręczach").
   const matches = q
     ? allExercises
-        .filter((e) => !picked.some((p) => p.exerciseId === e.id) && e.namePl.toLowerCase().includes(q))
+        .filter(
+          (e) =>
+            !picked.some((p) => p.exerciseId === e.id) &&
+            (e.namePl.toLowerCase().includes(q) || e.aliases.some((a) => a.toLowerCase().includes(q))),
+        )
         .slice(0, 8)
     : [];
 
@@ -344,21 +383,28 @@ function PlanDayDrawerBody({
                 <Input placeholder="Szukaj ćwiczenia…" value={query} onChange={(e) => setQuery(e.target.value)} />
                 {q.length > 0 && (
                   <ul className="max-h-40 space-y-0.5 overflow-y-auto rounded-md border p-1">
-                    {matches.length === 0 ? (
-                      <li className="px-2 py-1.5 text-muted-foreground text-xs">Brak wyników.</li>
-                    ) : (
-                      matches.map((ex) => (
-                        <li key={ex.id}>
-                          <button
-                            type="button"
-                            className="w-full rounded px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
-                            onClick={() => addExercise(ex)}
-                          >
-                            {ex.namePl}
-                          </button>
-                        </li>
-                      ))
-                    )}
+                    {matches.map((ex) => (
+                      <li key={ex.id}>
+                        <button
+                          type="button"
+                          className="w-full rounded px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
+                          onClick={() => addExercise(ex)}
+                        >
+                          {ex.namePl}
+                        </button>
+                      </li>
+                    ))}
+                    <li>
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between rounded border border-dashed px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50"
+                        onClick={handleCreate}
+                        disabled={creating}
+                      >
+                        <span className="font-medium text-primary">+ Dodaj „{query.trim()}”</span>
+                        {creating && <Spinner size="sm" className="text-muted-foreground" />}
+                      </button>
+                    </li>
                   </ul>
                 )}
               </div>
