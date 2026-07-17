@@ -12,7 +12,7 @@ import {
 } from "@/features/strength/constants";
 import { createSession } from "@/features/strength/server/sessions";
 import { getErrorMessage } from "@/lib/error-message";
-import { WEEKDAY_FULL_PL, warsawWeekday } from "@/shared/lib/weekday";
+import { WEEKDAY_FULL_PL, WEEKDAY_LABELS_PL, warsawWeekday } from "@/shared/lib/weekday";
 
 const route = getRouteApi("/_shell/sessions/new");
 
@@ -25,9 +25,15 @@ export function NewSessionView() {
   const [error, setError] = useState<string | null>(null);
 
   const today = warsawWeekday();
-  const todayDay = plan.find((d) => d.dayOfWeek === today);
-  // Only strength sessions seed from the plan's strength list.
-  const planStrength = type === "STRENGTH" && todayDay?.hasStrength && todayDay.exercises.length > 0 ? todayDay : null;
+  // Only strength sessions seed from the plan. Any strength day is startable —
+  // a missed Tuesday runs on Wednesday without editing the plan; today's day
+  // is just the default pick.
+  const strengthDays = plan.filter((d) => d.hasStrength && d.exercises.length > 0);
+  const [planDay, setPlanDay] = useState<number>(
+    () => (strengthDays.find((d) => d.dayOfWeek === today) ?? strengthDays[0])?.dayOfWeek ?? today,
+  );
+  const planStrength = type === "STRENGTH" && strengthDays.length > 0 ? strengthDays : null;
+  const pickedDay = strengthDays.find((d) => d.dayOfWeek === planDay);
 
   const start = async (fromPlanDay: boolean) => {
     setError(null);
@@ -36,7 +42,12 @@ export function NewSessionView() {
       const result = await createSession({
         // Local calendar date at click time (client tz): a session started
         // after local midnight gets today's date, not yesterday's.
-        data: { type, date: dayjs().format("YYYY-MM-DD"), fromPlanDay },
+        data: {
+          type,
+          date: dayjs().format("YYYY-MM-DD"),
+          fromPlanDay,
+          planDayOfWeek: fromPlanDay ? planDay : undefined,
+        },
       });
       navigate({ to: "/sessions/$sessionId", params: { sessionId: result.sessionId } });
     } catch (err) {
@@ -52,7 +63,9 @@ export function NewSessionView() {
       <div className="space-y-1 pt-2">
         <h1 className="font-bold text-2xl tracking-tight">{adj ? `Nowa sesja ${adj}` : "Nowa sesja"}</h1>
         <p className="text-muted-foreground text-sm">
-          {planStrength ? "Zacznij z planu na dziś albo od zera." : "Zacznij od zera — sam dodajesz ćwiczenia."}
+          {planStrength
+            ? "Zacznij z planu (dowolny dzień siłowy) albo od zera."
+            : "Zacznij od zera — sam dodajesz ćwiczenia."}
         </p>
       </div>
 
@@ -72,16 +85,38 @@ export function NewSessionView() {
         ))}
       </div>
 
-      {planStrength && (
+      {planStrength && pickedDay && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Dumbbell className="size-4 text-primary" />
-              {WEEKDAY_FULL_PL[today]} — z planu
+              {WEEKDAY_FULL_PL[pickedDay.dayOfWeek]} — z planu{pickedDay.dayOfWeek === today ? " (dziś)" : ""}
             </CardTitle>
-            <CardDescription>{planStrength.exercises.map((e) => e.namePl).join(" · ")}</CardDescription>
+            <CardDescription>{pickedDay.exercises.map((e) => e.namePl).join(" · ")}</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
+            {/* A missed day can be run today — pick any strength day; the
+                plan itself stays untouched. */}
+            {planStrength.length > 1 && (
+              <div className="flex flex-wrap gap-1.5">
+                {planStrength.map((d) => (
+                  <button
+                    key={d.dayOfWeek}
+                    type="button"
+                    disabled={creating !== null}
+                    className={`rounded-md border px-2.5 py-1.5 font-semibold text-xs transition-colors ${
+                      d.dayOfWeek === planDay
+                        ? "border-transparent bg-ember"
+                        : "border-border text-muted-foreground hover:bg-accent"
+                    }`}
+                    onClick={() => setPlanDay(d.dayOfWeek)}
+                  >
+                    {WEEKDAY_LABELS_PL[d.dayOfWeek]}
+                    {d.dayOfWeek === today ? " · dziś" : ""}
+                  </button>
+                ))}
+              </div>
+            )}
             <Button className="w-full bg-ember shadow-ember" onClick={() => start(true)} disabled={creating !== null}>
               {creating === "plan" ? "Tworzę..." : "Zacznij trening z planu"}
             </Button>

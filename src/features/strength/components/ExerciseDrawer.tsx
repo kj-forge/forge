@@ -23,6 +23,7 @@ import { ExerciseNav } from "@/features/strength/components/ExerciseNav";
 import { SET_KIND_COLOR, SET_KIND_LABEL, VISIBLE_SET_KINDS } from "@/features/strength/constants";
 import { fireConfetti } from "@/features/strength/lib/confetti";
 import { formatSet } from "@/features/strength/lib/format-set";
+import { formatSetsCompactParts } from "@/features/strength/lib/format-sets-compact";
 import { seedSetFields } from "@/features/strength/lib/seed-set-fields";
 import {
   numToInputStr,
@@ -37,6 +38,13 @@ import { addSet, deleteSet } from "@/features/strength/server/sets";
 import type { Movement, SetKind } from "@/features/strength/types";
 import { getErrorMessage } from "@/lib/error-message";
 import { Spinner } from "@/shared/components/Spinner";
+
+const LAST_SESSION_DATE_FMT = new Intl.DateTimeFormat("pl-PL", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
 
 interface ExerciseDrawerProps {
   open: boolean;
@@ -163,6 +171,12 @@ function ExerciseDrawerBody({
   const isSubmitting = form.formState.isSubmitting;
   const currentKind = useWatch({ control: form.control, name: "kind" });
 
+  // Mid-workout memory: what this exercise looked like last time, in the
+  // notebook notation — no trip to history needed. Warmups excluded.
+  const lastParts = movement.lastSession
+    ? formatSetsCompactParts(movement.lastSession.sets, { loadedBodyweight: movement.exerciseIsLoadedBodyweight })
+    : [];
+
   return (
     <Form {...form}>
       <form className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden" onSubmit={onSubmit} noValidate>
@@ -174,6 +188,25 @@ function ExerciseDrawerBody({
               : `${movement.sets.length} ${movement.sets.length === 1 ? "seria" : "serii"} w tej sesji`}
           </DialogDescription>
         </DialogHeader>
+
+        {movement.lastSession && lastParts.length > 0 && (
+          <div className="shrink-0 px-4 pb-1">
+            <div className="rounded-md bg-muted/50 px-2.5 py-1.5 text-xs">
+              <span className="font-medium text-muted-foreground">
+                Ostatnio · {LAST_SESSION_DATE_FMT.format(new Date(movement.lastSession.date))}:{" "}
+              </span>
+              <span className="tabular-nums">
+                {lastParts.map((p, i) => (
+                  <span key={`${p.weight}-${p.reps}`}>
+                    {i > 0 && <span className="text-muted-foreground"> · </span>}
+                    {p.weight !== null && <b className="font-semibold">{p.weight} </b>}
+                    <span className="text-muted-foreground">{p.reps}</span>
+                  </span>
+                ))}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="shrink-0 px-4 pt-1 pb-2">
           <ExerciseNav movements={movements} currentId={movement.id} onNavigate={onNavigate} />
