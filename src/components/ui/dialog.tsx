@@ -64,7 +64,9 @@ function DialogContent({
           mobileSheet
             ? "inset-x-0 bottom-0 max-h-[85dvh] rounded-t-xl border-t pb-[max(0px,calc(env(safe-area-inset-bottom)-1rem))]"
             : "inset-0 h-dvh pt-[env(safe-area-inset-top)]",
-          "md:data-closed:zoom-out-95 md:data-open:zoom-in-95 md:inset-auto md:top-1/2 md:left-1/2 md:h-auto md:max-h-[85vh] md:w-full md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2 md:overflow-y-auto md:rounded-xl md:border-none md:pt-0 md:pb-0 md:ring-1 md:ring-foreground/10",
+          // Centered on the CONTENT area, not the viewport — the shell's
+          // inset vars shift the midpoint past the sidebar and top nav.
+          "md:data-closed:zoom-out-95 md:data-open:zoom-in-95 md:inset-auto md:top-[calc(50%+var(--content-inset-top)/2)] md:left-[calc(50%+var(--content-inset-left)/2)] md:h-auto md:max-h-[85vh] md:w-full md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2 md:overflow-y-auto md:rounded-xl md:border-none md:pt-0 md:pb-0 md:ring-1 md:ring-foreground/10",
           className,
         )}
         {...props}
