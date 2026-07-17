@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { loadPlanDayExerciseIds } from "@/features/plan/server/queries";
+import { SESSION_TYPES } from "@/features/strength/constants";
 import { parseInput } from "@/lib/validate";
 import { warsawWeekday } from "@/shared/lib/weekday";
 import { db } from "../../../../db/client";
@@ -17,25 +18,56 @@ export const listRecentSessions = createServerFn({ method: "GET" }).handler(asyn
   return loadRecentSessions(athleteId, 10);
 });
 
-// History feed: in-progress sessions included — the view pins them above the
-// month groups. (Pagination is a later epic; capped for now.)
-export const listCompletedSessions = createServerFn({ method: "GET" }).handler(async () => {
-  const { athleteId } = await getCurrentAthleteOrThrow();
-  const sessionRows = await db
-    .select({
-      id: sessions.id,
-      date: sessions.date,
-      type: sessions.type,
-      title: sessions.title,
-      startedAt: sessions.startedAt,
-      endedAt: sessions.endedAt,
-    })
-    .from(sessions)
-    .where(eq(sessions.athleteId, athleteId))
-    .orderBy(desc(sessions.date), desc(sessions.startedAt))
-    .limit(100);
-  return attachExercises(athleteId, sessionRows);
+const HISTORY_PAGE_SIZE = 30;
+
+const listSessionsInput = z.object({
+  offset: z.number().int().min(0).default(0),
+  typ: z.enum(SESSION_TYPES).optional(),
 });
+
+// History feed, paged: in-progress sessions included (the view pins them above
+// the month groups), type filter applied server-side so paging respects it.
+// Offset paging + client-side dedupe by id is right-sized here; keyset cursors
+// become worth it when imports multiply the data (sort key is nullable-ridden).
+export const listCompletedSessions = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) => parseInput(listSessionsInput, data))
+  .handler(async ({ data }) => {
+    const { athleteId } = await getCurrentAthleteOrThrow();
+    const scope = data.typ
+      ? and(eq(sessions.athleteId, athleteId), eq(sessions.type, data.typ))
+      : eq(sessions.athleteId, athleteId);
+    // One extra row answers "is there a next page" without a COUNT query.
+    const rows = await db
+      .select({
+        id: sessions.id,
+        date: sessions.date,
+        type: sessions.type,
+        title: sessions.title,
+        startedAt: sessions.startedAt,
+        endedAt: sessions.endedAt,
+      })
+      .from(sessions)
+      .where(scope)
+      .orderBy(desc(sessions.date), desc(sessions.startedAt))
+      .limit(HISTORY_PAGE_SIZE + 1)
+      .offset(data.offset);
+    const page = rows.slice(0, HISTORY_PAGE_SIZE);
+
+    // Chips need every type the athlete EVER logged — deriving them from the
+    // loaded pages would hide types living deeper in the feed.
+    const types =
+      data.offset === 0
+        ? (
+            await db.selectDistinct({ type: sessions.type }).from(sessions).where(eq(sessions.athleteId, athleteId))
+          ).map((r) => r.type)
+        : undefined;
+
+    return {
+      sessions: await attachExercises(athleteId, page),
+      nextOffset: rows.length > HISTORY_PAGE_SIZE ? data.offset + HISTORY_PAGE_SIZE : null,
+      types,
+    };
+  });
 
 // Reference set per kind, surfaced as the drawer's smart defaults. Keyed by the
 // three visible kinds — the only ones the picker can pre-fill.

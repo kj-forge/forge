@@ -1,10 +1,13 @@
+import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { BookOpen } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { SessionListItem } from "@/features/strength/components/SessionListItem";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
+import { historyQueryOptions } from "@/features/strength/lib/history-query";
 import type { SessionType } from "@/features/strength/types";
+import { InfiniteScrollList } from "@/shared/components/InfiniteScrollList";
 
 const route = getRouteApi("/_shell/sessions/");
 
@@ -17,18 +20,32 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 }
 
 export function SessionsListView() {
-  const sessionsList = route.useLoaderData();
   const { typ } = route.useSearch();
   const navigate = route.useNavigate();
+  // Page zero is SSR'd by the route loader (ensureQueryData) and dehydrated —
+  // this suspense query starts warm; scrolling appends pages into the cache.
+  const query = useSuspenseInfiniteQuery(historyQueryOptions(typ));
 
-  // Filter chips only make sense once the data actually has variety.
-  const presentTypes = [...new Set(sessionsList.map((s) => s.type))] as SessionType[];
-  const filtered = typ ? sessionsList.filter((s) => s.type === typ) : sessionsList;
+  // Flatten pages, dedupe by id: a session logged mid-scroll shifts offsets
+  // and would otherwise duplicate at a page seam.
+  const seen = new Set<string>();
+  const feed = [];
+  for (const page of query.data.pages) {
+    for (const s of page.sessions) {
+      if (seen.has(s.id)) continue;
+      seen.add(s.id);
+      feed.push(s);
+    }
+  }
 
-  const active = filtered.filter((s) => s.endedAt === null);
-  const ended = filtered.filter((s) => s.endedAt !== null);
+  // Chips list every type the athlete EVER logged (server-side DISTINCT on
+  // page zero) — not just the types visible in loaded pages.
+  const presentTypes = (query.data.pages[0]?.types ?? []) as SessionType[];
 
-  // Month groups in feed order — the list arrives date-desc, so the Map keeps
+  const active = feed.filter((s) => s.endedAt === null);
+  const ended = feed.filter((s) => s.endedAt !== null);
+
+  // Month groups in feed order — pages arrive date-desc, so the Map keeps
   // newest months first.
   const byMonth = new Map<string, typeof ended>();
   for (const s of ended) {
@@ -59,17 +76,19 @@ export function SessionsListView() {
         </div>
       )}
 
-      {sessionsList.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground text-sm">
-            <BookOpen className="size-8 text-muted-foreground/60" strokeWidth={1.5} />
-            Jeszcze brak sesji.
-          </CardContent>
-        </Card>
-      ) : filtered.length === 0 ? (
-        <p className="py-6 text-center text-muted-foreground text-sm">Brak sesji tego typu.</p>
+      {feed.length === 0 ? (
+        typ ? (
+          <p className="py-6 text-center text-muted-foreground text-sm">Brak sesji tego typu.</p>
+        ) : (
+          <Card>
+            <CardContent className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground text-sm">
+              <BookOpen className="size-8 text-muted-foreground/60" strokeWidth={1.5} />
+              Jeszcze brak sesji.
+            </CardContent>
+          </Card>
+        )
       ) : (
-        <>
+        <InfiniteScrollList query={query} className="flex flex-col gap-3">
           {active.length > 0 && (
             <section className="flex flex-col gap-2">
               <SectionHeader>W trakcie</SectionHeader>
@@ -94,7 +113,7 @@ export function SessionsListView() {
               </ul>
             </section>
           ))}
-        </>
+        </InfiniteScrollList>
       )}
     </main>
   );
