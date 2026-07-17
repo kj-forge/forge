@@ -156,6 +156,24 @@ function NoteEditorBody({ note, onDeleted }: { note: { id: string; body: string 
 }
 
 function SaveIndicator({ status, onRetry }: { status: SaveStatus; onRetry: () => void }) {
+  // "Zapisano" lingers briefly, then fades out slowly and unmounts. The
+  // delete button sits at the flex row's right edge, so the unmount shifts
+  // nothing visible.
+  const [phase, setPhase] = useState<"visible" | "fading" | "hidden">("hidden");
+  useEffect(() => {
+    if (status !== "saved") {
+      setPhase(status === "idle" ? "hidden" : "visible");
+      return;
+    }
+    setPhase("visible");
+    const fade = setTimeout(() => setPhase("fading"), 1500);
+    const hide = setTimeout(() => setPhase("hidden"), 2700);
+    return () => {
+      clearTimeout(fade);
+      clearTimeout(hide);
+    };
+  }, [status]);
+
   if (status === "idle") return null;
   if (status === "error") {
     return (
@@ -164,7 +182,16 @@ function SaveIndicator({ status, onRetry }: { status: SaveStatus; onRetry: () =>
       </button>
     );
   }
-  return <span className="text-muted-foreground text-xs">{status === "saving" ? "Zapisywanie..." : "Zapisano"}</span>;
+  if (status === "saved" && phase === "hidden") return null;
+  return (
+    <span
+      className={`text-muted-foreground text-xs transition-opacity duration-1000 ${
+        status === "saved" && phase === "fading" ? "opacity-0" : "opacity-100"
+      }`}
+    >
+      {status === "saving" ? "Zapisywanie..." : "Zapisano"}
+    </span>
+  );
 }
 
 function BackLink({ onNavigate }: { onNavigate?: () => void }) {
