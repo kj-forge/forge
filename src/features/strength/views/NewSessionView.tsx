@@ -5,7 +5,11 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { SESSION_TYPE_LABEL_PL_ADJ } from "@/features/strength/constants";
+import {
+  PICKABLE_SESSION_TYPES,
+  SESSION_TYPE_LABEL_PL,
+  SESSION_TYPE_LABEL_PL_ADJ,
+} from "@/features/strength/constants";
 import { createSession } from "@/features/strength/server/sessions";
 import { getErrorMessage } from "@/lib/error-message";
 import { WEEKDAY_FULL_PL, warsawWeekday } from "@/shared/lib/weekday";
@@ -41,13 +45,31 @@ export function NewSessionView() {
     }
   };
 
+  const adj = SESSION_TYPE_LABEL_PL_ADJ[type];
+
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
       <div className="space-y-1 pt-2">
-        <h1 className="font-bold text-2xl tracking-tight">Nowa sesja {SESSION_TYPE_LABEL_PL_ADJ[type]}</h1>
+        <h1 className="font-bold text-2xl tracking-tight">{adj ? `Nowa sesja ${adj}` : "Nowa sesja"}</h1>
         <p className="text-muted-foreground text-sm">
           {planStrength ? "Zacznij z planu na dziś albo od zera." : "Zacznij od zera — sam dodajesz ćwiczenia."}
         </p>
+      </div>
+
+      <div className="grid grid-cols-4 gap-1.5">
+        {PICKABLE_SESSION_TYPES.map((t) => (
+          <button
+            key={t}
+            type="button"
+            className={`rounded-md border px-2 py-1.5 font-semibold text-xs transition-colors ${
+              type === t ? "border-transparent bg-ember" : "border-border text-muted-foreground hover:bg-accent"
+            }`}
+            disabled={creating !== null}
+            onClick={() => navigate({ to: ".", search: { type: t }, replace: true })}
+          >
+            {SESSION_TYPE_LABEL_PL[t]}
+          </button>
+        ))}
       </div>
 
       {planStrength && (

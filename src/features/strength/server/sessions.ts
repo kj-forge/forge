@@ -221,6 +221,9 @@ export const getSessionDetails = createServerFn({ method: "GET" })
 const createSessionInput = z.object({
   type: z.enum([
     "STRENGTH",
+    "HYROX",
+    "RUNNING",
+    "OTHER",
     "HYROX_EMOM",
     "HYROX_AMRAP",
     "HYROX_WORK",

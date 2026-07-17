@@ -50,6 +50,12 @@ import {
 
 export const sessionType = pgEnum("session_type", [
   "STRENGTH",
+  // The user-pickable simple types (2026-07): Hyrox, running, catch-all.
+  "HYROX",
+  "RUNNING",
+  "OTHER",
+  // Granular early-design values — kept for enum compatibility; the picker
+  // doesn't offer them.
   "HYROX_EMOM",
   "HYROX_AMRAP",
   "HYROX_WORK",

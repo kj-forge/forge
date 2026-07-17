@@ -32,6 +32,9 @@ export const EXERCISE_UNIT_LABEL: Record<ExerciseUnit, string> = {
 
 export const SESSION_TYPES = [
   "STRENGTH",
+  "HYROX",
+  "RUNNING",
+  "OTHER",
   "HYROX_EMOM",
   "HYROX_AMRAP",
   "HYROX_WORK",
@@ -41,8 +44,20 @@ export const SESSION_TYPES = [
   "MOBILITY",
 ] as const;
 
+// What the new-session picker offers. The DB enum still accepts the granular
+// early-design values so historical rows render, but users pick from four.
+export const PICKABLE_SESSION_TYPES = [
+  "STRENGTH",
+  "HYROX",
+  "RUNNING",
+  "OTHER",
+] as const satisfies readonly SessionType[];
+
 export const SESSION_TYPE_LABEL_PL: Record<SessionType, string> = {
   STRENGTH: "Siła",
+  HYROX: "Hyrox",
+  RUNNING: "Bieganie",
+  OTHER: "Inny",
   HYROX_EMOM: "Hyrox EMOM",
   HYROX_AMRAP: "Hyrox AMRAP",
   HYROX_WORK: "Hyrox WORK",
@@ -52,8 +67,12 @@ export const SESSION_TYPE_LABEL_PL: Record<SessionType, string> = {
   MOBILITY: "Mobility",
 };
 
+// "Nowa sesja {adj}" — OTHER stays empty so the heading reads plain "Nowa sesja".
 export const SESSION_TYPE_LABEL_PL_ADJ: Record<SessionType, string> = {
   STRENGTH: "siłowa",
+  HYROX: "Hyrox",
+  RUNNING: "biegowa",
+  OTHER: "",
   HYROX_EMOM: "Hyrox EMOM",
   HYROX_AMRAP: "Hyrox AMRAP",
   HYROX_WORK: "Hyrox WORK",
