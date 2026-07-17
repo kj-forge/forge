@@ -32,7 +32,7 @@ export default defineConfig({
       // TanStack Start's dual client/server build pipeline. Reported issues
       // exist in the ecosystem; revisit when adding Electric.
       injectRegister: false,
-      includeAssets: ["icon.svg"],
+      includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
         name: "Forge",
         short_name: "Forge",
