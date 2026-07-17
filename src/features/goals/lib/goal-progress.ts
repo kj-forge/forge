@@ -7,6 +7,22 @@ export function goalProgress(targetValue: number | null, currentValue: number | 
   return Math.min(100, Math.round((currentValue / targetValue) * 100));
 }
 
+/**
+ * Strength goals read as one line — "Deadlift 160kg @3RM" — composed from
+ * the picked exercise and target; other goal types keep the typed title.
+ */
+export function goalDisplayTitle(goal: {
+  type: string;
+  title: string;
+  exerciseNamePl: string | null;
+  targetValue: number | null;
+  targetReps: number;
+}): string {
+  if (goal.type !== "STRENGTH_RM" || !goal.exerciseNamePl) return goal.title;
+  if (goal.targetValue == null) return goal.exerciseNamePl;
+  return `${goal.exerciseNamePl} ${goal.targetValue}kg @${goal.targetReps}RM`;
+}
+
 const SECOND_UNITS = new Set(["s", "sek", "sec", "seconds", "sekundy", "sekund"]);
 
 /**

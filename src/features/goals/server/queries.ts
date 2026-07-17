@@ -61,17 +61,22 @@ export async function loadActiveGoals(athleteId: string) {
     athleteId,
     rows.flatMap((r) => (r.exerciseId ? [r.exerciseId] : [])),
   );
-  // A 3RM goal only counts sets of >= 3 reps — the heaviest of those is the
-  // current best, in real kilograms.
+  // A 3RM goal only counts sets of >= 3 reps — the heaviest of those (tie →
+  // more reps) is the current best, in real kilograms.
   return rows.map((r) => {
     const candidates = r.exerciseId ? (setsByExercise.get(r.exerciseId) ?? []) : [];
-    let currentBestKg: number | null = null;
+    let currentBest: { weightKg: number; reps: number } | null = null;
     for (const s of candidates) {
-      if (s.reps >= r.targetReps && (currentBestKg === null || s.weightKg > currentBestKg)) {
-        currentBestKg = s.weightKg;
+      if (s.reps < r.targetReps) continue;
+      if (
+        !currentBest ||
+        s.weightKg > currentBest.weightKg ||
+        (s.weightKg === currentBest.weightKg && s.reps > currentBest.reps)
+      ) {
+        currentBest = { weightKg: s.weightKg, reps: s.reps };
       }
     }
-    return { ...r, currentBestKg };
+    return { ...r, currentBest };
   });
 }
 

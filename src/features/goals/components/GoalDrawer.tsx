@@ -15,7 +15,7 @@ import type { GoalRow } from "@/features/goals/types";
 import { getErrorMessage } from "@/lib/error-message";
 import { Spinner } from "@/shared/components/Spinner";
 
-export type ExerciseOption = { id: string; namePl: string };
+export type ExerciseOption = { id: string; namePl: string; aliases: string[] };
 
 interface GoalDrawerProps {
   open: boolean;
@@ -67,16 +67,27 @@ function GoalDrawerBody({
   const currentType = useWatch({ control: form.control, name: "type" });
   const hints = GOAL_PLACEHOLDERS[currentType];
 
+  // Strength goals pick the exercise through the same search surface as the
+  // session/plan pickers (name OR alias) — no separate title to type.
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const matches = q
+    ? exercises
+        .filter((e) => e.namePl.toLowerCase().includes(q) || e.aliases.some((a) => a.toLowerCase().includes(q)))
+        .slice(0, 8)
+    : [];
+
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       await upsertGoal({
         data: {
           id: goal?.id,
           type: values.type,
-          title: values.title,
+          // Strength: server derives title (exercise name) and unit (kg).
+          title: values.type === "STRENGTH_RM" ? undefined : values.title,
           targetValue: values.targetValue ? Number(values.targetValue) : undefined,
           targetReps: values.targetReps ? Number(values.targetReps) : undefined,
-          targetUnit: values.targetUnit || undefined,
+          targetUnit: values.type === "STRENGTH_RM" ? undefined : values.targetUnit || undefined,
           targetDate: values.targetDate || undefined,
           exerciseId: values.exerciseId || undefined,
         },
@@ -149,39 +160,15 @@ function GoalDrawerBody({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Tytuł</FormLabel>
-                <FormControl>
-                  <Input placeholder={hints.title} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {currentType === "STRENGTH_RM" && (
+          {currentType !== "STRENGTH_RM" && (
             <FormField
               control={form.control}
-              name="exerciseId"
+              name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Bój (postęp z realnych serii)</FormLabel>
+                  <FormLabel>{hints.titleLabel}</FormLabel>
                   <FormControl>
-                    <select
-                      className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
-                      {...field}
-                    >
-                      <option value="">— wybierz ćwiczenie —</option>
-                      {exercises.map((e) => (
-                        <option key={e.id} value={e.id}>
-                          {e.namePl}
-                        </option>
-                      ))}
-                    </select>
+                    <Input placeholder={hints.title} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -189,15 +176,75 @@ function GoalDrawerBody({
             />
           )}
 
-          <div
-            className={`grid gap-2 ${currentType === "STRENGTH_RM" ? "grid-cols-[2fr_1fr_1fr]" : "grid-cols-[2fr_1fr]"}`}
-          >
+          {currentType === "STRENGTH_RM" && (
+            <FormField
+              control={form.control}
+              name="exerciseId"
+              render={({ field }) => {
+                const selected = exercises.find((e) => e.id === field.value);
+                return (
+                  <FormItem>
+                    <FormLabel>Ćwiczenie (postęp z realnych serii)</FormLabel>
+                    <FormControl>
+                      {selected ? (
+                        <div className="flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-sm">
+                          <span className="truncate font-medium">{selected.namePl}</span>
+                          <button
+                            type="button"
+                            className="shrink-0 font-medium text-muted-foreground text-xs transition-colors hover:text-foreground"
+                            onClick={() => field.onChange("")}
+                          >
+                            Zmień
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <Input
+                            type="search"
+                            placeholder="Szukaj ćwiczenia…"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            maxLength={50}
+                          />
+                          {q.length > 0 && (
+                            <ul className="max-h-40 space-y-0.5 overflow-y-auto rounded-md border p-1">
+                              {matches.length === 0 ? (
+                                <li className="px-2 py-1.5 text-muted-foreground text-xs">Brak wyników.</li>
+                              ) : (
+                                matches.map((e) => (
+                                  <li key={e.id}>
+                                    <button
+                                      type="button"
+                                      className="w-full rounded px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
+                                      onClick={() => {
+                                        field.onChange(e.id);
+                                        setQuery("");
+                                      }}
+                                    >
+                                      {e.namePl}
+                                    </button>
+                                  </li>
+                                ))
+                              )}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+          )}
+
+          <div className="grid grid-cols-[2fr_1fr] gap-2">
             <FormField
               control={form.control}
               name="targetValue"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Wartość celu</FormLabel>
+                  <FormLabel>{currentType === "STRENGTH_RM" ? "Ciężar (kg)" : "Wartość celu"}</FormLabel>
                   <FormControl>
                     <NumericFormat
                       customInput={Input}
@@ -214,15 +261,16 @@ function GoalDrawerBody({
                 </FormItem>
               )}
             />
-            {/* "160 kg × 3" — the goal is weight AT a rep count; progress
-                only counts real sets with at least this many reps. */}
-            {currentType === "STRENGTH_RM" && (
+            {/* "160kg @3RM" — the goal is weight AT a rep count; progress
+                only counts real sets with at least this many reps. The unit
+                is implied (kg), so no unit field for strength goals. */}
+            {currentType === "STRENGTH_RM" ? (
               <FormField
                 control={form.control}
                 name="targetReps"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Powt.</FormLabel>
+                    <FormLabel>Powt. (RM)</FormLabel>
                     <FormControl>
                       <NumericFormat
                         customInput={Input}
@@ -239,20 +287,21 @@ function GoalDrawerBody({
                   </FormItem>
                 )}
               />
+            ) : (
+              <FormField
+                control={form.control}
+                name="targetUnit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Jedn.</FormLabel>
+                    <FormControl>
+                      <Input placeholder={hints.unit} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
-            <FormField
-              control={form.control}
-              name="targetUnit"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Jedn.</FormLabel>
-                  <FormControl>
-                    <Input placeholder={hints.unit} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
           </div>
 
           <FormField
