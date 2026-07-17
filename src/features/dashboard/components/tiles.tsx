@@ -194,8 +194,8 @@ export function GoalTile({ goals, compact = false }: { goals: DashboardData["goa
   }
 
   const goal = goals[index % goals.length];
-  const progress = goalProgress(goal.targetValue, goal.currentE1rm);
-  const target = formatGoalTarget(goal.targetValue, goal.targetUnit);
+  const progress = goalProgress(goal.targetValue, goal.currentBestKg);
+  const target = formatGoalTarget(goal.targetValue, goal.targetUnit, goal.targetReps);
 
   return (
     <Link to="/goals" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
@@ -217,8 +217,8 @@ export function GoalTile({ goals, compact = false }: { goals: DashboardData["goa
           </div>
         )}
         <p className="mt-1 text-muted-foreground text-xs tabular-nums">
-          {goal.currentE1rm !== null ? `e1RM ${goal.currentE1rm}` : ""}
-          {goal.currentE1rm !== null && target ? " · " : ""}
+          {goal.currentBestKg !== null ? `najlepsze ${goal.currentBestKg} kg` : ""}
+          {goal.currentBestKg !== null && target ? " · " : ""}
           {target ? `cel ${target}` : ""}
         </p>
       </div>

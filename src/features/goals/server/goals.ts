@@ -18,6 +18,7 @@ const upsertGoalInput = z.object({
   type: z.enum(GOAL_TYPES),
   title: z.string().trim().min(1).max(120),
   targetValue: z.number().positive().optional(),
+  targetReps: z.number().int().min(1).max(50).optional(),
   targetUnit: z.string().trim().max(10).optional(),
   targetDate: z.iso.date().optional(),
   exerciseId: z.uuid().optional(),
@@ -31,6 +32,8 @@ export const upsertGoal = createServerFn({ method: "POST" })
       type: data.type,
       title: data.title,
       targetValue: data.targetValue ?? null,
+      // Rep targets only mean something on a lift goal; others stay at 1.
+      targetReps: data.type === "STRENGTH_RM" ? (data.targetReps ?? 1) : 1,
       targetUnit: data.targetUnit || null,
       targetDate: data.targetDate ?? null,
       // Only STRENGTH_RM goals track a lift; scrub stale links on type change.

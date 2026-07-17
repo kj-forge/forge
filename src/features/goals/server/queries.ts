@@ -1,20 +1,22 @@
 // Server-only query helpers (shared with the dashboard fn). Never import
 // from views/routes — must stay out of the client bundle.
 import { and, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
-import { bestE1RM } from "@/features/strength/lib/pr";
 import { db } from "../../../../db/client";
 import { blockMovements, exercises, goals, sets } from "../../../../db/schema";
 
-// Best-ever e1RM per exercise, one batched query — feeds the auto progress
-// of STRENGTH_RM goals (and the dashboard's goal tile).
-export async function loadCurrentE1rms(athleteId: string, exerciseIds: string[]): Promise<Map<string, number>> {
+// Every qualifying REAL set per exercise (non-warmup, weight and reps
+// present), one batched query. Goal progress compares actual bar weight at
+// the goal's rep count — never an e1RM estimate.
+async function loadQualifyingSets(
+  athleteId: string,
+  exerciseIds: string[],
+): Promise<Map<string, { weightKg: number; reps: number }[]>> {
   if (exerciseIds.length === 0) return new Map();
   const rows = await db
     .select({
       exerciseId: blockMovements.exerciseId,
       weightKg: sets.weightKg,
       reps: sets.reps,
-      kind: sets.kind,
     })
     .from(sets)
     .innerJoin(blockMovements, eq(sets.blockMovementId, blockMovements.id))
@@ -27,18 +29,14 @@ export async function loadCurrentE1rms(athleteId: string, exerciseIds: string[])
         isNotNull(sets.reps),
       ),
     );
-  const byExercise = new Map<string, typeof rows>();
+  const byExercise = new Map<string, { weightKg: number; reps: number }[]>();
   for (const row of rows) {
+    if (row.weightKg === null || row.reps === null) continue;
     const arr = byExercise.get(row.exerciseId) ?? [];
-    arr.push(row);
+    arr.push({ weightKg: row.weightKg, reps: row.reps });
     byExercise.set(row.exerciseId, arr);
   }
-  const result = new Map<string, number>();
-  for (const [exerciseId, exerciseSets] of byExercise) {
-    const best = bestE1RM(exerciseSets);
-    if (best !== null) result.set(exerciseId, best);
-  }
-  return result;
+  return byExercise;
 }
 
 export async function loadActiveGoals(athleteId: string) {
@@ -48,6 +46,7 @@ export async function loadActiveGoals(athleteId: string) {
       type: goals.type,
       title: goals.title,
       targetValue: goals.targetValue,
+      targetReps: goals.targetReps,
       targetUnit: goals.targetUnit,
       targetDate: goals.targetDate,
       exerciseId: goals.exerciseId,
@@ -58,14 +57,22 @@ export async function loadActiveGoals(athleteId: string) {
     .where(and(eq(goals.athleteId, athleteId), isNull(goals.achievedAt)))
     .orderBy(sql`${goals.targetDate} ASC NULLS LAST`, goals.createdAt);
 
-  const e1rms = await loadCurrentE1rms(
+  const setsByExercise = await loadQualifyingSets(
     athleteId,
     rows.flatMap((r) => (r.exerciseId ? [r.exerciseId] : [])),
   );
-  return rows.map((r) => ({
-    ...r,
-    currentE1rm: r.exerciseId ? (e1rms.get(r.exerciseId) ?? null) : null,
-  }));
+  // A 3RM goal only counts sets of >= 3 reps — the heaviest of those is the
+  // current best, in real kilograms.
+  return rows.map((r) => {
+    const candidates = r.exerciseId ? (setsByExercise.get(r.exerciseId) ?? []) : [];
+    let currentBestKg: number | null = null;
+    for (const s of candidates) {
+      if (s.reps >= r.targetReps && (currentBestKg === null || s.weightKg > currentBestKg)) {
+        currentBestKg = s.weightKg;
+      }
+    }
+    return { ...r, currentBestKg };
+  });
 }
 
 export type ActiveGoal = Awaited<ReturnType<typeof loadActiveGoals>>[number];

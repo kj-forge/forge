@@ -8,6 +8,9 @@ export const goalFormSchema = z.object({
   type: z.enum(GOAL_TYPES),
   title: z.string().trim().min(1, "Podaj tytuł celu.").max(120, "Maksymalnie 120 znaków."),
   targetValue: z.string(),
+  // STRENGTH_RM only: reps the target weight must be lifted for (NumericFormat
+  // string pattern, "1" by default).
+  targetReps: z.string(),
   targetUnit: z.string().trim().max(10, "Maksymalnie 10 znaków."),
   targetDate: z.string(),
   exerciseId: z.string(),

@@ -43,16 +43,18 @@ export function GoalsSection({ goals, exercises }: { goals: GoalRow[]; exercises
                     </span>
                   </span>
                   <span className="shrink-0 text-right">
-                    {goal.currentE1rm !== null ? (
+                    {goal.currentBestKg !== null ? (
                       <>
-                        <span className="block font-black text-base text-primary tabular-nums">{goal.currentE1rm}</span>
+                        <span className="block font-black text-base text-primary tabular-nums">
+                          {goal.currentBestKg}
+                        </span>
                         <span className="block text-muted-foreground text-xs tabular-nums">
-                          cel {formatGoalTarget(goal.targetValue, goal.targetUnit) ?? "—"}
+                          cel {formatGoalTarget(goal.targetValue, goal.targetUnit, goal.targetReps) ?? "—"}
                         </span>
                       </>
                     ) : (
                       <span className="font-semibold text-sm tabular-nums">
-                        {formatGoalTarget(goal.targetValue, goal.targetUnit) ?? "—"}
+                        {formatGoalTarget(goal.targetValue, goal.targetUnit, goal.targetReps) ?? "—"}
                       </span>
                     )}
                   </span>

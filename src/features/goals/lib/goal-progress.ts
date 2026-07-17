@@ -12,13 +12,19 @@ const SECOND_UNITS = new Set(["s", "sek", "sec", "seconds", "sekundy", "sekund"]
 /**
  * Display form of a goal target. Second-based units humanize to minutes —
  * "cel 3900 seconds" is a database value, not something an athlete reads.
+ * A rep target above 1 rides along ("160 kg ×3"); ×1 is implied and silent.
  */
-export function formatGoalTarget(targetValue: number | null, targetUnit: string | null): string | null {
+export function formatGoalTarget(
+  targetValue: number | null,
+  targetUnit: string | null,
+  targetReps?: number | null,
+): string | null {
   if (targetValue == null) return null;
   const unit = (targetUnit ?? "").trim();
   if (SECOND_UNITS.has(unit.toLowerCase())) {
     const minutes = targetValue / 60;
     return `${Number.isInteger(minutes) ? minutes : minutes.toFixed(1)} min`;
   }
-  return unit ? `${targetValue} ${unit}` : `${targetValue}`;
+  const base = unit ? `${targetValue} ${unit}` : `${targetValue}`;
+  return targetReps != null && targetReps > 1 ? `${base} ×${targetReps}` : base;
 }

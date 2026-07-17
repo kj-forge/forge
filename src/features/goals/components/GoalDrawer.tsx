@@ -56,6 +56,7 @@ function GoalDrawerBody({
       type: goal?.type ?? "STRENGTH_RM",
       title: goal?.title ?? "",
       targetValue: goal?.targetValue != null ? String(goal.targetValue) : "",
+      targetReps: goal?.targetReps != null ? String(goal.targetReps) : "1",
       targetUnit: goal?.targetUnit ?? "",
       targetDate: goal?.targetDate ?? "",
       exerciseId: goal?.exerciseId ?? "",
@@ -74,6 +75,7 @@ function GoalDrawerBody({
           type: values.type,
           title: values.title,
           targetValue: values.targetValue ? Number(values.targetValue) : undefined,
+          targetReps: values.targetReps ? Number(values.targetReps) : undefined,
           targetUnit: values.targetUnit || undefined,
           targetDate: values.targetDate || undefined,
           exerciseId: values.exerciseId || undefined,
@@ -167,7 +169,7 @@ function GoalDrawerBody({
               name="exerciseId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Bój (postęp liczony z e1RM)</FormLabel>
+                  <FormLabel>Bój (postęp z realnych serii)</FormLabel>
                   <FormControl>
                     <select
                       className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
@@ -187,7 +189,9 @@ function GoalDrawerBody({
             />
           )}
 
-          <div className="grid grid-cols-[2fr_1fr] gap-2">
+          <div
+            className={`grid gap-2 ${currentType === "STRENGTH_RM" ? "grid-cols-[2fr_1fr_1fr]" : "grid-cols-[2fr_1fr]"}`}
+          >
             <FormField
               control={form.control}
               name="targetValue"
@@ -210,6 +214,32 @@ function GoalDrawerBody({
                 </FormItem>
               )}
             />
+            {/* "160 kg × 3" — the goal is weight AT a rep count; progress
+                only counts real sets with at least this many reps. */}
+            {currentType === "STRENGTH_RM" && (
+              <FormField
+                control={form.control}
+                name="targetReps"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Powt.</FormLabel>
+                    <FormControl>
+                      <NumericFormat
+                        customInput={Input}
+                        inputMode="numeric"
+                        allowNegative={false}
+                        decimalScale={0}
+                        placeholder="1"
+                        value={field.value}
+                        onValueChange={(v) => field.onChange(v.value)}
+                        onBlur={field.onBlur}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="targetUnit"
