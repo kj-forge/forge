@@ -61,8 +61,10 @@ playwright/.cache/
 # Drizzle
 drizzle/meta/_journal.json.bak
 
-# Personal seed (race results, real names) — never commit to the public repo
-db/seed-personal.local.ts
+# Personal seed (race results, real names) and other local-only scripts —
+# never commit to the public repo
+db/*.local.ts
+!db/seed-personal.local.example.ts
 
 # Storybook
 storybook-static/
