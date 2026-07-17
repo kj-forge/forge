@@ -20,6 +20,7 @@ import { E1rmSparkline, formatChartDate } from "@/features/strength/components/E
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
 import type { SessionType } from "@/features/strength/types";
+import { StatusBadge } from "@/shared/components/StatusBadge";
 import { WEEKDAY_FULL_PL, WEEKDAY_LABELS_PL, warsawWeekday } from "@/shared/lib/weekday";
 
 const DATE_FMT = new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "numeric", month: "long", timeZone: "UTC" });
@@ -122,26 +123,10 @@ export function TodayTile({ plan, className = "" }: { plan: DashboardData["plan"
   );
 }
 
+// Always the last FINISHED session — active ones live at the top of the
+// SessionsTile list next door, with their live badges.
 export function LastSessionTile({ sessions }: { sessions: DashboardData["sessions"] }) {
-  const active = sessions.find((s) => s.endedAt === null);
   const last = sessions.find((s) => s.endedAt !== null);
-
-  if (active) {
-    return (
-      <Link
-        to="/sessions/$sessionId"
-        params={{ sessionId: active.id }}
-        className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}
-      >
-        <TileHeader icon={Clock} title="Aktywna sesja" />
-        <p className="flex items-center gap-2 font-semibold text-sm">
-          <span className="size-2 rounded-full bg-primary motion-safe:animate-pulse" />
-          {SESSION_TYPE_LABEL_PL[active.type as SessionType] ?? active.type}
-        </p>
-        <p className="mt-1 font-black text-base text-primary">Wróć do sesji →</p>
-      </Link>
-    );
-  }
 
   if (!last) {
     return (
@@ -304,7 +289,12 @@ export function SessionsTile({
   sessions: DashboardData["sessions"];
   className?: string;
 }) {
-  const rows = sessions.filter((s) => s.endedAt !== null).slice(0, 3);
+  // Active sessions first (their badge marks them), then most recent — the
+  // same order as the mobile list.
+  const rows = [...sessions.filter((s) => s.endedAt === null), ...sessions.filter((s) => s.endedAt !== null)].slice(
+    0,
+    3,
+  );
   return (
     <Tile
       icon={ChartNoAxesColumn}
@@ -317,7 +307,7 @@ export function SessionsTile({
       className={className}
     >
       {rows.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Jeszcze brak zakończonych sesji.</p>
+        <p className="text-muted-foreground text-sm">Jeszcze brak sesji.</p>
       ) : (
         <ul>
           {rows.map((s) => {
@@ -330,8 +320,11 @@ export function SessionsTile({
                   className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-accent/60"
                 >
                   <span className="min-w-0">
-                    <span className="block truncate font-semibold">
-                      {s.title ?? SESSION_TYPE_LABEL_PL[s.type as SessionType] ?? s.type}
+                    <span className="flex items-center gap-2">
+                      <span className="truncate font-semibold">
+                        {s.title ?? SESSION_TYPE_LABEL_PL[s.type as SessionType] ?? s.type}
+                      </span>
+                      <StatusBadge endedAt={s.endedAt} />
                     </span>
                     <span className="block text-muted-foreground text-xs">{DATE_FMT.format(new Date(s.date))}</span>
                   </span>
