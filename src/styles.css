@@ -89,37 +89,40 @@
 /* Żar kuźni — dark: graphite steel, glowing ember. Class-based: the
    pre-paint script in __root applies .dark from the stored preference
    (system by default), and ThemeToggle switches it at runtime. */
+/* Deep near-black base keeps the forge mood; surfaces sit two visible steps
+   above it (cards ~#1a, hovers ~#232) with 12% borders so boxes read as boxes
+   in sun-glare / low-brightness conditions. */
 .dark {
   --background: #0c0c0d;
   --foreground: #f5f2ee;
-  --card: #161618;
+  --card: #1a1a1d;
   --card-foreground: #f5f2ee;
-  --popover: #161618;
+  --popover: #1a1a1d;
   --popover-foreground: #f5f2ee;
   --primary: #ff6a00;
   --primary-foreground: #ffffff;
-  --secondary: #1c1c1f;
+  --secondary: #232327;
   --secondary-foreground: #f5f2ee;
-  --muted: #1c1c1f;
-  --muted-foreground: #8f8a84;
-  --accent: #1c1c1f;
+  --muted: #232327;
+  --muted-foreground: #a39d96;
+  --accent: #232327;
   --accent-foreground: #f5f2ee;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: #ffffff14;
-  --input: #ffffff1f;
+  --border: #ffffff1f;
+  --input: #ffffff29;
   --ring: #ff6a0080;
   --chart-1: #ff6a00;
   --chart-2: #8f8a84;
   --chart-3: #6b6660;
   --chart-4: #47443f;
   --chart-5: #f5f2ee;
-  --sidebar: #161618;
+  --sidebar: #1a1a1d;
   --sidebar-foreground: #f5f2ee;
   --sidebar-primary: #ff6a00;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1c1c1f;
+  --sidebar-accent: #232327;
   --sidebar-accent-foreground: #f5f2ee;
-  --sidebar-border: #ffffff14;
+  --sidebar-border: #ffffff1f;
   --sidebar-ring: #ff6a0080;
 }
 
