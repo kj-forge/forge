@@ -16,6 +16,7 @@ import {
 } from "@/features/dashboard/components/tiles";
 import { TodayPlanCard } from "@/features/plan/components/TodayPlanCard";
 import { SessionListItem } from "@/features/strength/components/SessionListItem";
+import { warsawWeekday } from "@/shared/lib/weekday";
 
 const route = getRouteApi("/_shell/");
 
@@ -30,6 +31,11 @@ export function DashboardView() {
     ...data.sessions.filter((s) => s.endedAt === null),
     ...data.sessions.filter((s) => s.endedAt !== null),
   ].slice(0, 3);
+
+  // The CTA names what actually starts: a plan-fed strength session on
+  // strength days, a blank one otherwise.
+  const todayHasStrength = data.plan.find((d) => d.dayOfWeek === warsawWeekday())?.hasStrength ?? false;
+  const ctaLabel = todayHasStrength ? "+ Rozpocznij sesję siłową" : "+ Rozpocznij nową sesję";
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-4 lg:max-w-6xl">
@@ -46,12 +52,15 @@ export function DashboardView() {
         </Link>
       </header>
 
+      {/* First run: the 1-2-3 start path on every breakpoint. */}
+      {firstRun && <OnboardingTiles data={data} />}
+
       {/* Mobile: trimmed bento — today, CTA, mini row, sessions. */}
-      <div className="flex flex-col gap-4 lg:hidden">
+      <div className={`flex-col gap-4 lg:hidden ${firstRun ? "hidden" : "flex"}`}>
         <TodayPlanCard plan={data.plan} />
         <Link to="/sessions/new" search={{ type: "STRENGTH" }}>
           <Button size="lg" className="w-full bg-ember shadow-ember">
-            + Rozpocznij sesję siłową
+            {ctaLabel}
           </Button>
         </Link>
         {/* items-stretch (grid default) so the shorter tile — usually the
@@ -81,10 +90,8 @@ export function DashboardView() {
         </section>
       </div>
 
-      {/* Desktop: full bento, or the 1-2-3 start path before any session. */}
-      {firstRun ? (
-        <OnboardingTiles data={data} />
-      ) : (
+      {/* Desktop: full bento once the first session exists. */}
+      {!firstRun && (
         <div className="hidden gap-4 lg:grid lg:grid-cols-4">
           <TodayTile plan={data.plan} className="lg:col-span-2" />
           <LastSessionTile sessions={data.sessions} />
