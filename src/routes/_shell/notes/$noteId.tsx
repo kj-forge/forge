@@ -11,6 +11,12 @@ export const Route = createFileRoute("/_shell/notes/$noteId")({
     if (!session) throw redirect({ to: "/login" });
   },
   loader: ({ params }) => getNote({ data: { noteId: params.noteId } }),
+  // An editor must open with authoritative content. The router's default
+  // stale-while-revalidate would serve the cached body from BEFORE the
+  // autosaves of the previous visit (and the textarea seeds once, so the
+  // background refresh never reaches it) — no caching for this match.
+  gcTime: 0,
+  staleTime: 0,
   pendingComponent: SessionListSkeleton,
   component: NoteEditorView,
 });
