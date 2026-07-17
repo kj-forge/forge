@@ -3,6 +3,7 @@ import { Info, Table2, Trophy } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { type CompactSetsPart, formatSetsCompactParts } from "@/features/strength/lib/format-sets-compact";
 import type { PrTableRow, WeekdaySession } from "@/features/strength/server/stats";
 import { WEEKDAY_LABELS_PL } from "@/shared/lib/weekday";
@@ -10,6 +11,9 @@ import { WEEKDAY_LABELS_PL } from "@/shared/lib/weekday";
 const route = getRouteApi("/_shell/stats/");
 
 const ACC_STORAGE_KEY = "forge-stats-acc";
+
+const ACC_HINT =
+  "Trafiają tu ćwiczenia z zapisaną historią. Które liczą się do rekordów, ustawisz w bibliotece ćwiczeń — przełącznik „Licz do rekordów”.";
 
 const PR_DATE_FMT = new Intl.DateTimeFormat("pl-PL", {
   weekday: "short",
@@ -113,15 +117,28 @@ function RekordySegment({
         <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-1.5">
             Pozostałe ćwiczenia (z zapisaną historią)
-            <button
-              type="button"
-              aria-label="Skąd biorą się pozostałe ćwiczenia?"
-              aria-expanded={hintOpen}
-              className={`grid place-items-center transition-colors ${hintOpen ? "text-foreground" : "hover:text-foreground"}`}
-              onClick={() => setHintOpen((v) => !v)}
-            >
-              <Info className="size-3.5" />
-            </button>
+            {/* One trigger, two behaviors: hover shows the shadcn tooltip
+                (desktop), tap expands the inline hint line — radix tooltips
+                deliberately never open on touch. */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Skąd biorą się pozostałe ćwiczenia?"
+                    aria-expanded={hintOpen}
+                    className={`grid place-items-center transition-colors ${hintOpen ? "text-foreground" : "hover:text-foreground"}`}
+                    onClick={() => {
+                      if (window.matchMedia("(hover: hover)").matches) return;
+                      setHintOpen((v) => !v);
+                    }}
+                  >
+                    <Info className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-60">{ACC_HINT}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </span>
           <button
             type="button"
@@ -140,12 +157,7 @@ function RekordySegment({
             />
           </button>
         </div>
-        {hintOpen && (
-          <p className="mt-2 border-t pt-2 text-xs">
-            Trafiają tu ćwiczenia z zapisaną historią. Które liczą się do rekordów, ustawisz w bibliotece ćwiczeń —
-            przełącznik „Licz do rekordów”.
-          </p>
-        )}
+        {hintOpen && <p className="mt-2 border-t pt-2 text-xs">{ACC_HINT}</p>}
       </div>
 
       {accOn &&
