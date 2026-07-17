@@ -251,7 +251,7 @@ export function PrTile({ prs, compact = false }: { prs: DashboardData["prs"]; co
             <li key={pr.exerciseId} className="flex items-baseline justify-between gap-2 py-0.5 text-xs">
               <span className="truncate">{pr.namePl}</span>
               <span className="font-black text-primary tabular-nums">
-                {pr.best ? (pr.best.e1rm ?? `${pr.best.reps}×${pr.best.weightKg}`) : "—"}
+                {pr.best ? `${pr.best.reps}× ${pr.isLoadedBodyweight ? "+" : ""}${pr.best.weightKg}` : "—"}
               </span>
             </li>
           ))}
@@ -280,13 +280,13 @@ export function PrTile({ prs, compact = false }: { prs: DashboardData["prs"]; co
             >
               <span className="truncate">{pr.namePl}</span>
               <span className="font-black text-primary tabular-nums">
-                {pr.best ? (pr.best.e1rm ?? `${pr.best.reps}×${pr.best.weightKg}`) : "—"}
+                {pr.best ? `${pr.best.reps}× ${pr.isLoadedBodyweight ? "+" : ""}${pr.best.weightKg}` : "—"}
               </span>
             </Link>
           </li>
         ))}
       </ul>
-      <p className="mt-1.5 text-[10px] text-muted-foreground uppercase tracking-wide">e1RM · kg</p>
+      <p className="mt-1.5 text-[10px] text-muted-foreground uppercase tracking-wide">najcięższa seria · kg</p>
     </Tile>
   );
 }

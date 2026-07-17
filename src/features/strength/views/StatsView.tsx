@@ -162,9 +162,10 @@ function PrRow({ row }: { row: PrTableRow }) {
             <p className="font-black text-base text-primary tabular-nums">
               {best.reps}× {weightLabel} kg
             </p>
-            <p className="text-muted-foreground text-xs tabular-nums">
-              e1RM {best.e1rm !== null ? `~${best.e1rm} kg` : "—"}
-            </p>
+            {/* A real 1RM needs no estimate — Epley only annotates rep sets. */}
+            {best.e1rm !== null && best.reps > 1 && (
+              <p className="text-muted-foreground text-xs tabular-nums">e1RM ~{best.e1rm} kg</p>
+            )}
           </div>
         )}
       </Link>
