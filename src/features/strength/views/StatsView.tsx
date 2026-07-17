@@ -3,7 +3,6 @@ import { Info, Table2, Trophy } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { type CompactSetsPart, formatSetsCompactParts } from "@/features/strength/lib/format-sets-compact";
 import type { PrTableRow, WeekdaySession } from "@/features/strength/server/stats";
 import { WEEKDAY_LABELS_PL } from "@/shared/lib/weekday";
@@ -89,6 +88,9 @@ function RekordySegment({
   const mains = prTable.filter((r) => r.isMainLift);
   const accessories = prTable.filter((r) => !r.isMainLift);
   const hasAnyBest = prTable.some((r) => r.best !== null);
+  // Tap-to-toggle, not a tooltip — hover-only affordances are dead weight on
+  // touch screens.
+  const [hintOpen, setHintOpen] = useState(false);
 
   return (
     <section className="flex flex-col gap-3">
@@ -107,43 +109,43 @@ function RekordySegment({
         ))}
       </ul>
 
-      <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-muted-foreground text-sm">
-        <span className="flex items-center gap-1.5">
-          Pozostałe ćwiczenia (z zapisaną historią)
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Skąd biorą się pozostałe ćwiczenia?"
-                  className="grid place-items-center"
-                >
-                  <Info className="size-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-56">
-                Trafiają tu ćwiczenia z zapisaną historią. Które liczą się do rekordów, ustawisz w bibliotece ćwiczeń
-                (przełącznik „Licz do rekordów”).
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </span>
-        <button
-          type="button"
-          aria-pressed={accOn}
-          aria-label="Pokaż pozostałe ćwiczenia"
-          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${accOn ? "bg-ember" : "bg-muted"}`}
-          onClick={() => onToggleAcc(!accOn)}
-        >
-          {/* Explicit left anchor: without it the absolute thumb takes its
-              static position, and the button's default text-align:center
-              starts it mid-track — ON then overshoots the pill. */}
-          <span
-            className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform ${
-              accOn ? "translate-x-4" : "translate-x-0"
-            }`}
-          />
-        </button>
+      <div className="rounded-lg border px-3 py-2.5 text-muted-foreground text-sm">
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-1.5">
+            Pozostałe ćwiczenia (z zapisaną historią)
+            <button
+              type="button"
+              aria-label="Skąd biorą się pozostałe ćwiczenia?"
+              aria-expanded={hintOpen}
+              className={`grid place-items-center transition-colors ${hintOpen ? "text-foreground" : "hover:text-foreground"}`}
+              onClick={() => setHintOpen((v) => !v)}
+            >
+              <Info className="size-3.5" />
+            </button>
+          </span>
+          <button
+            type="button"
+            aria-pressed={accOn}
+            aria-label="Pokaż pozostałe ćwiczenia"
+            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${accOn ? "bg-ember" : "bg-muted"}`}
+            onClick={() => onToggleAcc(!accOn)}
+          >
+            {/* Explicit left anchor: without it the absolute thumb takes its
+                static position, and the button's default text-align:center
+                starts it mid-track — ON then overshoots the pill. */}
+            <span
+              className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform ${
+                accOn ? "translate-x-4" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+        {hintOpen && (
+          <p className="mt-2 border-t pt-2 text-xs">
+            Trafiają tu ćwiczenia z zapisaną historią. Które liczą się do rekordów, ustawisz w bibliotece ćwiczeń —
+            przełącznik „Licz do rekordów”.
+          </p>
+        )}
       </div>
 
       {accOn &&
