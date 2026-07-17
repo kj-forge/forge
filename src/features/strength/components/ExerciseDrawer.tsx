@@ -111,13 +111,12 @@ function ExerciseDrawerBody({
       });
       await router.invalidate();
       if (saved.pr?.isNewPR && weightKg !== undefined) {
-        // Added-load exercises (pull-up/dip) celebrate the set itself —
-        // e1RM over the added weight alone would be a meaningless number.
-        const loadedBw = movement.exerciseIsLoadedBodyweight;
-        const setLabel = `${values.reps}× ${loadedBw ? "+" : ""}${weightKg} kg`;
+        // Real bar weight only — estimates live on the stats page.
+        const plus = movement.exerciseIsLoadedBodyweight ? "+" : "";
+        const prev = saved.pr.previousBest;
         fireConfetti();
         toast(`Nowy rekord: ${movement.exerciseNamePl}!`, {
-          description: loadedBw ? setLabel : `${setLabel} · e1RM ~${saved.pr.e1rm} kg (było ~${saved.pr.previousE1rm})`,
+          description: `${values.reps}× ${plus}${weightKg} kg (było ${prev.reps}× ${plus}${prev.weightKg} kg)`,
           icon: <Flame className="size-5 text-primary" />,
           className: "shadow-ember",
         });
