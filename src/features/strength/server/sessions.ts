@@ -17,8 +17,8 @@ export const listRecentSessions = createServerFn({ method: "GET" }).handler(asyn
   return loadRecentSessions(athleteId, 10);
 });
 
-// History: only ENDED sessions — an in-progress one isn't "history" yet and is
-// resumed from the dashboard. (Pagination is a later epic; capped for now.)
+// History feed: in-progress sessions included — the view pins them above the
+// month groups. (Pagination is a later epic; capped for now.)
 export const listCompletedSessions = createServerFn({ method: "GET" }).handler(async () => {
   const { athleteId } = await getCurrentAthleteOrThrow();
   const sessionRows = await db
@@ -31,9 +31,9 @@ export const listCompletedSessions = createServerFn({ method: "GET" }).handler(a
       endedAt: sessions.endedAt,
     })
     .from(sessions)
-    .where(and(eq(sessions.athleteId, athleteId), isNotNull(sessions.endedAt)))
+    .where(eq(sessions.athleteId, athleteId))
     .orderBy(desc(sessions.date), desc(sessions.startedAt))
-    .limit(20);
+    .limit(100);
   return attachExercises(athleteId, sessionRows);
 });
 
