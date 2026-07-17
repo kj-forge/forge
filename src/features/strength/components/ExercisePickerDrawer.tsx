@@ -171,7 +171,9 @@ function ExercisePickerForm({ onPicked }: { onPicked: (exerciseId: string) => Pr
             </button>
           </li>
         ))}
-        {!searching && query.trim().length >= 2 && (
+        {/* Create only as the empty-state action — next to real matches it
+            reads like "Dip isn't here yet" when it usually is. */}
+        {!searching && query.trim().length >= 2 && results.length === 0 && (
           <li>
             <button
               type="button"

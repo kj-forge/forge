@@ -394,17 +394,21 @@ function PlanDayDrawerBody({
                         </button>
                       </li>
                     ))}
-                    <li>
-                      <button
-                        type="button"
-                        className="flex w-full items-center justify-between rounded border border-dashed px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50"
-                        onClick={handleCreate}
-                        disabled={creating}
-                      >
-                        <span className="font-medium text-primary">+ Dodaj „{query.trim()}”</span>
-                        {creating && <Spinner size="sm" className="text-muted-foreground" />}
-                      </button>
-                    </li>
+                    {/* Create only as the empty-state action, like the
+                        session picker. */}
+                    {matches.length === 0 && (
+                      <li>
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between rounded border border-dashed px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50"
+                          onClick={handleCreate}
+                          disabled={creating}
+                        >
+                          <span className="font-medium text-primary">+ Dodaj „{query.trim()}”</span>
+                          {creating && <Spinner size="sm" className="text-muted-foreground" />}
+                        </button>
+                      </li>
+                    )}
                   </ul>
                 )}
               </div>
