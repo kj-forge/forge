@@ -19,6 +19,11 @@ describe("showsTabBar", () => {
     expect(showsTabBar("/me/konto")).toBe(true);
   });
 
+  test("notes list is a browse context, the editor is a focused flow", () => {
+    expect(showsTabBar("/notes")).toBe(true);
+    expect(showsTabBar("/notes/123e4567-e89b-12d3-a456-426614174000")).toBe(false);
+  });
+
   test("hidden inside a session detail", () => {
     expect(showsTabBar("/sessions/123e4567-e89b-12d3-a456-426614174000")).toBe(false);
     expect(showsTabBar("/stats/abc")).toBe(false);
@@ -49,15 +54,31 @@ describe("isActivePath", () => {
     expect(isActivePath("/statsy", "/stats", false)).toBe(false);
   });
 
-  test("statystyki is the only non-exact item", () => {
-    expect(NAV_ITEMS.filter((i) => !i.exact).map((i) => i.to)).toEqual(["/stats"]);
+  test("only items with detail subroutes are non-exact", () => {
+    expect(NAV_ITEMS.filter((i) => !i.exact).map((i) => i.to)).toEqual(["/stats", "/notes"]);
   });
 });
 
 describe("NAV_ITEMS", () => {
-  test("cele replace profil — account lives under the avatar", () => {
-    expect(NAV_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/plan", "/goals"]);
-    expect(NAV_ITEMS.map((i) => i.label)).toEqual(["Dziennik", "Historia", "Nowa", "Statystyki", "Plan", "Cele"]);
+  test("daily loop + notes; account lives under the avatar", () => {
+    expect(NAV_ITEMS.map((i) => i.to)).toEqual([
+      "/",
+      "/sessions",
+      "/sessions/new",
+      "/stats",
+      "/plan",
+      "/goals",
+      "/notes",
+    ]);
+    expect(NAV_ITEMS.map((i) => i.label)).toEqual([
+      "Dziennik",
+      "Historia",
+      "Nowa",
+      "Statystyki",
+      "Plan",
+      "Cele",
+      "Notatki",
+    ]);
   });
 });
 
@@ -69,13 +90,19 @@ describe("TAB_BAR_ITEMS", () => {
 
 describe("SIDEBAR_ITEMS", () => {
   test("no profil (avatar) and no nowa (CTA button)", () => {
-    expect(SIDEBAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/stats", "/plan", "/goals"]);
+    expect(SIDEBAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/stats", "/plan", "/goals", "/notes"]);
   });
 });
 
 describe("MANAGE_SECTIONS", () => {
   test("biblioteka + konto, in hub order", () => {
     expect(MANAGE_SECTIONS.map((s) => s.label)).toEqual(["Biblioteka", "Konto"]);
-    expect(MANAGE_SECTIONS.flatMap((s) => s.items.map((i) => i.to))).toEqual(["/exercises", "/me/konto"]);
+    expect(MANAGE_SECTIONS.flatMap((s) => s.items.map((i) => i.to))).toEqual(["/exercises", "/notes", "/me/konto"]);
+  });
+
+  test("notes sits in the main sidebar group, so the hub entry opts out of Zarządzanie", () => {
+    const notes = MANAGE_SECTIONS.flatMap((s) => s.items).find((i) => i.to === "/notes");
+    expect(notes?.sidebar).toBe(false);
+    expect(NAV_ITEMS.some((i) => i.to === "/notes" && i.inSidebar && !i.inTabBar)).toBe(true);
   });
 });

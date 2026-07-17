@@ -47,16 +47,18 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Zarządzanie</SidebarGroupLabel>
           <SidebarMenu>
-            {MANAGE_SECTIONS.flatMap((section) => section.items).map((item) => (
-              <SidebarMenuItem key={item.to}>
-                <SidebarMenuButton asChild isActive={isActivePath(pathname, item.to)}>
-                  <Link to={item.to}>
-                    <item.icon />
-                    {item.label}
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {MANAGE_SECTIONS.flatMap((section) => section.items)
+              .filter((item) => item.sidebar !== false)
+              .map((item) => (
+                <SidebarMenuItem key={item.to}>
+                  <SidebarMenuButton asChild isActive={isActivePath(pathname, item.to)}>
+                    <Link to={item.to}>
+                      <item.icon />
+                      {item.label}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

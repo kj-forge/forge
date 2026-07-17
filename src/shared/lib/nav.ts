@@ -5,13 +5,14 @@ import {
   Dumbbell,
   Home,
   type LucideIcon,
+  NotebookPen,
   Plus,
   Settings,
   Target,
 } from "lucide-react";
 
 export interface NavItem {
-  to: "/" | "/sessions" | "/sessions/new" | "/stats" | "/plan" | "/goals";
+  to: "/" | "/sessions" | "/sessions/new" | "/stats" | "/plan" | "/goals" | "/notes";
   label: string;
   icon: LucideIcon;
   // Home must match exactly, otherwise "/" lights up on every route.
@@ -32,12 +33,17 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/stats", label: "Statystyki", icon: ChartNoAxesColumn, exact: false, inTabBar: true, inSidebar: true },
   { to: "/plan", label: "Plan", icon: CalendarDays, exact: true, inTabBar: false, inSidebar: true },
   { to: "/goals", label: "Cele", icon: Target, exact: true, inTabBar: true, inSidebar: true },
+  // Non-exact: the /notes/$noteId editor keeps the sidebar link active.
+  { to: "/notes", label: "Notatki", icon: NotebookPen, exact: false, inTabBar: false, inSidebar: true },
 ];
 
 export interface ManageItem {
-  to: "/exercises" | "/me/konto";
+  to: "/exercises" | "/me/konto" | "/notes";
   label: string;
   icon: LucideIcon;
+  // False = hub-only entry: it already sits in the main sidebar group via
+  // NAV_ITEMS, listing it under Zarządzanie too would duplicate it.
+  sidebar?: boolean;
 }
 
 export interface ManageSection {
@@ -49,7 +55,13 @@ export interface ManageSection {
 // them everywhere — the "Zarządzanie" sidebar group (desktop) and the section
 // lists of the /me Profil hub (mobile).
 export const MANAGE_SECTIONS: ManageSection[] = [
-  { label: "Biblioteka", items: [{ to: "/exercises", label: "Ćwiczenia", icon: Dumbbell }] },
+  {
+    label: "Biblioteka",
+    items: [
+      { to: "/exercises", label: "Ćwiczenia", icon: Dumbbell },
+      { to: "/notes", label: "Notatki", icon: NotebookPen, sidebar: false },
+    ],
+  },
   { label: "Konto", items: [{ to: "/me/konto", label: "Dane konta", icon: Settings }] },
 ];
 
