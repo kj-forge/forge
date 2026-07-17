@@ -85,6 +85,13 @@
       "when": 1784210266233,
       "tag": "0011_premium_sprite",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1784282132704,
+      "tag": "0012_steady_vin_gonzales",
+      "breakpoints": true
     }
   ]
 }

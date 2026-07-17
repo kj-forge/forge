@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { type ExerciseOption, GoalDrawer } from "@/features/goals/components/GoalDrawer";
 import { GOAL_TYPE_LABEL } from "@/features/goals/constants";
-import { formatGoalTarget } from "@/features/goals/lib/goal-progress";
+import { formatGoalTarget, goalDisplayTitle } from "@/features/goals/lib/goal-progress";
 import type { GoalRow } from "@/features/goals/types";
 
 const GOAL_DATE_FMT = new Intl.DateTimeFormat("pl-PL", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -35,24 +35,27 @@ export function GoalsSection({ goals, exercises }: { goals: GoalRow[]; exercises
                   onClick={() => setEditing({ goal })}
                 >
                   <span className="min-w-0">
-                    <span className="block truncate font-semibold text-sm">{goal.title}</span>
+                    <span className="block truncate font-semibold text-sm">{goalDisplayTitle(goal)}</span>
+                    {/* Strength titles already carry the exercise — repeating
+                        it in the subtitle would read "Deadlift · Deadlift". */}
                     <span className="block text-muted-foreground text-xs">
                       {GOAL_TYPE_LABEL[goal.type]}
                       {goal.targetDate ? ` · ${GOAL_DATE_FMT.format(new Date(goal.targetDate))}` : ""}
-                      {goal.exerciseNamePl ? ` · ${goal.exerciseNamePl}` : ""}
                     </span>
                   </span>
                   <span className="shrink-0 text-right">
-                    {goal.currentE1rm !== null ? (
+                    {goal.currentBest !== null ? (
                       <>
-                        <span className="block font-black text-base text-primary tabular-nums">{goal.currentE1rm}</span>
+                        <span className="block font-black text-base text-primary tabular-nums">
+                          {goal.currentBest.weightKg}
+                        </span>
                         <span className="block text-muted-foreground text-xs tabular-nums">
-                          cel {formatGoalTarget(goal.targetValue, goal.targetUnit) ?? "—"}
+                          najlepsze ×{goal.currentBest.reps}
                         </span>
                       </>
                     ) : (
                       <span className="font-semibold text-sm tabular-nums">
-                        {formatGoalTarget(goal.targetValue, goal.targetUnit) ?? "—"}
+                        {formatGoalTarget(goal.targetValue, goal.targetUnit, goal.targetReps) ?? "—"}
                       </span>
                     )}
                   </span>

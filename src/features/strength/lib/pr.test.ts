@@ -58,15 +58,15 @@ describe("isNewPR", () => {
     expect(isNewPR({ weightKg: 60, reps: 5 }, null)).toBe(true);
   });
 
-  test("true when candidate e1RM beats the previous best", () => {
-    // 105×5 → e1RM 122.5 vs 100×5 → 116.5
-    expect(isNewPR({ weightKg: 105, reps: 5 }, { weightKg: 100, reps: 5 })).toBe(true);
-    // more reps at the same weight also count: 100×8 (126.5) vs 100×5 (116.5)
-    expect(isNewPR({ weightKg: 100, reps: 8 }, { weightKg: 100, reps: 5 })).toBe(true);
+  test("a record is real weight on the bar — 130×1 beats 129×5", () => {
+    expect(isNewPR({ weightKg: 130, reps: 1 }, { weightKg: 129, reps: 5 })).toBe(true);
+    // and the reverse is NOT a record, whatever Epley says
+    expect(isNewPR({ weightKg: 129, reps: 5 }, { weightKg: 130, reps: 1 })).toBe(false);
   });
 
-  test("false on equal e1RM", () => {
-    expect(isNewPR({ weightKg: 100, reps: 5 }, { weightKg: 100, reps: 5 })).toBe(false);
+  test("same weight needs strictly more reps", () => {
+    expect(isNewPR({ weightKg: 130, reps: 3 }, { weightKg: 130, reps: 1 })).toBe(true);
+    expect(isNewPR({ weightKg: 130, reps: 3 }, { weightKg: 130, reps: 3 })).toBe(false);
   });
 
   test("false when candidate is weaker", () => {

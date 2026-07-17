@@ -51,9 +51,10 @@ export function ExerciseStatsView() {
             <p className="font-black text-lg text-primary tabular-nums">
               {best.reps}× {isLoadedBw ? `+${best.weightKg}` : best.weightKg} kg
             </p>
-            <p className="text-muted-foreground text-xs tabular-nums">
-              e1RM {best.e1rm !== null ? `~${best.e1rm} kg` : "—"}
-            </p>
+            {/* A real 1RM needs no estimate — Epley only annotates rep sets. */}
+            {best.e1rm !== null && best.reps > 1 && (
+              <p className="text-muted-foreground text-xs tabular-nums">e1RM ~{best.e1rm} kg</p>
+            )}
           </div>
         )}
       </div>

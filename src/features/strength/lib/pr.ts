@@ -26,10 +26,17 @@ export function bestSet(sets: SetLike[]): PrCandidate | null {
   return best;
 }
 
-/** A PR means strictly beating the previous best's e1RM (equal is not a PR). */
+/**
+ * A record is real weight on the bar, not an estimate: more weight than the
+ * previous best set, or the same weight for strictly more reps. 130×1 beats
+ * 129×5 — e1RM stays a stats-page estimate and never declares records.
+ */
 export function isNewPR(candidate: PrCandidate, previousBest: PrCandidate | null): boolean {
   if (!previousBest) return true;
-  return epleyE1RM(candidate.weightKg, candidate.reps) > epleyE1RM(previousBest.weightKg, previousBest.reps);
+  return (
+    candidate.weightKg > previousBest.weightKg ||
+    (candidate.weightKg === previousBest.weightKg && candidate.reps > previousBest.reps)
+  );
 }
 
 /**

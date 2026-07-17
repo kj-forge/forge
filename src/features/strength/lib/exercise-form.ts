@@ -9,6 +9,7 @@ export const exerciseFormSchema = z.object({
   category: z.enum(EXERCISE_CATEGORIES),
   defaultUnit: z.enum(EXERCISE_UNITS),
   isMainLift: z.boolean(),
+  isPrTracked: z.boolean(),
   isLoadedBodyweight: z.boolean(),
   aliasesText: z.string().trim().max(400, "Za długa lista aliasów."),
 });

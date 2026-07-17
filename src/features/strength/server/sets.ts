@@ -5,8 +5,7 @@ import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete
 import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
 import { blockMovements, sessionBlocks, sessions, sets } from "../../../../db/schema";
-import { epleyE1RM } from "../lib/e1rm";
-import { bestE1RM } from "../lib/pr";
+import { bestSet, isNewPR, type PrCandidate } from "../lib/pr";
 
 const addSetInput = z.object({
   blockMovementId: z.uuid(),
@@ -17,7 +16,9 @@ const addSetInput = z.object({
   notes: z.string().max(500).optional(),
 });
 
-export type SetPr = { isNewPR: boolean; e1rm: number; previousE1rm: number };
+// A record is a REAL set (more weight, or same weight × more reps) — never
+// an e1RM estimate. previousBest labels the toast ("było 130 × 1").
+export type SetPr = { isNewPR: boolean; previousBest: PrCandidate };
 
 export const addSet = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => parseInput(addSetInput, data))
@@ -42,10 +43,9 @@ export const addSet = createServerFn({ method: "POST" })
         .from(sets)
         .innerJoin(blockMovements, eq(sets.blockMovementId, blockMovements.id))
         .where(and(eq(sets.athleteId, athleteId), eq(blockMovements.exerciseId, movement.exerciseId)));
-      const previousE1rm = bestE1RM(priorSets);
-      if (previousE1rm !== null) {
-        const e1rm = epleyE1RM(data.weightKg, data.reps);
-        pr = { isNewPR: e1rm > previousE1rm, e1rm, previousE1rm };
+      const previousBest = bestSet(priorSets);
+      if (previousBest !== null) {
+        pr = { isNewPR: isNewPR({ weightKg: data.weightKg, reps: data.reps }, previousBest), previousBest };
       }
     }
 

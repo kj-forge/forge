@@ -13,7 +13,7 @@ import {
 import { type ReactNode, useEffect, useState } from "react";
 
 import type { DashboardData, Trend } from "@/features/dashboard/server/dashboard";
-import { formatGoalTarget, goalProgress } from "@/features/goals/lib/goal-progress";
+import { formatGoalTarget, goalDisplayTitle, goalProgress } from "@/features/goals/lib/goal-progress";
 import { PLAN_INTENSITY_CLASS, PLAN_INTENSITY_DOT, PLAN_INTENSITY_LABEL } from "@/features/plan/constants";
 import { planTrainingLabel } from "@/features/plan/lib/plan-display";
 import { E1rmSparkline, formatChartDate } from "@/features/strength/components/E1rmSparkline";
@@ -194,8 +194,8 @@ export function GoalTile({ goals, compact = false }: { goals: DashboardData["goa
   }
 
   const goal = goals[index % goals.length];
-  const progress = goalProgress(goal.targetValue, goal.currentE1rm);
-  const target = formatGoalTarget(goal.targetValue, goal.targetUnit);
+  const progress = goalProgress(goal.targetValue, goal.currentBest?.weightKg ?? null);
+  const target = formatGoalTarget(goal.targetValue, goal.targetUnit, goal.targetReps);
 
   return (
     <Link to="/goals" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
@@ -209,17 +209,21 @@ export function GoalTile({ goals, compact = false }: { goals: DashboardData["goa
         {/* Fixed two-line box: short titles don't shrink it, long ones clamp
             with an ellipsis — carousel slides keep one height either way. */}
         <p className={`line-clamp-2 font-black text-primary ${compact ? "h-12 text-base" : "h-14 text-lg"}`}>
-          {goal.title}
+          {goalDisplayTitle(goal)}
         </p>
         {progress !== null && (
-          <div className="my-2 h-1.5 overflow-hidden rounded-full bg-muted">
+          <div className="my-2 h-1.5 overflow-hidden rounded-full bg-muted-foreground/25">
             <div className="h-full rounded-full bg-ember" style={{ width: `${progress}%` }} />
           </div>
         )}
+        {/* The target already sits in the title ("… 160kg @3RM") — down here
+            only the current best, as a real set. */}
         <p className="mt-1 text-muted-foreground text-xs tabular-nums">
-          {goal.currentE1rm !== null ? `e1RM ${goal.currentE1rm}` : ""}
-          {goal.currentE1rm !== null && target ? " · " : ""}
-          {target ? `cel ${target}` : ""}
+          {goal.currentBest
+            ? `najlepsze ${goal.currentBest.reps}× ${goal.currentBest.weightKg}kg`
+            : target
+              ? `cel ${target}`
+              : ""}
         </p>
       </div>
       {goals.length > 1 && (
@@ -227,8 +231,8 @@ export function GoalTile({ goals, compact = false }: { goals: DashboardData["goa
           {goals.map((g, i) => (
             <span
               key={g.id}
-              className={`h-1 w-3 rounded-full transition-colors ${
-                i === index % goals.length ? "bg-primary" : "bg-muted"
+              className={`h-1.5 w-3 rounded-full transition-colors ${
+                i === index % goals.length ? "bg-primary" : "bg-muted-foreground/40"
               }`}
             />
           ))}
@@ -247,11 +251,13 @@ export function PrTile({ prs, compact = false }: { prs: DashboardData["prs"]; co
       <Link to="/stats" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS} h-full`}>
         <TileHeader icon={Trophy} title="Rekordy" />
         <ul className="space-y-0.5">
+          {/* Minimal by design: the record is the weight, full stop. Reps and
+              the e1RM estimate live one tap away, on the stats page. */}
           {prs.map((pr) => (
             <li key={pr.exerciseId} className="flex items-baseline justify-between gap-2 py-0.5 text-xs">
               <span className="truncate">{pr.namePl}</span>
               <span className="font-black text-primary tabular-nums">
-                {pr.best ? (pr.best.e1rm ?? `${pr.best.reps}×${pr.best.weightKg}`) : "—"}
+                {pr.best ? `${pr.isLoadedBodyweight ? "+" : ""}${pr.best.weightKg}` : "—"}
               </span>
             </li>
           ))}
@@ -280,13 +286,13 @@ export function PrTile({ prs, compact = false }: { prs: DashboardData["prs"]; co
             >
               <span className="truncate">{pr.namePl}</span>
               <span className="font-black text-primary tabular-nums">
-                {pr.best ? (pr.best.e1rm ?? `${pr.best.reps}×${pr.best.weightKg}`) : "—"}
+                {pr.best ? `${pr.isLoadedBodyweight ? "+" : ""}${pr.best.weightKg}` : "—"}
               </span>
             </Link>
           </li>
         ))}
       </ul>
-      <p className="mt-1.5 text-[10px] text-muted-foreground uppercase tracking-wide">e1RM · kg</p>
+      <p className="mt-1.5 text-[10px] text-muted-foreground uppercase tracking-wide">rekord · kg</p>
     </Tile>
   );
 }
@@ -298,7 +304,7 @@ export function SessionsTile({
   sessions: DashboardData["sessions"];
   className?: string;
 }) {
-  const rows = sessions.filter((s) => s.endedAt !== null).slice(0, 4);
+  const rows = sessions.filter((s) => s.endedAt !== null).slice(0, 3);
   return (
     <Tile
       icon={ChartNoAxesColumn}

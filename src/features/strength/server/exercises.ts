@@ -47,7 +47,7 @@ export const searchExercises = createServerFn({ method: "GET" })
 export const listAllExercises = createServerFn({ method: "GET" }).handler(async () => {
   const { athleteId } = await getCurrentAthleteOrThrow();
   return db
-    .select({ id: exercises.id, namePl: exercises.namePl })
+    .select({ id: exercises.id, namePl: exercises.namePl, aliases: exercises.aliases })
     .from(exercises)
     .where(and(eq(exercises.athleteId, athleteId), eq(exercises.isArchived, false)))
     .orderBy(exercises.namePl);
@@ -87,6 +87,7 @@ export const listManagedExercises = createServerFn({ method: "GET" }).handler(as
       category: exercises.category,
       defaultUnit: exercises.defaultUnit,
       isMainLift: exercises.isMainLift,
+      isPrTracked: exercises.isPrTracked,
       isLoadedBodyweight: exercises.isLoadedBodyweight,
       isArchived: exercises.isArchived,
       aliases: exercises.aliases,
@@ -116,6 +117,7 @@ const exerciseFields = {
   category: z.enum(EXERCISE_CATEGORIES),
   defaultUnit: z.enum(EXERCISE_UNITS),
   isMainLift: z.boolean(),
+  isPrTracked: z.boolean().default(true),
   isLoadedBodyweight: z.boolean(),
   aliases: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
 };
@@ -149,6 +151,7 @@ export const createExercise = createServerFn({ method: "POST" })
         category: data.category,
         defaultUnit: data.defaultUnit,
         isMainLift: data.isMainLift,
+        isPrTracked: data.isPrTracked,
         isLoadedBodyweight: data.isLoadedBodyweight,
         aliases: data.aliases,
       })
@@ -171,6 +174,7 @@ export const updateExercise = createServerFn({ method: "POST" })
         category: data.category,
         defaultUnit: data.defaultUnit,
         isMainLift: data.isMainLift,
+        isPrTracked: data.isPrTracked,
         isLoadedBodyweight: data.isLoadedBodyweight,
         aliases: data.aliases,
       })

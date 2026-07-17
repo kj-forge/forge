@@ -73,6 +73,7 @@ function ExerciseEditorBody({ exercise, onClose }: { exercise: ManagedExercise |
       category: exercise?.category ?? "ACCESSORY",
       defaultUnit: exercise?.defaultUnit ?? "REPS",
       isMainLift: exercise?.isMainLift ?? false,
+      isPrTracked: exercise?.isPrTracked ?? true,
       isLoadedBodyweight: exercise?.isLoadedBodyweight ?? false,
       aliasesText: exercise?.aliases.join(", ") ?? "",
     },
@@ -85,6 +86,7 @@ function ExerciseEditorBody({ exercise, onClose }: { exercise: ManagedExercise |
       category: values.category,
       defaultUnit: values.defaultUnit,
       isMainLift: values.isMainLift,
+      isPrTracked: values.isPrTracked,
       isLoadedBodyweight: values.isLoadedBodyweight,
       aliases: parseAliases(values.aliasesText),
     };
@@ -216,6 +218,22 @@ function ExerciseEditorBody({ exercise, onClose }: { exercise: ManagedExercise |
               />
             )}
           />
+
+          {/* Main lifts sit in the PR table unconditionally — the opt-out
+              only concerns the "Pozostałe" list. */}
+          {!form.watch("isMainLift") && (
+            <FormField
+              control={form.control}
+              name="isPrTracked"
+              render={({ field }) => (
+                <SwitchRow
+                  label="Licz do rekordów (sekcja Pozostałe)"
+                  checked={field.value}
+                  onToggle={() => field.onChange(!field.value)}
+                />
+              )}
+            />
+          )}
 
           <FormField
             control={form.control}

@@ -2,7 +2,7 @@
 // dashboard). NEVER import this file from views/routes — it touches
 // db/client at call time and must stay out of the client bundle
 // (see the tree-shaking note in sessions.ts).
-import { and, desc, eq, inArray, isNotNull, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
 import { db } from "../../../../db/client";
 import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
 import { epleyE1RM } from "../lib/e1rm";
@@ -187,8 +187,14 @@ export type PrTableRow = {
 // exercise that actually has logged history joins below them. Two batched
 // queries regardless of exercise count. Ordered by namePl within each group.
 export async function loadPrTable(athleteId: string, includeAccessories: boolean): Promise<PrTableRow[]> {
+  // Main lifts are in unconditionally; accessories additionally need the
+  // per-exercise isPrTracked opt-in (library toggle, default on).
   const scope = includeAccessories
-    ? and(eq(exercises.athleteId, athleteId), eq(exercises.isArchived, false))
+    ? and(
+        eq(exercises.athleteId, athleteId),
+        eq(exercises.isArchived, false),
+        or(eq(exercises.isMainLift, true), eq(exercises.isPrTracked, true)),
+      )
     : and(eq(exercises.athleteId, athleteId), eq(exercises.isArchived, false), eq(exercises.isMainLift, true));
   const exerciseRows = await db
     .select({

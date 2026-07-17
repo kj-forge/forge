@@ -41,7 +41,7 @@ export function ExerciseNav({
             aria-label={`Ćwiczenie ${i + 1}: ${m.exerciseNamePl}`}
             aria-current={m.id === currentId ? "true" : undefined}
             onClick={() => onNavigate(m.id)}
-            className={`h-1.5 rounded-full transition-all ${m.id === currentId ? "w-5 bg-primary" : "w-1.5 bg-muted hover:bg-muted-foreground/40"}`}
+            className={`h-1.5 rounded-full transition-all ${m.id === currentId ? "w-5 bg-primary" : "w-1.5 bg-muted-foreground/40 hover:bg-muted-foreground/60"}`}
           />
         ))}
       </div>

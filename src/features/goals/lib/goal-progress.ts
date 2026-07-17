@@ -7,18 +7,40 @@ export function goalProgress(targetValue: number | null, currentValue: number | 
   return Math.min(100, Math.round((currentValue / targetValue) * 100));
 }
 
+/**
+ * Strength goals read as one line — "Deadlift 160kg @3RM" — composed from
+ * the picked exercise and target; other goal types keep the typed title.
+ */
+export function goalDisplayTitle(goal: {
+  type: string;
+  title: string;
+  exerciseNamePl: string | null;
+  targetValue: number | null;
+  targetReps: number;
+}): string {
+  if (goal.type !== "STRENGTH_RM" || !goal.exerciseNamePl) return goal.title;
+  if (goal.targetValue == null) return goal.exerciseNamePl;
+  return `${goal.exerciseNamePl} ${goal.targetValue}kg @${goal.targetReps}RM`;
+}
+
 const SECOND_UNITS = new Set(["s", "sek", "sec", "seconds", "sekundy", "sekund"]);
 
 /**
  * Display form of a goal target. Second-based units humanize to minutes —
  * "cel 3900 seconds" is a database value, not something an athlete reads.
+ * A rep target above 1 rides along ("160 kg ×3"); ×1 is implied and silent.
  */
-export function formatGoalTarget(targetValue: number | null, targetUnit: string | null): string | null {
+export function formatGoalTarget(
+  targetValue: number | null,
+  targetUnit: string | null,
+  targetReps?: number | null,
+): string | null {
   if (targetValue == null) return null;
   const unit = (targetUnit ?? "").trim();
   if (SECOND_UNITS.has(unit.toLowerCase())) {
     const minutes = targetValue / 60;
     return `${Number.isInteger(minutes) ? minutes : minutes.toFixed(1)} min`;
   }
-  return unit ? `${targetValue} ${unit}` : `${targetValue}`;
+  const base = unit ? `${targetValue} ${unit}` : `${targetValue}`;
+  return targetReps != null && targetReps > 1 ? `${base} ×${targetReps}` : base;
 }

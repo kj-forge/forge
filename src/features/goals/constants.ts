@@ -10,10 +10,11 @@ export const GOAL_TYPE_LABEL: Record<GoalType, string> = {
 };
 
 // Per-type hints for the goal drawer — the fields mean different things
-// depending on the goal type, so the placeholders must follow the type.
-export const GOAL_PLACEHOLDERS: Record<GoalType, { title: string; value: string; unit: string }> = {
-  STRENGTH_RM: { title: "np. Wyciskanie na ławce 100 kg", value: "np. 100", unit: "kg" },
-  RACE_TIME: { title: "np. 5 km w 20 min", value: "np. 20", unit: "min" },
-  BODY_COMP: { title: "np. Waga docelowa 78 kg", value: "np. 78", unit: "kg" },
-  CONSISTENCY: { title: "np. 4 treningi w tygodniu", value: "np. 4", unit: "x/tydz" },
+// depending on the goal type, so the labels/placeholders must follow the
+// type. STRENGTH_RM has no title field at all (composed from the exercise).
+export const GOAL_PLACEHOLDERS: Record<GoalType, { titleLabel: string; title: string; value: string; unit: string }> = {
+  STRENGTH_RM: { titleLabel: "Tytuł", title: "", value: "np. 160", unit: "kg" },
+  RACE_TIME: { titleLabel: "Rodzaj", title: 'np. "Hyrox" albo "Bieg na 5 km"', value: "np. 20", unit: "min" },
+  BODY_COMP: { titleLabel: "Tytuł", title: "np. Waga docelowa 78 kg", value: "np. 78", unit: "kg" },
+  CONSISTENCY: { titleLabel: "Tytuł", title: "np. 4 treningi w tygodniu", value: "np. 4", unit: "x/tydz" },
 };

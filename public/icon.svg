@@ -1,14 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <title>Forge</title>
+  <!-- Paths only — a <text> glyph here once rasterized to a blank square on
+       machines without the app font. -->
+  <defs>
+    <linearGradient id="ember" x1="150" y1="120" x2="362" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff6a00"/>
+      <stop offset="1" stop-color="#ffb25c"/>
+    </linearGradient>
+  </defs>
   <rect width="512" height="512" rx="96" fill="#0a0a0a"/>
-  <text
-    x="50%"
-    y="50%"
-    text-anchor="middle"
-    dominant-baseline="central"
-    fill="#ffffff"
-    font-family="Geist Variable, system-ui, sans-serif"
-    font-size="320"
-    font-weight="700"
-  >F</text>
+  <g fill="url(#ember)">
+    <rect x="150" y="120" width="80" height="272" rx="12"/>
+    <rect x="150" y="120" width="212" height="64" rx="12"/>
+    <rect x="150" y="252" width="180" height="60" rx="12"/>
+  </g>
 </svg>
