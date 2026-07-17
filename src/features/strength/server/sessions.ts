@@ -42,6 +42,12 @@ export const listCompletedSessions = createServerFn({ method: "GET" }).handler(a
 export type RefKind = "WARMUP" | "TOP_SET" | "BACK_OFF";
 export type KindRef = { reps: number | null; weightKg: number | null };
 export type LastByKind = Partial<Record<RefKind, KindRef>>;
+// The same session the refs were distilled from, kept whole — the drawer's
+// "Ostatnio" line shows it so mid-workout nobody digs through history.
+export type LastSessionSummary = {
+  date: string;
+  sets: { weightKg: number | null; reps: number | null; kind: string }[];
+};
 
 // For each exercise, find its most recent ENDED session of the SAME type and
 // distil one reference set per kind. WARMUP = first (ramp up from the lightest),
@@ -52,7 +58,7 @@ async function loadLastByKind(
   type: (typeof sessions.$inferSelect)["type"],
   currentSessionId: string,
   exerciseIds: string[],
-): Promise<Map<string, LastByKind>> {
+): Promise<Map<string, { refs: LastByKind; last: LastSessionSummary }>> {
   if (exerciseIds.length === 0) return new Map();
 
   // Q1: every prior movement of these exercises in an ended same-type session.
@@ -112,7 +118,7 @@ async function loadLastByKind(
     rowsByExercise.set(exerciseId, arr);
   }
 
-  const result = new Map<string, LastByKind>();
+  const result = new Map<string, { refs: LastByKind; last: LastSessionSummary }>();
   for (const [exerciseId, rows] of rowsByExercise) {
     const warmup = rows.find((r) => r.kind === "WARMUP");
     // TOP_SET = heaviest tagged top set (tie → the later one); fall back to
@@ -129,7 +135,13 @@ async function loadLastByKind(
     if (warmup) lbk.WARMUP = { reps: warmup.reps, weightKg: warmup.weightKg };
     if (topSet) lbk.TOP_SET = { reps: topSet.reps, weightKg: topSet.weightKg };
     if (backOff) lbk.BACK_OFF = { reps: backOff.reps, weightKg: backOff.weightKg };
-    result.set(exerciseId, lbk);
+    result.set(exerciseId, {
+      refs: lbk,
+      last: {
+        date: best.get(exerciseId)?.date ?? "",
+        sets: rows.map((r) => ({ weightKg: r.weightKg, reps: r.reps, kind: r.kind })),
+      },
+    });
   }
   return result;
 }
@@ -199,7 +211,7 @@ export const getSessionDetails = createServerFn({ method: "GET" })
 
     // Smart defaults only matter while logging — an ended session is read-only.
     const lastByKindMap = session.endedAt
-      ? new Map<string, LastByKind>()
+      ? new Map<string, { refs: LastByKind; last: LastSessionSummary }>()
       : await loadLastByKind(
           athleteId,
           session.type,
@@ -210,11 +222,15 @@ export const getSessionDetails = createServerFn({ method: "GET" })
     return {
       session,
       block: blocks[0] ?? null,
-      movements: movements.map((m) => ({
-        ...m,
-        sets: setsByMovement.get(m.id) ?? [],
-        lastByKind: lastByKindMap.get(m.exerciseId) ?? ({} as LastByKind),
-      })),
+      movements: movements.map((m) => {
+        const lastEntry = lastByKindMap.get(m.exerciseId);
+        return {
+          ...m,
+          sets: setsByMovement.get(m.id) ?? [],
+          lastByKind: lastEntry?.refs ?? ({} as LastByKind),
+          lastSession: lastEntry?.last ?? null,
+        };
+      }),
     };
   });
 
