@@ -175,6 +175,14 @@
     overflow: hidden;
     overscroll-behavior: none;
   }
+  /* Content-area insets, kept current by the shell (ContentInsetVars):
+     sidebar width and top-nav height on desktop, 0 on mobile. Fixed
+     overlays (dialogs, global loader) shift their center by half of each
+     so they center on the content, not the raw viewport. */
+  :root {
+    --content-inset-left: 0rem;
+    --content-inset-top: 0px;
+  }
   html {
     @apply font-sans;
   }

@@ -1,8 +1,11 @@
-import { getRouteApi, Link } from "@tanstack/react-router";
-import { ChevronLeft, Trophy } from "lucide-react";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
+import { ChevronLeft, SquarePen, Trophy } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { E1rmSparkline, formatChartDate } from "@/features/strength/components/E1rmSparkline";
+import { ExerciseEditorDrawer } from "@/features/strength/components/ExerciseEditorDrawer";
 import { formatSetsCompactParts } from "@/features/strength/lib/format-sets-compact";
 
 const route = getRouteApi("/_shell/stats/$slug");
@@ -11,6 +14,8 @@ const DATE_FMT = new Intl.DateTimeFormat("pl-PL", { weekday: "short", day: "nume
 
 export function ExerciseStatsView() {
   const data = route.useLoaderData();
+  const navigate = useNavigate();
+  const [editorOpen, setEditorOpen] = useState(false);
 
   if (!data) {
     return (
@@ -33,8 +38,30 @@ export function ExerciseStatsView() {
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4">
       <div>
         <BackLink />
-        <h1 className="mt-1 font-bold text-2xl tracking-tight">{exercise.namePl}</h1>
+        <div className="mt-1 flex items-center justify-between gap-3">
+          <h1 className="min-w-0 truncate font-bold text-2xl tracking-tight">{exercise.namePl}</h1>
+          <button
+            type="button"
+            aria-label={`Edytuj ćwiczenie ${exercise.namePl}`}
+            className="grid size-9 shrink-0 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            onClick={() => setEditorOpen(true)}
+          >
+            <SquarePen className="size-4" />
+          </button>
+        </div>
       </div>
+
+      <ExerciseEditorDrawer
+        open={editorOpen}
+        exercise={exercise}
+        onClose={() => setEditorOpen(false)}
+        onSaved={() =>
+          toast("Ćwiczenie zapisane", {
+            description: "Zmiany widoczne w wyszukiwarce, planie i rekordach.",
+            action: { label: "Ćwiczenia →", onClick: () => navigate({ to: "/exercises" }) },
+          })
+        }
+      />
 
       <div className="flex items-center justify-between gap-3 rounded-2xl border bg-card p-4">
         <div className="flex items-center gap-2.5">

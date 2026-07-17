@@ -58,32 +58,27 @@ export function GhostTile({
   );
 }
 
-// First-run desktop bento: the grid becomes a 1-2-3 start path. Tiles come
-// alive individually as their data arrives (plan → real today/week tile,
-// goal → real goal tile); the whole thing disappears with the first session.
+// First-run bento (mobile: one column, desktop: the grid): a 1-2-3 start
+// path — plan feeds session suggestions, a goal feeds motivation, then the
+// first training. Tiles come alive individually as their data arrives; the
+// whole thing disappears with the first session.
 export function OnboardingTiles({ data }: { data: DashboardData }) {
   const hasPlan = data.plan.length > 0;
 
   return (
-    <div className="hidden gap-4 lg:grid lg:grid-cols-4">
-      <StepTile
-        icon={Dumbbell}
-        title="Krok 1 · Pierwsza sesja"
-        text="Zaloguj pierwszy trening — rekordy i statystyki policzą się same."
-        accent
-        className="lg:col-span-2"
-      >
-        <Link to="/sessions/new" search={{ type: "STRENGTH" }}>
-          <Button className="bg-ember shadow-ember">+ Rozpocznij sesję siłową</Button>
-        </Link>
-      </StepTile>
-
+    <div className="grid gap-3 lg:grid-cols-4 lg:gap-4">
       {hasPlan ? (
-        <TodayTile plan={data.plan} />
+        <TodayTile plan={data.plan} className="lg:col-span-2" />
       ) : (
-        <StepTile icon={CalendarDays} title="Krok 2 · Plan" text="Ułóż tydzień PON→ND — Home podpowie, co dziś robisz.">
-          <Link to="/plan" className="font-bold text-primary text-sm">
-            Uzupełnij tydzień →
+        <StepTile
+          icon={CalendarDays}
+          title="Krok 1 · Plan"
+          text="Ułóż tydzień PON→ND — nowa sesja podpowie Ci trening z planu."
+          accent
+          className="lg:col-span-2"
+        >
+          <Link to="/plan">
+            <Button className="bg-ember shadow-ember">Uzupełnij tydzień →</Button>
           </Link>
         </StepTile>
       )}
@@ -91,18 +86,28 @@ export function OnboardingTiles({ data }: { data: DashboardData }) {
       {data.goals.length > 0 ? (
         <GoalTile goals={data.goals} />
       ) : (
-        <StepTile icon={Target} title="Krok 3 · Cel" text="Siła, czas wyścigu, sylwetka — wyznacz kierunek.">
+        <StepTile icon={Target} title="Krok 2 · Cel" text="Siła, czas wyścigu, sylwetka — wyznacz kierunek.">
           <Link to="/goals" className="font-bold text-primary text-sm">
             Ustaw cel →
           </Link>
         </StepTile>
       )}
 
-      <GhostTile icon={Trophy} title="Rekordy" text="e1RM czterech bojów — po pierwszej sesji siłowej" />
+      <StepTile
+        icon={Dumbbell}
+        title="Krok 3 · Pierwsza sesja"
+        text="Zaloguj pierwszy trening — rekordy i statystyki policzą się same."
+      >
+        <Link to="/sessions/new" search={{ type: "STRENGTH" }} className="font-bold text-primary text-sm">
+          Rozpocznij sesję →
+        </Link>
+      </StepTile>
+
+      <GhostTile icon={Trophy} title="Rekordy" text="rekordy Twoich głównych bojów — wybierzesz je w Ćwiczeniach" />
       <GhostTile
         icon={BookOpen}
         title="Ostatnie sesje"
-        text="historia treningów z top setami — patrz Krok 1"
+        text="historia treningów z top setami — patrz Krok 3"
         className="lg:col-span-2"
       />
       {hasPlan ? (

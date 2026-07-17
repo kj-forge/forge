@@ -4,7 +4,14 @@
 // (see the tree-shaking note in sessions.ts).
 import { and, desc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
 import { db } from "../../../../db/client";
-import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
+import {
+  blockMovements,
+  exercises,
+  sessionBlocks,
+  sessions,
+  sets,
+  trainingPlanDayExercises,
+} from "../../../../db/schema";
 import { epleyE1RM } from "../lib/e1rm";
 import { hasWorkingSets } from "../lib/format-sets-compact";
 import { bestE1RM } from "../lib/pr";
@@ -97,12 +104,20 @@ export type E1rmPoint = { date: string; e1rm: number };
 // Everything the per-exercise stats view needs: record, e1RM points per
 // ended session, and the recent session history with full set lists.
 export async function loadExerciseStats(athleteId: string, slug: string) {
+  // Full editor shape (ManagedExercise) — the stats page opens the same
+  // editor drawer as the library.
   const [exercise] = await db
     .select({
       id: exercises.id,
       slug: exercises.slug,
       namePl: exercises.namePl,
+      category: exercises.category,
+      defaultUnit: exercises.defaultUnit,
+      aliases: exercises.aliases,
+      isMainLift: exercises.isMainLift,
+      isPrTracked: exercises.isPrTracked,
       isLoadedBodyweight: exercises.isLoadedBodyweight,
+      isArchived: exercises.isArchived,
     })
     .from(exercises)
     // Owned rows only — slugs are per-athlete namespaces since ADR-0020.
@@ -164,8 +179,22 @@ export async function loadExerciseStats(athleteId: string, slug: string) {
     .reverse()
     .map((s) => ({ date: s.date, sets: s.sets, e1rm: isLoadedBw ? null : bestE1RM(s.sets) }));
 
+  // inUse drives the editor's archive-vs-delete label; logged sets settle it,
+  // otherwise a plan slot still blocks hard delete.
+  const inUse =
+    rows.length > 0 ||
+    (
+      await db
+        .select({ id: trainingPlanDayExercises.id })
+        .from(trainingPlanDayExercises)
+        .where(
+          and(eq(trainingPlanDayExercises.athleteId, athleteId), eq(trainingPlanDayExercises.exerciseId, exercise.id)),
+        )
+        .limit(1)
+    ).length > 0;
+
   return {
-    exercise,
+    exercise: { ...exercise, inUse },
     isLoadedBw,
     points,
     best: best ? { ...best, e1rm: isLoadedBw ? null : epleyE1RM(best.weightKg, best.reps) } : null,

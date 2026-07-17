@@ -24,9 +24,12 @@ interface ExerciseEditorDrawerProps {
   // Null = create a new custom exercise.
   exercise: ManagedExercise | null;
   onClose: () => void;
+  // Fires after a successful save — hosts outside the library use it to
+  // toast/route (the stats page offers a jump to the library).
+  onSaved?: () => void;
 }
 
-export function ExerciseEditorDrawer({ open, exercise, onClose }: ExerciseEditorDrawerProps) {
+export function ExerciseEditorDrawer({ open, exercise, onClose, onSaved }: ExerciseEditorDrawerProps) {
   return (
     <Dialog
       open={open}
@@ -35,7 +38,9 @@ export function ExerciseEditorDrawer({ open, exercise, onClose }: ExerciseEditor
       }}
     >
       <DialogContent>
-        {open ? <ExerciseEditorBody key={exercise?.id ?? "new"} exercise={exercise} onClose={onClose} /> : null}
+        {open ? (
+          <ExerciseEditorBody key={exercise?.id ?? "new"} exercise={exercise} onClose={onClose} onSaved={onSaved} />
+        ) : null}
       </DialogContent>
     </Dialog>
   );
@@ -63,7 +68,15 @@ function SwitchRow({ label, checked, onToggle }: { label: string; checked: boole
   );
 }
 
-function ExerciseEditorBody({ exercise, onClose }: { exercise: ManagedExercise | null; onClose: () => void }) {
+function ExerciseEditorBody({
+  exercise,
+  onClose,
+  onSaved,
+}: {
+  exercise: ManagedExercise | null;
+  onClose: () => void;
+  onSaved?: () => void;
+}) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const form = useForm<ExerciseFormValues>({
@@ -97,6 +110,7 @@ function ExerciseEditorBody({ exercise, onClose }: { exercise: ManagedExercise |
         await createExercise({ data: payload });
       }
       await router.invalidate();
+      onSaved?.();
       onClose();
     } catch (err) {
       form.setError("root.serverError", {

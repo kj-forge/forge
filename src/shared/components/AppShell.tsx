@@ -1,12 +1,26 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef } from "react";
 
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/shared/components/AppSidebar";
 import { ForgeLogo } from "@/shared/components/ForgeLogo";
 import { ProfileLink } from "@/shared/components/ProfileLink";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
 import { isActivePath, showsTabBar, TAB_BAR_ITEMS } from "@/shared/lib/nav";
+
+// Fixed-position overlays (dialogs, the global loader) portal to <body>, so
+// they can't see the sidebar/header and center on the raw viewport. These
+// root vars carry the shell's content insets; overlays shift their center by
+// half of each. Zero on mobile (no sidebar, full-screen modals).
+function ContentInsetVars({ headerRef }: { headerRef: RefObject<HTMLElement | null> }) {
+  const { state, isMobile } = useSidebar();
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--content-inset-left", !isMobile && state === "expanded" ? "16rem" : "0rem");
+    root.style.setProperty("--content-inset-top", isMobile ? "0px" : `${headerRef.current?.offsetHeight ?? 0}px`);
+  }, [state, isMobile, headerRef]);
+  return null;
+}
 
 // The window must never scroll (styles.css locks html/body): all scrolling
 // lives in <main>, and modals bring their own scroll regions.
@@ -19,12 +33,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   // content swaps. resolvedLocation flips only once the new page renders.
   const pathname = useRouterState({ select: (s) => (s.resolvedLocation ?? s.location).pathname });
   const tabBarVisible = showsTabBar(pathname);
+  const headerRef = useRef<HTMLElement>(null);
 
   return (
     <SidebarProvider>
+      <ContentInsetVars headerRef={headerRef} />
       <AppSidebar />
       <SidebarInset className="flex h-dvh min-h-0 flex-col">
-        <header className="flex shrink-0 items-center gap-2 border-b px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 md:py-2">
+        <header
+          ref={headerRef}
+          className="flex shrink-0 items-center gap-2 border-b px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 md:py-2"
+        >
           <SidebarTrigger className="hidden md:flex" />
           <Link to="/" className="md:hidden" aria-label="Forge — start">
             <ForgeLogo className="text-lg" />

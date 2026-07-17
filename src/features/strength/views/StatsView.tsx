@@ -1,8 +1,9 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { Table2, Trophy } from "lucide-react";
+import { Info, Table2, Trophy } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { type CompactSetsPart, formatSetsCompactParts } from "@/features/strength/lib/format-sets-compact";
 import type { PrTableRow, WeekdaySession } from "@/features/strength/server/stats";
 import { WEEKDAY_LABELS_PL } from "@/shared/lib/weekday";
@@ -10,6 +11,9 @@ import { WEEKDAY_LABELS_PL } from "@/shared/lib/weekday";
 const route = getRouteApi("/_shell/stats/");
 
 const ACC_STORAGE_KEY = "forge-stats-acc";
+
+const ACC_HINT =
+  "Trafiają tu ćwiczenia z zapisaną historią. Które liczą się do rekordów, ustawisz w bibliotece ćwiczeń — przełącznik „Licz do rekordów”.";
 
 const PR_DATE_FMT = new Intl.DateTimeFormat("pl-PL", {
   weekday: "short",
@@ -88,6 +92,9 @@ function RekordySegment({
   const mains = prTable.filter((r) => r.isMainLift);
   const accessories = prTable.filter((r) => !r.isMainLift);
   const hasAnyBest = prTable.some((r) => r.best !== null);
+  // Tap-to-toggle, not a tooltip — hover-only affordances are dead weight on
+  // touch screens.
+  const [hintOpen, setHintOpen] = useState(false);
 
   return (
     <section className="flex flex-col gap-3">
@@ -106,36 +113,76 @@ function RekordySegment({
         ))}
       </ul>
 
-      <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-muted-foreground text-sm">
-        <span>Pozostałe ćwiczenia (z zapisaną historią)</span>
-        <button
-          type="button"
-          aria-pressed={accOn}
-          aria-label="Pokaż pozostałe ćwiczenia"
-          className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${accOn ? "bg-ember" : "bg-muted"}`}
-          onClick={() => onToggleAcc(!accOn)}
-        >
-          {/* Explicit left anchor: without it the absolute thumb takes its
-              static position, and the button's default text-align:center
-              starts it mid-track — ON then overshoots the pill. */}
-          <span
-            className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform ${
-              accOn ? "translate-x-4" : "translate-x-0"
-            }`}
-          />
-        </button>
+      <div className="rounded-lg border px-3 py-2.5 text-muted-foreground text-sm">
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-1.5">
+            Pozostałe ćwiczenia (z zapisaną historią)
+            {/* One trigger, two behaviors: hover shows the shadcn tooltip
+                (desktop), tap expands the inline hint line — radix tooltips
+                deliberately never open on touch. */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Skąd biorą się pozostałe ćwiczenia?"
+                    aria-expanded={hintOpen}
+                    className={`grid place-items-center transition-colors ${hintOpen ? "text-foreground" : "hover:text-foreground"}`}
+                    onClick={() => {
+                      if (window.matchMedia("(hover: hover)").matches) return;
+                      setHintOpen((v) => !v);
+                    }}
+                  >
+                    <Info className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-60">{ACC_HINT}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </span>
+          <button
+            type="button"
+            aria-pressed={accOn}
+            aria-label="Pokaż pozostałe ćwiczenia"
+            className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${accOn ? "bg-ember" : "bg-muted"}`}
+            onClick={() => onToggleAcc(!accOn)}
+          >
+            {/* Explicit left anchor: without it the absolute thumb takes its
+                static position, and the button's default text-align:center
+                starts it mid-track — ON then overshoots the pill. */}
+            <span
+              className={`absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform ${
+                accOn ? "translate-x-4" : "translate-x-0"
+              }`}
+            />
+          </button>
+        </div>
+        {hintOpen && <p className="mt-2 border-t pt-2 text-xs">{ACC_HINT}</p>}
       </div>
 
-      {accOn && accessories.length > 0 && (
-        <>
-          <p className="px-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">Pozostałe</p>
-          <ul className="divide-y rounded-xl border bg-card">
-            {accessories.map((row) => (
-              <PrRow key={row.exerciseId} row={row} />
-            ))}
-          </ul>
-        </>
-      )}
+      {accOn &&
+        (accessories.length > 0 ? (
+          <>
+            <p className="px-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">Pozostałe</p>
+            <ul className="divide-y rounded-xl border bg-card">
+              {accessories.map((row) => (
+                <PrRow key={row.exerciseId} row={row} />
+              ))}
+            </ul>
+          </>
+        ) : (
+          // A new user flips the switch and nothing appears — explain what
+          // feeds this section instead of staying silent.
+          <div className="rounded-xl border border-dashed px-4 py-5 text-center text-muted-foreground text-sm">
+            <p>
+              Tu pojawią się ćwiczenia z zapisaną historią, które mają włączone „Licz do rekordów” — na razie żadne się
+              nie kwalifikuje.
+            </p>
+            <Link to="/exercises" className="mt-2 inline-block font-bold text-primary">
+              Biblioteka ćwiczeń →
+            </Link>
+          </div>
+        ))}
     </section>
   );
 }
