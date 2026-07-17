@@ -1,13 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
+import dayjs from "dayjs";
+import { CalendarIcon, X } from "lucide-react";
 import { useState } from "react";
+import { pl } from "react-day-picker/locale";
 import { useForm, useWatch } from "react-hook-form";
 import { NumericFormat } from "react-number-format";
 
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRootMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { GOAL_PLACEHOLDERS, GOAL_TYPE_LABEL, GOAL_TYPES } from "@/features/goals/constants";
 import { type GoalFormValues, goalFormSchema } from "@/features/goals/lib/goal-form";
 import { deleteGoal, upsertGoal } from "@/features/goals/server/goals";
@@ -16,6 +21,8 @@ import { getErrorMessage } from "@/lib/error-message";
 import { Spinner } from "@/shared/components/Spinner";
 
 export type ExerciseOption = { id: string; namePl: string; aliases: string[] };
+
+const TARGET_DATE_FMT = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: "long", year: "numeric" });
 
 interface GoalDrawerProps {
   open: boolean;
@@ -50,6 +57,7 @@ function GoalDrawerBody({
 }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
+  const [dateOpen, setDateOpen] = useState(false);
   const form = useForm<GoalFormValues>({
     resolver: zodResolver(goalFormSchema),
     defaultValues: {
@@ -304,15 +312,57 @@ function GoalDrawerBody({
             )}
           </div>
 
+          {/* shadcn date picker, not a native <input type=date>: iOS writes
+              today's date the moment the field is tapped and its Reset button
+              doesn't fire change events — here the value only changes on an
+              explicit day click, and the X clears it. */}
           <FormField
             control={form.control}
             name="targetDate"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Termin (opcjonalnie)</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
+                <div className="flex items-center gap-2">
+                  <Popover modal open={dateOpen} onOpenChange={setDateOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={`min-w-0 flex-1 justify-start font-normal ${field.value ? "" : "text-muted-foreground"}`}
+                        >
+                          <CalendarIcon className="size-4 shrink-0 text-muted-foreground" />
+                          <span className="truncate">
+                            {field.value ? TARGET_DATE_FMT.format(new Date(`${field.value}T00:00:00`)) : "Wybierz datę"}
+                          </span>
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        locale={pl}
+                        selected={field.value ? new Date(`${field.value}T00:00:00`) : undefined}
+                        onSelect={(d) => {
+                          field.onChange(d ? dayjs(d).format("YYYY-MM-DD") : "");
+                          setDateOpen(false);
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {field.value && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="shrink-0"
+                      aria-label="Usuń termin"
+                      onClick={() => field.onChange("")}
+                    >
+                      <X />
+                    </Button>
+                  )}
+                </div>
                 <FormMessage />
               </FormItem>
             )}
