@@ -45,7 +45,7 @@ export type LastByKind = Partial<Record<RefKind, KindRef>>;
 
 // For each exercise, find its most recent ENDED session of the SAME type and
 // distil one reference set per kind. WARMUP = first (ramp up from the lightest),
-// TOP_SET = last (3 sets at one weight → the last is the working number),
+// TOP_SET = heaviest (a descending ramp must not seed its lighter closing set),
 // BACK_OFF = first. Two batched queries regardless of exercise count.
 async function loadLastByKind(
   athleteId: string,
@@ -115,12 +115,15 @@ async function loadLastByKind(
   const result = new Map<string, LastByKind>();
   for (const [exerciseId, rows] of rowsByExercise) {
     const warmup = rows.find((r) => r.kind === "WARMUP");
-    // TOP_SET = last tagged top set; fall back to the last legacy WORK set so
-    // exercises logged before the kind picker shipped still seed a working
-    // default instead of opening blank.
+    // TOP_SET = heaviest tagged top set (tie → the later one); fall back to
+    // legacy WORK sets so exercises logged before the kind picker shipped
+    // still seed a working default instead of opening blank.
     let topCandidates = rows.filter((r) => r.kind === "TOP_SET");
     if (topCandidates.length === 0) topCandidates = rows.filter((r) => r.kind === "WORK");
-    const topSet = topCandidates[topCandidates.length - 1];
+    let topSet: (typeof rows)[number] | undefined;
+    for (const r of topCandidates) {
+      if (!topSet || (r.weightKg ?? -1) >= (topSet.weightKg ?? -1)) topSet = r;
+    }
     const backOff = rows.find((r) => r.kind === "BACK_OFF");
     const lbk: LastByKind = {};
     if (warmup) lbk.WARMUP = { reps: warmup.reps, weightKg: warmup.weightKg };
