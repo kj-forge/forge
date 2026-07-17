@@ -29,7 +29,7 @@ export function DashboardView() {
   const visibleSessions = [
     ...data.sessions.filter((s) => s.endedAt === null),
     ...data.sessions.filter((s) => s.endedAt !== null),
-  ].slice(0, 4);
+  ].slice(0, 3);
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-4 p-4 lg:max-w-6xl">

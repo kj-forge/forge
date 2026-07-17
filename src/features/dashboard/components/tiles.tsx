@@ -227,8 +227,8 @@ export function GoalTile({ goals, compact = false }: { goals: DashboardData["goa
           {goals.map((g, i) => (
             <span
               key={g.id}
-              className={`h-1 w-3 rounded-full transition-colors ${
-                i === index % goals.length ? "bg-primary" : "bg-muted"
+              className={`h-1.5 w-3 rounded-full transition-colors ${
+                i === index % goals.length ? "bg-primary" : "bg-muted-foreground/40"
               }`}
             />
           ))}
@@ -298,7 +298,7 @@ export function SessionsTile({
   sessions: DashboardData["sessions"];
   className?: string;
 }) {
-  const rows = sessions.filter((s) => s.endedAt !== null).slice(0, 4);
+  const rows = sessions.filter((s) => s.endedAt !== null).slice(0, 3);
   return (
     <Tile
       icon={ChartNoAxesColumn}
