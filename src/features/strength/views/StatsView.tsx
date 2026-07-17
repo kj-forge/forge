@@ -1,8 +1,9 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { Table2, Trophy } from "lucide-react";
+import { Info, Table2, Trophy } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { type CompactSetsPart, formatSetsCompactParts } from "@/features/strength/lib/format-sets-compact";
 import type { PrTableRow, WeekdaySession } from "@/features/strength/server/stats";
 import { WEEKDAY_LABELS_PL } from "@/shared/lib/weekday";
@@ -107,7 +108,26 @@ function RekordySegment({
       </ul>
 
       <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-muted-foreground text-sm">
-        <span>Pozostałe ćwiczenia (z zapisaną historią)</span>
+        <span className="flex items-center gap-1.5">
+          Pozostałe ćwiczenia (z zapisaną historią)
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Skąd biorą się pozostałe ćwiczenia?"
+                  className="grid place-items-center"
+                >
+                  <Info className="size-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-56">
+                Trafiają tu ćwiczenia z zapisaną historią. Które liczą się do rekordów, ustawisz w bibliotece ćwiczeń
+                (przełącznik „Licz do rekordów”).
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </span>
         <button
           type="button"
           aria-pressed={accOn}
@@ -126,16 +146,29 @@ function RekordySegment({
         </button>
       </div>
 
-      {accOn && accessories.length > 0 && (
-        <>
-          <p className="px-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">Pozostałe</p>
-          <ul className="divide-y rounded-xl border bg-card">
-            {accessories.map((row) => (
-              <PrRow key={row.exerciseId} row={row} />
-            ))}
-          </ul>
-        </>
-      )}
+      {accOn &&
+        (accessories.length > 0 ? (
+          <>
+            <p className="px-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">Pozostałe</p>
+            <ul className="divide-y rounded-xl border bg-card">
+              {accessories.map((row) => (
+                <PrRow key={row.exerciseId} row={row} />
+              ))}
+            </ul>
+          </>
+        ) : (
+          // A new user flips the switch and nothing appears — explain what
+          // feeds this section instead of staying silent.
+          <div className="rounded-xl border border-dashed px-4 py-5 text-center text-muted-foreground text-sm">
+            <p>
+              Tu pojawią się ćwiczenia z zapisaną historią, które mają włączone „Licz do rekordów” — na razie żadne się
+              nie kwalifikuje.
+            </p>
+            <Link to="/exercises" className="mt-2 inline-block font-bold text-primary">
+              Biblioteka ćwiczeń →
+            </Link>
+          </div>
+        ))}
     </section>
   );
 }
