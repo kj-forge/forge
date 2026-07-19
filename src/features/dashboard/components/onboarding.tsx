@@ -63,22 +63,22 @@ export function GhostTile({
 // first training. Tiles come alive individually as their data arrives; the
 // whole thing disappears with the first session.
 export function OnboardingTiles({ data }: { data: DashboardData }) {
-  const hasPlan = data.plan.length > 0;
+  const hasPlan = data.schedule.entries.length > 0;
 
   return (
     <div className="grid gap-3 lg:grid-cols-4 lg:gap-4">
       {hasPlan ? (
-        <TodayTile plan={data.plan} className="lg:col-span-2" />
+        <TodayTile schedule={data.schedule} className="lg:col-span-2" />
       ) : (
         <StepTile
           icon={CalendarDays}
           title="Krok 1 · Plan"
-          text="Ułóż tydzień PON→ND — nowa sesja podpowie Ci trening z planu."
+          text="Stwórz plan i aktywuj go na dni tygodnia — nowa sesja podpowie Ci trening."
           accent
           className="lg:col-span-2"
         >
-          <Link to="/plan">
-            <Button className="bg-ember shadow-ember">Uzupełnij tydzień →</Button>
+          <Link to="/plan" search={{ tab: "plany" }}>
+            <Button className="bg-ember shadow-ember">Stwórz plan →</Button>
           </Link>
         </StepTile>
       )}
@@ -111,7 +111,7 @@ export function OnboardingTiles({ data }: { data: DashboardData }) {
         className="lg:col-span-2"
       />
       {hasPlan ? (
-        <WeekTile plan={data.plan} />
+        <WeekTile schedule={data.schedule} />
       ) : (
         <GhostTile icon={CalendarDays} title="Tydzień" text="pigułka planu z intensywnościami dni" />
       )}

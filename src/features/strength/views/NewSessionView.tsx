@@ -12,32 +12,29 @@ import {
 } from "@/features/strength/constants";
 import { createSession } from "@/features/strength/server/sessions";
 import { getErrorMessage } from "@/lib/error-message";
-import { WEEKDAY_FULL_PL, WEEKDAY_LABELS_PL, warsawWeekday } from "@/shared/lib/weekday";
 
 const route = getRouteApi("/_shell/sessions/new");
 
 export function NewSessionView() {
   const { type } = route.useSearch();
-  const plan = route.useLoaderData();
+  const units = route.useLoaderData();
   const navigate = useNavigate();
   // Tracks which action is in flight: "plan", "blank", or none.
   const [creating, setCreating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const today = warsawWeekday();
-  // Only strength sessions seed from the plan. Any strength day is startable —
-  // a missed Tuesday runs on Wednesday without editing the plan; today's day
-  // is just the default pick.
-  const strengthDays = plan.filter((d) => d.hasStrength && d.exercises.length > 0);
-  const [planDay, setPlanDay] = useState<number>(
-    () => (strengthDays.find((d) => d.dayOfWeek === today) ?? strengthDays[0])?.dayOfWeek ?? today,
+  // Only strength sessions seed from a plan unit. Any unit of any active
+  // plan is startable — a missed Tuesday runs on Wednesday without touching
+  // the plan; today's unit is just the default pick.
+  const [unitId, setUnitId] = useState<string | null>(
+    () => (units.find((u) => u.todayAssigned) ?? units[0])?.id ?? null,
   );
-  const planStrength = type === "STRENGTH" && strengthDays.length > 0 ? strengthDays : null;
-  const pickedDay = strengthDays.find((d) => d.dayOfWeek === planDay);
+  const planStrength = type === "STRENGTH" && units.length > 0;
+  const picked = units.find((u) => u.id === unitId) ?? units[0];
 
-  const start = async (fromPlanDay: boolean) => {
+  const start = async (fromPlan: boolean) => {
     setError(null);
-    setCreating(fromPlanDay ? "plan" : "blank");
+    setCreating(fromPlan ? "plan" : "blank");
     try {
       const result = await createSession({
         // Local calendar date at click time (client tz): a session started
@@ -45,8 +42,7 @@ export function NewSessionView() {
         data: {
           type,
           date: dayjs().format("YYYY-MM-DD"),
-          fromPlanDay,
-          planDayOfWeek: fromPlanDay ? planDay : undefined,
+          fromUnitId: fromPlan && picked ? picked.id : undefined,
         },
       });
       navigate({ to: "/sessions/$sessionId", params: { sessionId: result.sessionId } });
@@ -64,7 +60,7 @@ export function NewSessionView() {
         <h1 className="font-bold text-2xl tracking-tight">{adj ? `Nowa sesja ${adj}` : "Nowa sesja"}</h1>
         <p className="text-muted-foreground text-sm">
           {planStrength
-            ? "Zacznij z planu (dowolny dzień siłowy) albo od zera."
+            ? "Zacznij z planu (dowolny trening siłowy) albo od zera."
             : "Zacznij od zera — sam dodajesz ćwiczenia."}
         </p>
       </div>
@@ -85,34 +81,37 @@ export function NewSessionView() {
         ))}
       </div>
 
-      {planStrength && pickedDay && (
+      {planStrength && picked && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Dumbbell className="size-4 text-primary" />
-              {WEEKDAY_FULL_PL[pickedDay.dayOfWeek]} — z planu{pickedDay.dayOfWeek === today ? " (dziś)" : ""}
+              {picked.name}
+              {picked.todayAssigned ? " (dziś)" : ""}
             </CardTitle>
-            <CardDescription>{pickedDay.exercises.map((e) => e.namePl).join(" · ")}</CardDescription>
+            <CardDescription>
+              {picked.planName} · {picked.exercises.map((e) => e.namePl).join(" · ")}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* A missed day can be run today — pick any strength day; the
-                plan itself stays untouched. */}
-            {planStrength.length > 1 && (
+            {/* A missed unit can run today — pick any strength unit from any
+                active plan; the plan itself stays untouched. */}
+            {units.length > 1 && (
               <div className="flex flex-wrap gap-1.5">
-                {planStrength.map((d) => (
+                {units.map((u) => (
                   <button
-                    key={d.dayOfWeek}
+                    key={u.id}
                     type="button"
                     disabled={creating !== null}
                     className={`rounded-md border px-2.5 py-1.5 font-semibold text-xs transition-colors ${
-                      d.dayOfWeek === planDay
+                      u.id === picked.id
                         ? "border-transparent bg-ember"
                         : "border-border text-muted-foreground hover:bg-accent"
                     }`}
-                    onClick={() => setPlanDay(d.dayOfWeek)}
+                    onClick={() => setUnitId(u.id)}
                   >
-                    {WEEKDAY_LABELS_PL[d.dayOfWeek]}
-                    {d.dayOfWeek === today ? " · dziś" : ""}
+                    {u.name}
+                    {u.todayAssigned ? " · dziś" : ""}
                   </button>
                 ))}
               </div>

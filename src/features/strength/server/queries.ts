@@ -10,7 +10,7 @@ import {
   sessionBlocks,
   sessions,
   sets,
-  trainingPlanDayExercises,
+  trainingPlanUnitExercises,
 } from "../../../../db/schema";
 import { epleyE1RM } from "../lib/e1rm";
 import { hasWorkingSets } from "../lib/format-sets-compact";
@@ -185,10 +185,13 @@ export async function loadExerciseStats(athleteId: string, slug: string) {
     rows.length > 0 ||
     (
       await db
-        .select({ id: trainingPlanDayExercises.id })
-        .from(trainingPlanDayExercises)
+        .select({ id: trainingPlanUnitExercises.id })
+        .from(trainingPlanUnitExercises)
         .where(
-          and(eq(trainingPlanDayExercises.athleteId, athleteId), eq(trainingPlanDayExercises.exerciseId, exercise.id)),
+          and(
+            eq(trainingPlanUnitExercises.athleteId, athleteId),
+            eq(trainingPlanUnitExercises.exerciseId, exercise.id),
+          ),
         )
         .limit(1)
     ).length > 0;
