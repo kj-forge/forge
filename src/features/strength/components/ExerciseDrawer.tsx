@@ -1,25 +1,16 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
 import { Flame, ListChecks, Zap } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { NumericFormat } from "react-number-format";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRootMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ExerciseNav } from "@/features/strength/components/ExerciseNav";
 import { SET_KIND_COLOR, SET_KIND_LABEL, VISIBLE_SET_KINDS } from "@/features/strength/constants";
 import { fireConfetti } from "@/features/strength/lib/confetti";
 import { formatSet } from "@/features/strength/lib/format-set";
@@ -46,40 +37,11 @@ const LAST_SESSION_DATE_FMT = new Intl.DateTimeFormat("pl-PL", {
   timeZone: "UTC",
 });
 
-interface ExerciseDrawerProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  // Null while closed (the drawer is rendered once at the view level and the
-  // open movement is selected by id) — the body only mounts when non-null.
-  movement: Movement | null;
-  movements: Movement[];
-  onNavigate: (id: string) => void;
-}
-
-export function ExerciseDrawer({ open, onOpenChange, movement, movements, onNavigate }: ExerciseDrawerProps) {
-  // key={movement.id}: switching exercise while the drawer stays open remounts
-  // the body so the set form re-seeds from the new movement (this session's
-  // latest set of the kind first, then the historical lastByKind reference).
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        {open && movement ? (
-          <ExerciseDrawerBody key={movement.id} movement={movement} movements={movements} onNavigate={onNavigate} />
-        ) : null}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function ExerciseDrawerBody({
-  movement,
-  movements,
-  onNavigate,
-}: {
-  movement: Movement;
-  movements: Movement[];
-  onNavigate: (id: string) => void;
-}) {
+// The classic single-exercise logging body (kind chips, ± steppers, seeds,
+// PR toast). Owned by StepDrawer, which mounts it keyed by movement id so
+// switching steps remounts and re-seeds the form. `nav` is the step
+// navigation slot.
+export function ExerciseDrawerBody({ movement, nav }: { movement: Movement; nav: ReactNode }) {
   const router = useRouter();
 
   const initialKind = suggestKind(movement);
@@ -182,11 +144,9 @@ function ExerciseDrawerBody({
       <form className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden" onSubmit={onSubmit} noValidate>
         <DialogHeader className="shrink-0">
           <DialogTitle>{movement.exerciseNamePl}</DialogTitle>
-          <DialogDescription>
-            {movement.sets.length === 0
-              ? "Pierwsza seria"
-              : `${movement.sets.length} ${movement.sets.length === 1 ? "seria" : "serii"} w tej sesji`}
-          </DialogDescription>
+          {/* Set count already lives in the "W tej sesji" box — repeating it
+              up here was noise. sr-only keeps the dialog described. */}
+          <DialogDescription className="sr-only">Logowanie serii: {movement.exerciseNamePl}</DialogDescription>
         </DialogHeader>
 
         {movement.lastSession && lastParts.length > 0 && (
@@ -208,43 +168,9 @@ function ExerciseDrawerBody({
           </div>
         )}
 
-        <div className="shrink-0 px-4 pt-1 pb-2">
-          <ExerciseNav movements={movements} currentId={movement.id} onNavigate={onNavigate} />
-        </div>
+        <div className="shrink-0 px-4 pt-1 pb-2">{nav}</div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
-          {movement.sets.length > 0 && (
-            <div className="rounded-lg bg-muted/50 p-3 text-xs">
-              <p className="mb-1 flex items-center gap-1.5 font-medium">
-                <ListChecks className="size-3.5 text-primary" />W tej sesji:
-              </p>
-              <ul className="space-y-0.5">
-                {movement.sets.map((s, i) => (
-                  <li key={s.id} className="flex items-center justify-between gap-2">
-                    <span className={SET_KIND_COLOR[s.kind as SetKind]}>
-                      {i + 1}. {SET_KIND_LABEL[s.kind as SetKind]} · {formatSet(s)}
-                      {s.rpe !== null && ` · RPE ${s.rpe}`}
-                    </span>
-                    <button
-                      type="button"
-                      className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground text-xs hover:text-destructive disabled:opacity-50"
-                      onClick={() => handleDeleteSet(s.id)}
-                      disabled={deletingSetId === s.id}
-                      aria-label={`Usuń serię ${i + 1}`}
-                    >
-                      {deletingSetId === s.id ? <Spinner size="sm" /> : "✕"}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {deleteError && (
-                <p className="mt-2 text-destructive" role="alert">
-                  {deleteError}
-                </p>
-              )}
-            </div>
-          )}
-
           <div className="space-y-3">
             {/* Kind chips */}
             <FormField
@@ -391,6 +317,40 @@ function ExerciseDrawerBody({
                 </div>
               )}
             />
+
+            {/* Logged sets live BELOW the form — same reading order as the
+                round view (inputs first, history under them). */}
+            {movement.sets.length > 0 && (
+              <div className="rounded-lg bg-muted/50 p-3 text-xs">
+                <p className="mb-1 flex items-center gap-1.5 font-medium">
+                  <ListChecks className="size-3.5 text-primary" />W tej sesji:
+                </p>
+                <ul className="space-y-0.5">
+                  {movement.sets.map((s, i) => (
+                    <li key={s.id} className="flex items-center justify-between gap-2">
+                      <span className={SET_KIND_COLOR[s.kind as SetKind]}>
+                        {i + 1}. {SET_KIND_LABEL[s.kind as SetKind]} · {formatSet(s)}
+                        {s.rpe !== null && ` · RPE ${s.rpe}`}
+                      </span>
+                      <button
+                        type="button"
+                        className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground text-xs hover:text-destructive disabled:opacity-50"
+                        onClick={() => handleDeleteSet(s.id)}
+                        disabled={deletingSetId === s.id}
+                        aria-label={`Usuń serię ${i + 1}`}
+                      >
+                        {deletingSetId === s.id ? <Spinner size="sm" /> : "✕"}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {deleteError && (
+                  <p className="mt-2 text-destructive" role="alert">
+                    {deleteError}
+                  </p>
+                )}
+              </div>
+            )}
 
             <FormRootMessage />
           </div>

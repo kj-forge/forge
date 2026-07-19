@@ -10,7 +10,7 @@ import {
   sessionBlocks,
   sessions,
   sets,
-  trainingPlanUnitExercises,
+  trainingPlanUnitStepExercises,
 } from "../../../../db/schema";
 import { epleyE1RM } from "../lib/e1rm";
 import { hasWorkingSets } from "../lib/format-sets-compact";
@@ -47,7 +47,10 @@ export async function attachExercises<T extends { id: string }>(athleteId: strin
     .innerJoin(exercises, eq(blockMovements.exerciseId, exercises.id))
     .leftJoin(sets, eq(sets.blockMovementId, blockMovements.id))
     .where(and(eq(blockMovements.athleteId, athleteId), inArray(sessionBlocks.sessionId, ids)))
-    .orderBy(sessionBlocks.sessionId, blockMovements.orderIndex);
+    // Block orderIndex must lead — after the steps split, movements carry
+    // orderIndex 0 within their own block, so block order IS the exercise
+    // order of the session.
+    .orderBy(sessionBlocks.sessionId, sessionBlocks.orderIndex, blockMovements.orderIndex);
 
   type TopSet = SessionTopExercise & { hasSet: boolean };
   const bySession = new Map<string, Map<string, TopSet>>();
@@ -185,12 +188,12 @@ export async function loadExerciseStats(athleteId: string, slug: string) {
     rows.length > 0 ||
     (
       await db
-        .select({ id: trainingPlanUnitExercises.id })
-        .from(trainingPlanUnitExercises)
+        .select({ id: trainingPlanUnitStepExercises.id })
+        .from(trainingPlanUnitStepExercises)
         .where(
           and(
-            eq(trainingPlanUnitExercises.athleteId, athleteId),
-            eq(trainingPlanUnitExercises.exerciseId, exercise.id),
+            eq(trainingPlanUnitStepExercises.athleteId, athleteId),
+            eq(trainingPlanUnitStepExercises.exerciseId, exercise.id),
           ),
         )
         .limit(1)

@@ -15,13 +15,14 @@ import type { PlanUnit } from "@/features/plan/types";
 import { PICKABLE_SESSION_TYPES, SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import { getErrorMessage } from "@/lib/error-message";
 import { Spinner } from "@/shared/components/Spinner";
-import { ExerciseListPicker, type ExerciseOption, type PickedExercise } from "./ExerciseListPicker";
+import type { ExerciseOption } from "./ExerciseListPicker";
+import { draftsFromUnitSteps, type UnitStepDraft, UnitStepsEditor } from "./UnitStepsEditor";
 
 export type UnitEditing = {
   planId: string;
   planName: string;
   // null = new unit in that plan.
-  unit: Pick<PlanUnit, "id" | "name" | "sessionType" | "intensity" | "training" | "goal" | "exercises"> | null;
+  unit: Pick<PlanUnit, "id" | "name" | "sessionType" | "intensity" | "training" | "goal" | "steps"> | null;
 };
 
 interface UnitDrawerProps {
@@ -76,17 +77,30 @@ function UnitDrawerBody({
   });
   const sessionType = useWatch({ control: form.control, name: "sessionType" });
 
-  // Ordered exercise list lives outside RHF (an ordered list is awkward as a
-  // field array); merged into the payload at save.
-  const [picked, setPicked] = useState<PickedExercise[]>(unit?.exercises ?? []);
+  // The ordered step structure lives outside RHF (nested ordered lists are
+  // awkward as field arrays); merged into the payload at save.
+  const [steps, setSteps] = useState<UnitStepDraft[]>(() => draftsFromUnitSteps(unit?.steps));
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const totalExercises = steps.reduce((n, s) => n + s.exercises.length, 0);
+
   const onSubmit = form.handleSubmit(async (values) => {
-    // Cross-field rule the schema can't see (exercise count is local state):
-    // a unit without a strength list needs written training.
-    if (unitTrainingRequired(values.sessionType, picked.length) && values.training.trim().length === 0) {
+    // Cross-field rules the schema can't see (steps are local state): a unit
+    // without strength content needs written training, and a workout step
+    // can't be empty.
+    if (unitTrainingRequired(values.sessionType, totalExercises) && values.training.trim().length === 0) {
       form.setError("training", { type: "manual", message: "Wpisz trening albo dodaj ćwiczenia siłowe." });
+      return;
+    }
+    if (
+      values.sessionType === "STRENGTH" &&
+      steps.some((s) => s.kind === "STRAIGHT_SETS" && s.exercises.length === 0)
+    ) {
+      form.setError("root.serverError", {
+        type: "manual",
+        message: "Każdy krok treningowy musi mieć przynajmniej jedno ćwiczenie (albo usuń pusty krok).",
+      });
       return;
     }
     try {
@@ -99,7 +113,20 @@ function UnitDrawerBody({
           intensity: values.intensity,
           training: values.training,
           goal: values.goal || undefined,
-          exerciseIds: picked.map((p) => p.exerciseId),
+          steps: steps.map((s) =>
+            s.kind === "REST"
+              ? {
+                  kind: "REST" as const,
+                  durationSeconds: s.durationMinutes ? Math.round(Number(s.durationMinutes) * 60) : undefined,
+                  note: s.note.trim() || undefined,
+                  exerciseIds: [],
+                }
+              : {
+                  kind: "STRAIGHT_SETS" as const,
+                  targetRounds: s.exercises.length > 1 && s.targetRounds ? Number(s.targetRounds) : undefined,
+                  exerciseIds: s.exercises.map((e) => e.exerciseId),
+                },
+          ),
         },
       });
       await router.invalidate();
@@ -243,14 +270,15 @@ function UnitDrawerBody({
             )}
           />
 
-          {/* The ordered list seeds a new session started from this unit. */}
+          {/* Step structure seeds the session started from this unit:
+              1 exercise = classic step, 2+ = circuit, plus REST breaks. */}
           {sessionType === "STRENGTH" && (
-            <div className="space-y-2 rounded-lg border p-3">
-              <span className="font-medium text-sm">Ćwiczenia siłowe</span>
-              <ExerciseListPicker
+            <div className="space-y-2">
+              <span className="font-medium text-sm">Kroki treningu</span>
+              <UnitStepsEditor
+                steps={steps}
+                onChange={setSteps}
                 allExercises={allExercises}
-                picked={picked}
-                onChange={setPicked}
                 onError={(message) => form.setError("root.serverError", { type: "server", message })}
               />
             </div>
