@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
-import { blockMovements, exercises, trainingPlanDayExercises } from "../../../../db/schema";
+import { blockMovements, exercises, trainingPlanUnitExercises } from "../../../../db/schema";
 import { EXERCISE_CATEGORIES, EXERCISE_UNITS } from "../constants";
 import { slugify } from "../lib/slugify";
 
@@ -104,9 +104,9 @@ export const listManagedExercises = createServerFn({ method: "GET" }).handler(as
   const usedSet = new Set(used.map((u) => u.exerciseId));
 
   const planned = await db
-    .select({ exerciseId: trainingPlanDayExercises.exerciseId })
-    .from(trainingPlanDayExercises)
-    .where(eq(trainingPlanDayExercises.athleteId, athleteId));
+    .select({ exerciseId: trainingPlanUnitExercises.exerciseId })
+    .from(trainingPlanUnitExercises)
+    .where(eq(trainingPlanUnitExercises.athleteId, athleteId));
   const plannedSet = new Set(planned.map((p) => p.exerciseId));
 
   return rows.map((r) => ({ ...r, inUse: usedSet.has(r.id) || plannedSet.has(r.id) }));
@@ -200,11 +200,11 @@ export const deleteExercise = createServerFn({ method: "POST" })
       .where(and(eq(blockMovements.athleteId, athleteId), eq(blockMovements.exerciseId, data.exerciseId)));
     const [inPlan] = await db
       .select({ n: sql<number>`count(*)::int` })
-      .from(trainingPlanDayExercises)
+      .from(trainingPlanUnitExercises)
       .where(
         and(
-          eq(trainingPlanDayExercises.athleteId, athleteId),
-          eq(trainingPlanDayExercises.exerciseId, data.exerciseId),
+          eq(trainingPlanUnitExercises.athleteId, athleteId),
+          eq(trainingPlanUnitExercises.exerciseId, data.exerciseId),
         ),
       );
 

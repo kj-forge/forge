@@ -1,22 +1,24 @@
 import { describe, expect, test } from "bun:test";
 
-import { planTrainingLabel } from "./plan-display";
+import { unitTrainingLabel } from "./plan-display";
 
 const ex = [{ exerciseId: "a" }];
 
-describe("planTrainingLabel", () => {
+describe("unitTrainingLabel", () => {
   test("written training wins", () => {
-    expect(planTrainingLabel({ training: "Long Z2 90 min", hasStrength: true, exercises: ex })).toBe("Long Z2 90 min");
+    expect(unitTrainingLabel({ training: "Long Z2 90 min", sessionType: "STRENGTH", exercises: ex })).toBe(
+      "Long Z2 90 min",
+    );
   });
 
-  test("strength day without text shows 'Trening siłowy'", () => {
-    expect(planTrainingLabel({ training: "", hasStrength: true, exercises: ex })).toBe("Trening siłowy");
-    expect(planTrainingLabel({ training: "   ", hasStrength: true, exercises: ex })).toBe("Trening siłowy");
+  test("strength unit without text shows 'Trening siłowy'", () => {
+    expect(unitTrainingLabel({ training: "", sessionType: "STRENGTH", exercises: ex })).toBe("Trening siłowy");
+    expect(unitTrainingLabel({ training: "   ", sessionType: "STRENGTH", exercises: ex })).toBe("Trening siłowy");
   });
 
   test("null when there's neither text nor a strength list", () => {
-    expect(planTrainingLabel({ training: "", hasStrength: false, exercises: [] })).toBeNull();
-    // strength toggled but no exercises → not a content day
-    expect(planTrainingLabel({ training: "", hasStrength: true, exercises: [] })).toBeNull();
+    expect(unitTrainingLabel({ training: "", sessionType: "RUNNING", exercises: [] })).toBeNull();
+    // strength type but no exercises → not a content unit
+    expect(unitTrainingLabel({ training: "", sessionType: "STRENGTH", exercises: [] })).toBeNull();
   });
 });

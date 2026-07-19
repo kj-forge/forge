@@ -914,82 +914,127 @@ export const goalProgress = pgTable(
   ],
 );
 
-export const weeklyTemplates = pgTable(
-  "weekly_templates",
+export const planStatus = pgEnum("plan_status", ["DRAFT", "ACTIVE", "PAUSED", "COMPLETED"]);
+
+export const unitIntensity = pgEnum("unit_intensity", ["HARD", "MEDIUM", "EASY"]);
+
+export const scheduleOverrideKind = pgEnum("schedule_override_kind", ["SKIP", "ADD", "ADHOC"]);
+
+// A named, reusable training plan. Content (units) is decoupled from
+// scheduling: weekdays are chosen at activation and live in
+// training_plan_unit_days. Several plans can be ACTIVE at once — the week
+// schedule is the merge of all of them.
+export const trainingPlans = pgTable(
+  "training_plans",
   {
     id: uuid().primaryKey().defaultRandom(),
     athleteId: uuid()
       .notNull()
       .references(() => athletes.id, { onDelete: "cascade" }),
     name: text().notNull(),
-    active: boolean().notNull().default(false),
-    // [{ dayOfWeek: 'MON', timeOfDay: 'AM', sessionType: 'HYROX_WORK' }, …]
-    slots: jsonb()
-      .$type<
-        Array<{
-          dayOfWeek: string;
-          timeOfDay: string;
-          sessionType: string;
-        }>
-      >()
-      .notNull()
-      .default([]),
+    description: text(),
+    status: planStatus().notNull().default("DRAFT"),
+    // Set at activation; null while DRAFT. endDate null = open-ended; an
+    // expired endDate hides the plan from schedule reads (no status flip).
+    startDate: date(),
+    endDate: date(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("weekly_templates_athlete_idx").on(t.athleteId)],
+  (t) => [index("training_plans_athlete_status_idx").on(t.athleteId, t.status)],
 );
 
-// `template_adherence` from data-model.md is a derived view, not a table.
-// Will be implemented as a SQL VIEW once the UI needs it.
-
-export const planIntensity = pgEnum("plan_intensity", ["HARD", "MEDIUM", "EASY", "RESET"]);
-
-// The athlete's written weekly plan — one free-text row per weekday
-// (0 = poniedziałek … 6 = niedziela). Distinct from weekly_templates,
-// which models typed session SLOTS for the future template engine;
-// this is the human-readable notebook plan shown on Home and /plan.
-export const trainingPlanDays = pgTable(
-  "training_plan_days",
+// An ordered training unit within a plan ("Trening A"). Carries no weekday —
+// scheduling happens at activation.
+export const trainingPlanUnits = pgTable(
+  "training_plan_units",
   {
     id: uuid().primaryKey().defaultRandom(),
     athleteId: uuid()
       .notNull()
       .references(() => athletes.id, { onDelete: "cascade" }),
-    dayOfWeek: integer().notNull(),
-    intensity: planIntensity().notNull(),
-    training: text().notNull(),
+    planId: uuid()
+      .notNull()
+      .references(() => trainingPlans.id, { onDelete: "cascade" }),
+    orderIndex: integer().notNull(),
+    name: text().notNull(),
+    sessionType: sessionType().notNull(),
+    intensity: unitIntensity().notNull(),
+    training: text().notNull().default(""),
     goal: text(),
-    // Whether this day includes a strength session; when true, the day's
-    // ordered exercise list (training_plan_day_exercises) seeds a new session.
-    hasStrength: boolean().notNull().default(false),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("training_plan_days_athlete_day_idx").on(t.athleteId, t.dayOfWeek)],
+  (t) => [index("training_plan_units_plan_order_idx").on(t.planId, t.orderIndex)],
 );
 
-// The ordered strength exercises of a plan day — the sequence they'll appear
-// in when the day seeds a new session. Mirrors block_movements (orderIndex,
-// exercise FK restrict) and rehab_protocol_exercises (ordered template rows).
-export const trainingPlanDayExercises = pgTable(
-  "training_plan_day_exercises",
+// The ordered strength exercises of a unit — the sequence they'll appear in
+// when the unit seeds a new session. Mirrors block_movements (orderIndex,
+// exercise FK restrict).
+export const trainingPlanUnitExercises = pgTable(
+  "training_plan_unit_exercises",
   {
     id: uuid().primaryKey().defaultRandom(),
     athleteId: uuid()
       .notNull()
       .references(() => athletes.id, { onDelete: "cascade" }),
-    planDayId: uuid()
+    unitId: uuid()
       .notNull()
-      .references(() => trainingPlanDays.id, { onDelete: "cascade" }),
+      .references(() => trainingPlanUnits.id, { onDelete: "cascade" }),
     orderIndex: integer().notNull(),
     exerciseId: uuid()
       .notNull()
       .references(() => exercises.id, { onDelete: "restrict" }),
   },
   (t) => [
-    index("training_plan_day_exercises_day_idx").on(t.planDayId, t.orderIndex),
-    uniqueIndex("training_plan_day_exercises_day_exercise_uq").on(t.planDayId, t.exerciseId),
+    index("training_plan_unit_exercises_unit_idx").on(t.unitId, t.orderIndex),
+    uniqueIndex("training_plan_unit_exercises_unit_exercise_uq").on(t.unitId, t.exerciseId),
+  ],
+);
+
+// Weekday assignments chosen at activation (0 = poniedziałek … 6 = niedziela).
+// Rows survive a pause — schedule reads filter on plan status instead — so
+// re-activation can prefill the picker. Replaced wholesale on activation.
+export const trainingPlanUnitDays = pgTable(
+  "training_plan_unit_days",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    athleteId: uuid()
+      .notNull()
+      .references(() => athletes.id, { onDelete: "cascade" }),
+    unitId: uuid()
+      .notNull()
+      .references(() => trainingPlanUnits.id, { onDelete: "cascade" }),
+    dayOfWeek: integer().notNull(),
+  },
+  (t) => [
+    uniqueIndex("training_plan_unit_days_unit_day_uq").on(t.unitId, t.dayOfWeek),
+    index("training_plan_unit_days_athlete_day_idx").on(t.athleteId, t.dayOfWeek),
+  ],
+);
+
+// Per-date exceptions to the weekly pattern. SKIP hides a plan unit on one
+// date, ADD shows one on a date it isn't scheduled (a drag = SKIP + ADD pair),
+// ADHOC is a free-form one-off (unitId null; sessionType/name carry content).
+// Shape per kind is enforced in zod, not CHECKs.
+export const scheduleOverrides = pgTable(
+  "schedule_overrides",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    athleteId: uuid()
+      .notNull()
+      .references(() => athletes.id, { onDelete: "cascade" }),
+    date: date().notNull(),
+    kind: scheduleOverrideKind().notNull(),
+    unitId: uuid().references(() => trainingPlanUnits.id, { onDelete: "cascade" }),
+    sessionType: sessionType(),
+    name: text(),
+    note: text(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("schedule_overrides_athlete_date_idx").on(t.athleteId, t.date),
+    uniqueIndex("schedule_overrides_unit_date_kind_uq").on(t.unitId, t.date, t.kind).where(sql`unit_id is not null`),
   ],
 );
 

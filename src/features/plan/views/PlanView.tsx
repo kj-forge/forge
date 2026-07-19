@@ -1,203 +1,88 @@
 import { getRouteApi } from "@tanstack/react-router";
-import { CalendarDays, Dumbbell, Target } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { PlanDayDrawer, type PlanEditing } from "@/features/plan/components/PlanDayDrawer";
-import { PLAN_INTENSITY_CLASS, PLAN_INTENSITY_LABEL } from "@/features/plan/constants";
-import { planTrainingLabel } from "@/features/plan/lib/plan-display";
-import type { PlanDay } from "@/features/plan/types";
-import { WEEKDAY_FULL_PL, warsawWeekday } from "@/shared/lib/weekday";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ActivatePlanDialog } from "@/features/plan/components/ActivatePlanDialog";
+import { AddToDaySheet } from "@/features/plan/components/AddToDaySheet";
+import { PlanFormDialog, type PlanFormEditing } from "@/features/plan/components/PlanFormDialog";
+import { PlansTab } from "@/features/plan/components/PlansTab";
+import { ScheduleTab } from "@/features/plan/components/ScheduleTab";
+import { UnitDrawer, type UnitEditing } from "@/features/plan/components/UnitDrawer";
+import { type ScheduleEntry, shiftWeeks } from "@/features/plan/lib/schedule";
+import type { PlanWithUnits } from "@/features/plan/types";
 
 const route = getRouteApi("/_shell/plan/");
 
 export function PlanView() {
-  const { plan, allExercises } = route.useLoaderData();
-  const [editing, setEditing] = useState<PlanEditing | null>(null);
-  const byDay = new Map(plan.map((d) => [d.dayOfWeek, d]));
-  // Deterministic across SSR and client — both pin Europe/Warsaw.
-  const today = warsawWeekday();
+  const { screen, allExercises } = route.useLoaderData();
+  const { tab } = route.useSearch();
+  const navigate = route.useNavigate();
+
+  const [unitEditing, setUnitEditing] = useState<UnitEditing | null>(null);
+  const [planForm, setPlanForm] = useState<PlanFormEditing>(null);
+  const [activating, setActivating] = useState<PlanWithUnits | null>(null);
+  const [addTo, setAddTo] = useState<{ date: string; dayOfWeek: number } | null>(null);
+
+  const setTab = (next: string) => navigate({ search: (prev) => ({ ...prev, tab: next as "harmonogram" | "plany" }) });
+  const setWeek = (week: string | undefined) => navigate({ search: (prev) => ({ ...prev, week }) });
+
+  // Schedule taps edit the live unit from the library payload (fresh data),
+  // not the denormalized schedule row.
+  const editEntryUnit = (entry: ScheduleEntry) => {
+    const plan = screen.plans.find((p) => p.id === entry.planId);
+    const unit = plan?.units.find((u) => u.id === entry.unitId);
+    if (plan && unit) setUnitEditing({ planId: plan.id, planName: plan.name, unit });
+  };
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4 lg:max-w-6xl">
-      <h1 className="pt-2 font-bold text-2xl tracking-tight">Plan tygodnia</h1>
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4">
+      <h1 className="pt-2 font-bold text-2xl tracking-tight">Plan</h1>
 
-      {plan.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
-            <CalendarDays className="size-8 text-muted-foreground/60" strokeWidth={1.5} />
-            <p className="text-muted-foreground text-sm">Nie masz jeszcze planu tygodnia.</p>
-            <Button className="bg-ember shadow-ember" size="lg" onClick={() => setEditing({ day: 0, serial: true })}>
-              Uzupełnij tydzień (PON → ND)
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {/* Mobile/tablet: day cards. Desktop swaps to the notebook table. */}
-          <div className="flex flex-col gap-3 md:grid md:grid-cols-2 lg:hidden">
-            {WEEKDAY_FULL_PL.map((name, day) => (
-              <DayCard
-                key={name}
-                name={name}
-                entry={byDay.get(day)}
-                isToday={day === today}
-                onEdit={() => setEditing({ day, serial: false })}
-              />
-            ))}
-          </div>
+      {/* gap-3 + h-9! align the tab bar with the page rhythm and the h-9
+          inputs around it (shadcn defaults: gap-2, h-8 — reads cramped). */}
+      <Tabs value={tab} onValueChange={setTab} className="gap-3">
+        <TabsList className="h-9! w-full">
+          <TabsTrigger value="harmonogram">Harmonogram</TabsTrigger>
+          <TabsTrigger value="plany">Moje plany</TabsTrigger>
+        </TabsList>
 
-          {/* Desktop: KJ's notebook layout — Dzień | Trening | Cel, one row
-              per day. Long goal notes get their own column instead of
-              stacking under the training text. */}
-          <div className="hidden overflow-hidden rounded-xl border bg-card lg:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground text-xs uppercase tracking-wide">
-                  <th className="w-44 px-4 py-2.5 font-medium">Dzień</th>
-                  <th className="px-4 py-2.5 font-medium">Trening</th>
-                  <th className="w-[38%] px-4 py-2.5 font-medium">Cel</th>
-                </tr>
-              </thead>
-              <tbody>
-                {WEEKDAY_FULL_PL.map((name, day) => (
-                  <DayRow
-                    key={name}
-                    name={name}
-                    entry={byDay.get(day)}
-                    isToday={day === today}
-                    onEdit={() => setEditing({ day, serial: false })}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+        <TabsContent value="harmonogram">
+          <ScheduleTab
+            schedule={screen.schedule}
+            hasAnyPlan={screen.plans.length > 0}
+            onShowPlans={() => setTab("plany")}
+            onPrevWeek={() => setWeek(shiftWeeks(screen.schedule.weekStart, -1))}
+            onNextWeek={() => setWeek(shiftWeeks(screen.schedule.weekStart, 1))}
+            onToday={() => setWeek(undefined)}
+            onAddToDay={(date, dayOfWeek) => setAddTo({ date, dayOfWeek })}
+            onEditEntry={editEntryUnit}
+          />
+        </TabsContent>
 
-      <PlanDayDrawer
-        editing={editing}
-        byDay={byDay}
-        allExercises={allExercises}
-        onClose={() => setEditing(null)}
-        onAdvance={(nextDay) => setEditing((prev) => ({ day: nextDay, serial: prev?.serial ?? false }))}
+        <TabsContent value="plany">
+          <PlansTab
+            plans={screen.plans}
+            onNewPlan={() => setPlanForm({ plan: null })}
+            onEditPlan={(plan) => setPlanForm({ plan })}
+            onActivate={setActivating}
+            onEditUnit={setUnitEditing}
+          />
+        </TabsContent>
+      </Tabs>
+
+      <UnitDrawer editing={unitEditing} allExercises={allExercises} onClose={() => setUnitEditing(null)} />
+      <PlanFormDialog
+        editing={planForm}
+        onClose={() => setPlanForm(null)}
+        onCreated={(planId, name) => setUnitEditing({ planId, planName: name, unit: null })}
+      />
+      <ActivatePlanDialog plan={activating} onClose={() => setActivating(null)} />
+      <AddToDaySheet
+        date={addTo?.date ?? null}
+        dayOfWeek={addTo?.dayOfWeek ?? 0}
+        plans={screen.plans}
+        onClose={() => setAddTo(null)}
       />
     </main>
-  );
-}
-
-function IntensityPill({ intensity }: { intensity: PlanDay["intensity"] }) {
-  return (
-    <span
-      className={`rounded-full px-2.5 py-0.5 font-bold text-[10px] uppercase tracking-wide ${
-        PLAN_INTENSITY_CLASS[intensity]
-      }`}
-    >
-      {PLAN_INTENSITY_LABEL[intensity]}
-    </span>
-  );
-}
-
-function DayCard({
-  name,
-  entry,
-  isToday,
-  onEdit,
-}: {
-  name: string;
-  entry: PlanDay | undefined;
-  isToday: boolean;
-  onEdit: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onEdit}
-      className={`rounded-xl border bg-card p-4 text-left transition-colors hover:bg-accent ${
-        isToday ? "border-primary/50 ring-1 ring-primary/30" : ""
-      } ${entry ? "" : "border-dashed"}`}
-    >
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <span className={`font-bold text-xs uppercase tracking-wide ${isToday ? "text-primary" : ""}`}>
-          {name}
-          {isToday && " · dziś"}
-        </span>
-        {entry && <IntensityPill intensity={entry.intensity} />}
-      </div>
-      {entry ? (
-        <>
-          <p className="whitespace-pre-line text-sm">
-            {planTrainingLabel(entry) ?? <span className="text-muted-foreground">—</span>}
-          </p>
-          {entry.hasStrength && entry.exercises.length > 0 && (
-            <p className="mt-2 flex items-baseline gap-1.5 text-muted-foreground text-xs">
-              <Dumbbell className="size-3 shrink-0 translate-y-px text-primary" />
-              {entry.exercises.map((e) => e.namePl).join(" · ")}
-            </p>
-          )}
-          {entry.goal && (
-            <p className="mt-2 flex items-baseline gap-1.5 text-muted-foreground text-xs">
-              <Target className="size-3 shrink-0 translate-y-px" />
-              {entry.goal}
-            </p>
-          )}
-        </>
-      ) : (
-        <p className="text-muted-foreground text-sm">uzupełnij</p>
-      )}
-    </button>
-  );
-}
-
-function DayRow({
-  name,
-  entry,
-  isToday,
-  onEdit,
-}: {
-  name: string;
-  entry: PlanDay | undefined;
-  isToday: boolean;
-  onEdit: () => void;
-}) {
-  return (
-    // Click-anywhere is a pointer convenience; keyboard users get the same
-    // action through the focusable day button in the first cell.
-    <tr
-      className={`cursor-pointer border-b transition-colors last:border-b-0 hover:bg-accent ${
-        isToday ? "bg-primary/5" : ""
-      }`}
-      onClick={onEdit}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") onEdit();
-      }}
-    >
-      <th scope="row" className="w-44 px-4 py-3 text-left align-top">
-        <button type="button" onClick={onEdit} className="flex flex-col items-start gap-1.5 text-left">
-          <span className={`font-bold text-xs uppercase tracking-wide ${isToday ? "text-primary" : ""}`}>
-            {name}
-            {isToday && " · dziś"}
-          </span>
-          {entry && <IntensityPill intensity={entry.intensity} />}
-        </button>
-      </th>
-      <td className="whitespace-pre-line px-4 py-3 align-top">
-        {entry ? (
-          <>
-            {planTrainingLabel(entry) ?? <span className="text-muted-foreground">—</span>}
-            {entry.hasStrength && entry.exercises.length > 0 && (
-              <span className="mt-1.5 flex items-baseline gap-1.5 text-muted-foreground text-xs">
-                <Dumbbell className="size-3 shrink-0 translate-y-px text-primary" />
-                {entry.exercises.map((e) => e.namePl).join(" · ")}
-              </span>
-            )}
-          </>
-        ) : (
-          <span className="text-muted-foreground">uzupełnij</span>
-        )}
-      </td>
-      <td className="whitespace-pre-line px-4 py-3 align-top text-muted-foreground">{entry?.goal ?? "—"}</td>
-    </tr>
   );
 }

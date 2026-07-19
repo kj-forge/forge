@@ -2,10 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
-import { loadPlanDayExerciseIds } from "@/features/plan/server/queries";
+import { loadUnitExerciseIds } from "@/features/plan/server/queries";
 import { SESSION_TYPES } from "@/features/strength/constants";
 import { parseInput } from "@/lib/validate";
-import { warsawWeekday } from "@/shared/lib/weekday";
 import { db } from "../../../../db/client";
 import { createPool } from "../../../../db/pool";
 import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
@@ -282,11 +281,10 @@ const createSessionInput = z.object({
   ]),
   date: z.iso.date(),
   fromTemplateSessionId: z.uuid().optional(),
-  // Seed the session from a plan day (exercises resolved server-side).
-  fromPlanDay: z.boolean().optional(),
-  // Which day seeds the list — defaults to today. A missed Tuesday can run
-  // on Wednesday without touching the plan itself.
-  planDayOfWeek: z.number().int().min(0).max(6).optional(),
+  // Seed the session from a plan unit (exercises resolved server-side). Any
+  // owned unit works on any date — a missed Tuesday can run on Wednesday
+  // without touching the plan itself.
+  fromUnitId: z.uuid().optional(),
 });
 
 interface RunCreateSessionArgs {
@@ -387,11 +385,9 @@ export const createSession = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => parseInput(createSessionInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
-    // Resolve the plan day's exercises server-side (by weekday) rather than
-    // trusting client-passed ids.
-    const seedExerciseIds = data.fromPlanDay
-      ? await loadPlanDayExerciseIds(athleteId, data.planDayOfWeek ?? warsawWeekday())
-      : undefined;
+    // Resolve the unit's exercises server-side rather than trusting
+    // client-passed ids.
+    const seedExerciseIds = data.fromUnitId ? await loadUnitExerciseIds(athleteId, data.fromUnitId) : undefined;
     return runCreateSession({ athleteId, ...data, seedExerciseIds });
   });
 
