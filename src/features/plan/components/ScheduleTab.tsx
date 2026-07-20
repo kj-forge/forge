@@ -374,7 +374,9 @@ function EntryCard({ entry, overlay = false }: { entry: ScheduleEntry; overlay?:
         {entry.source === "ADHOC" ? "poza planem" : entry.planName} · {SESSION_TYPE_LABEL_PL[entry.sessionType]}
         {entry.source === "ADD" && " · przeniesiony"}
       </p>
-      {label && entry.name !== label && <p className="mt-1 line-clamp-2 whitespace-pre-line text-xs">{label}</p>}
+      {label && entry.name !== label && (
+        <p className="wrap-break-word mt-1 line-clamp-2 whitespace-pre-line text-xs">{label}</p>
+      )}
       {entry.exercises.length > 0 && (
         <p className="mt-1 truncate text-muted-foreground text-xs">
           {entry.exercises.map((e) => e.namePl).join(" · ")}

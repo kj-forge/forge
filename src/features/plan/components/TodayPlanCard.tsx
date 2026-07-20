@@ -71,7 +71,7 @@ function TodayEntry({ entry }: { entry: ScheduleEntry }) {
         </span>
       </div>
       {label && label !== entry.name && (
-        <p className="mt-0.5 line-clamp-2 whitespace-pre-line text-muted-foreground text-sm">{label}</p>
+        <p className="wrap-break-word mt-0.5 line-clamp-2 whitespace-pre-line text-muted-foreground text-sm">{label}</p>
       )}
       {entry.exercises.length > 0 && (
         <p className="mt-0.5 flex items-baseline gap-1.5 text-muted-foreground text-xs">
