@@ -1,19 +1,9 @@
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, Trash2 } from "lucide-react";
+import { getRouteApi, Link } from "@tanstack/react-router";
+import { ChevronLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { deleteNote, updateNote } from "@/features/notes/server/notes";
+import { updateNote } from "@/features/notes/server/notes";
 
 const route = getRouteApi("/_shell/notes/$noteId");
 
@@ -23,7 +13,6 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export function NoteEditorView() {
   const note = route.useLoaderData();
-  const navigate = useNavigate();
 
   if (!note) {
     return (
@@ -34,14 +23,12 @@ export function NoteEditorView() {
     );
   }
 
-  return <NoteEditorBody key={note.id} note={note} onDeleted={() => navigate({ to: "/notes" })} />;
+  return <NoteEditorBody key={note.id} note={note} />;
 }
 
-function NoteEditorBody({ note, onDeleted }: { note: { id: string; body: string }; onDeleted: () => void }) {
+function NoteEditorBody({ note }: { note: { id: string; body: string } }) {
   const [body, setBody] = useState(note.body);
   const [status, setStatus] = useState<SaveStatus>("idle");
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   // Autosave plumbing: refs so the debounce timer and blur-flush always see
   // the latest text without re-creating callbacks; seq drops stale responses
@@ -99,37 +86,14 @@ function NoteEditorBody({ note, onDeleted }: { note: { id: string; body: string 
     save(bodyRef.current);
   };
 
-  const handleDelete = () => {
-    setDeleting(true);
-    // Cancel any in-flight autosave result — the note is going away.
-    seqRef.current++;
-    clearTimeout(timerRef.current ?? undefined);
-    deleteNote({ data: { noteId: note.id } })
-      .then(() => onDeleted())
-      .catch(() => {
-        setDeleting(false);
-        setConfirmOpen(false);
-        setStatus("error");
-      });
-  };
-
   return (
     // Full width and full height of the shell's scroll area: the note IS the
-    // page (Apple Notes style), padding is the only inset.
+    // page (Apple Notes style), padding is the only inset. Deleting lives on
+    // the list rows — the editor is for writing.
     <main className="flex min-h-full w-full flex-col gap-3 p-4">
       <div className="flex items-center justify-between pt-2">
         <BackLink onNavigate={flush} />
-        <span className="flex items-center gap-2">
-          <SaveIndicator status={status} onRetry={() => save(bodyRef.current)} />
-          <button
-            type="button"
-            aria-label="Usuń notatkę"
-            className="grid size-8 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => setConfirmOpen(true)}
-          >
-            <Trash2 className="size-4" />
-          </button>
-        </span>
+        <SaveIndicator status={status} onRetry={() => save(bodyRef.current)} />
       </div>
 
       <Textarea
@@ -149,40 +113,13 @@ function NoteEditorBody({ note, onDeleted }: { note: { id: string; body: string 
 
       {/* Pointer-only convenience — the textarea stays the accessible control. */}
       <div className="-mt-3 min-h-24 flex-1 cursor-text" onPointerDown={focusPage} />
-
-      <Dialog
-        open={confirmOpen}
-        onOpenChange={(o) => {
-          if (!o) setConfirmOpen(false);
-        }}
-      >
-        <DialogContent mobileSheet>
-          <div className="mx-auto w-full max-w-md">
-            <DialogHeader>
-              <DialogTitle>Usunąć notatkę?</DialogTitle>
-              <DialogDescription>Nie da się tego cofnąć.</DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2">
-              <Button variant="destructive" className="w-full" disabled={deleting} onClick={handleDelete}>
-                {deleting ? "Usuwam..." : "Tak, usuń"}
-              </Button>
-              <DialogClose asChild>
-                <Button variant="outline" className="w-full">
-                  Anuluj
-                </Button>
-              </DialogClose>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
     </main>
   );
 }
 
 function SaveIndicator({ status, onRetry }: { status: SaveStatus; onRetry: () => void }) {
-  // "Zapisano" lingers briefly, then fades out slowly and unmounts. The
-  // delete button sits at the flex row's right edge, so the unmount shifts
-  // nothing visible.
+  // "Zapisano" lingers briefly, then fades out slowly and unmounts. It sits
+  // at the flex row's right edge, so the unmount shifts nothing visible.
   const [phase, setPhase] = useState<"visible" | "fading" | "hidden">("hidden");
   useEffect(() => {
     if (status !== "saved") {
