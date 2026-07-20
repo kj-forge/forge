@@ -6,14 +6,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DeleteSessionDrawer } from "@/features/strength/components/DeleteSessionDrawer";
+import { EndedStepCard } from "@/features/strength/components/EndedStepCard";
 import { EndSessionDrawer } from "@/features/strength/components/EndSessionDrawer";
 import { ExercisePickerDrawer } from "@/features/strength/components/ExercisePickerDrawer";
 import { MovementRow } from "@/features/strength/components/MovementRow";
 import { NotesDrawer } from "@/features/strength/components/NotesDrawer";
 import { StepDrawer } from "@/features/strength/components/StepDrawer";
 import { RestStepRow, SupersetRow } from "@/features/strength/components/StepRows";
-import { ViewOnlyCircuitDrawer } from "@/features/strength/components/ViewOnlyCircuitDrawer";
-import { ViewOnlyExerciseDrawer } from "@/features/strength/components/ViewOnlyExerciseDrawer";
 import { createSession, deleteSession, endSession, updateSessionNotes } from "@/features/strength/server/sessions";
 import { addExerciseToStep, addStep } from "@/features/strength/server/steps";
 import { getErrorMessage } from "@/lib/error-message";
@@ -41,13 +40,8 @@ export function ActiveSessionView() {
   // router.invalidate() after add/remove. Ended sessions keep the read-only
   // per-exercise drawer, selected by movement id.
   const [openBlockId, setOpenBlockId] = useState<string | null>(null);
-  const [openMovementId, setOpenMovementId] = useState<string | null>(null);
-  // Ended sessions: circuits open a read-only rounds table instead.
-  const [openCircuitId, setOpenCircuitId] = useState<string | null>(null);
 
   const isEnded = session.endedAt !== null;
-  const openMovement = movements.find((m) => m.id === openMovementId) ?? null;
-  const openCircuit = steps.find((s) => s.id === openCircuitId) ?? null;
 
   // Same-day repeat of an ended session: new session cloned from this one's
   // exercise list (sets start empty; the drawer seeds weights from history).
@@ -91,20 +85,17 @@ export function ActiveSessionView() {
         <ul className="space-y-2">
           {steps.map((step) => (
             <li key={step.id}>
-              {step.kind === "REST" ? (
-                <RestStepRow step={step} onOpen={() => (isEnded ? undefined : setOpenBlockId(step.id))} />
+              {isEnded ? (
+                // Results inline — an ended session is a summary, not a hub.
+                step.kind === "REST" ? null : (
+                  <EndedStepCard step={step} />
+                )
+              ) : step.kind === "REST" ? (
+                <RestStepRow step={step} onOpen={() => setOpenBlockId(step.id)} />
               ) : step.movements.length === 1 ? (
-                <MovementRow
-                  movement={step.movements[0]}
-                  isEnded={isEnded}
-                  onOpen={() => (isEnded ? setOpenMovementId(step.movements[0].id) : setOpenBlockId(step.id))}
-                />
+                <MovementRow movement={step.movements[0]} isEnded={isEnded} onOpen={() => setOpenBlockId(step.id)} />
               ) : (
-                <SupersetRow
-                  step={step}
-                  isEnded={isEnded}
-                  onOpen={() => (isEnded ? setOpenCircuitId(step.id) : setOpenBlockId(step.id))}
-                />
+                <SupersetRow step={step} isEnded={isEnded} onOpen={() => setOpenBlockId(step.id)} />
               )}
             </li>
           ))}
@@ -185,24 +176,7 @@ export function ActiveSessionView() {
         </button>
       </div>
 
-      <ViewOnlyCircuitDrawer
-        step={openCircuit}
-        onOpenChange={(o) => {
-          if (!o) setOpenCircuitId(null);
-        }}
-      />
-
-      {isEnded ? (
-        <ViewOnlyExerciseDrawer
-          open={openMovement !== null}
-          onOpenChange={(o) => {
-            if (!o) setOpenMovementId(null);
-          }}
-          movement={openMovement}
-          movements={movements}
-          onNavigate={setOpenMovementId}
-        />
-      ) : (
+      {!isEnded && (
         <StepDrawer
           steps={steps}
           openId={openBlockId}
