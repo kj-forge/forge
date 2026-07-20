@@ -38,7 +38,7 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 export interface ManageItem {
-  to: "/exercises" | "/me/konto" | "/notes";
+  to: "/exercises" | "/me/konto" | "/notes" | "/plan";
   label: string;
   icon: LucideIcon;
   // False = hub-only entry: it already sits in the main sidebar group via
@@ -58,6 +58,7 @@ export const MANAGE_SECTIONS: ManageSection[] = [
   {
     label: "Biblioteka",
     items: [
+      { to: "/plan", label: "Plany treningowe", icon: CalendarDays, sidebar: false },
       { to: "/exercises", label: "Ćwiczenia", icon: Dumbbell },
       { to: "/notes", label: "Notatki", icon: NotebookPen, sidebar: false },
     ],

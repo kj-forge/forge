@@ -15,8 +15,8 @@ import {
   ZestawieniaTile,
 } from "@/features/dashboard/components/tiles";
 import { TodayPlanCard } from "@/features/plan/components/TodayPlanCard";
+import { warsawTodayIso } from "@/features/plan/lib/schedule";
 import { SessionListItem } from "@/features/strength/components/SessionListItem";
-import { warsawWeekday } from "@/shared/lib/weekday";
 
 const route = getRouteApi("/_shell/");
 
@@ -34,7 +34,9 @@ export function DashboardView() {
 
   // The CTA names what actually starts: a plan-fed strength session on
   // strength days, a blank one otherwise.
-  const todayHasStrength = data.plan.find((d) => d.dayOfWeek === warsawWeekday())?.hasStrength ?? false;
+  const todayHasStrength = data.schedule.entries.some(
+    (e) => e.date === warsawTodayIso() && e.sessionType === "STRENGTH",
+  );
   const ctaLabel = todayHasStrength ? "+ Rozpocznij sesję siłową" : "+ Rozpocznij nową sesję";
 
   return (
@@ -57,7 +59,7 @@ export function DashboardView() {
 
       {/* Mobile: trimmed bento — today, CTA, mini row, sessions. */}
       <div className={`flex-col gap-4 lg:hidden ${firstRun ? "hidden" : "flex"}`}>
-        <TodayPlanCard plan={data.plan} />
+        <TodayPlanCard schedule={data.schedule} />
         <Link to="/sessions/new" search={{ type: "STRENGTH" }}>
           <Button size="lg" className="w-full bg-ember shadow-ember">
             {ctaLabel}
@@ -93,12 +95,12 @@ export function DashboardView() {
       {/* Desktop: full bento once the first session exists. */}
       {!firstRun && (
         <div className="hidden gap-4 lg:grid lg:grid-cols-4">
-          <TodayTile plan={data.plan} className="lg:col-span-2" />
+          <TodayTile schedule={data.schedule} className="lg:col-span-2" />
           <LastSessionTile sessions={data.sessions} />
           <GoalTile goals={data.goals} />
           <PrTile prs={data.prs} />
           <SessionsTile sessions={data.sessions} className="lg:col-span-2" />
-          <WeekTile plan={data.plan} />
+          <WeekTile schedule={data.schedule} />
           {data.trend ? (
             <TrendTile trend={data.trend} className="lg:col-span-3" />
           ) : (

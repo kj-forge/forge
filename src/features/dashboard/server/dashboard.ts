@@ -2,7 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, eq, gte, isNotNull, ne, sql } from "drizzle-orm";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { loadActiveGoals } from "@/features/goals/server/queries";
-import { loadTrainingPlan } from "@/features/plan/server/queries";
+import { warsawTodayIso, weekStartIso } from "@/features/plan/lib/schedule";
+import { loadWeekSchedule } from "@/features/plan/server/queries";
 import { epleyE1RM } from "@/features/strength/lib/e1rm";
 import { loadPrTable, loadRecentSessions } from "@/features/strength/server/queries";
 import { db } from "../../../../db/client";
@@ -111,15 +112,15 @@ async function loadWeekdayCounts(athleteId: string) {
 // from the client is a separate request, so the dashboard bundles them.
 export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
   const { athleteId } = await getCurrentAthleteOrThrow();
-  const [recentSessions, plan, prs, trend, activeGoals, weekdayCounts] = await Promise.all([
+  const [recentSessions, schedule, prs, trend, activeGoals, weekdayCounts] = await Promise.all([
     loadRecentSessions(athleteId, 10),
-    loadTrainingPlan(athleteId),
+    loadWeekSchedule(athleteId, weekStartIso(warsawTodayIso())),
     loadPrTable(athleteId, false),
     loadTrend(athleteId),
     loadActiveGoals(athleteId),
     loadWeekdayCounts(athleteId),
   ]);
-  return { sessions: recentSessions, plan, prs, trend, goals: activeGoals, weekdayCounts };
+  return { sessions: recentSessions, schedule, prs, trend, goals: activeGoals, weekdayCounts };
 });
 
 export type DashboardData = Awaited<ReturnType<typeof getDashboard>>;

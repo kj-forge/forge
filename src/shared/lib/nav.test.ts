@@ -97,12 +97,19 @@ describe("SIDEBAR_ITEMS", () => {
 describe("MANAGE_SECTIONS", () => {
   test("biblioteka + konto, in hub order", () => {
     expect(MANAGE_SECTIONS.map((s) => s.label)).toEqual(["Biblioteka", "Konto"]);
-    expect(MANAGE_SECTIONS.flatMap((s) => s.items.map((i) => i.to))).toEqual(["/exercises", "/notes", "/me/konto"]);
+    expect(MANAGE_SECTIONS.flatMap((s) => s.items.map((i) => i.to))).toEqual([
+      "/plan",
+      "/exercises",
+      "/notes",
+      "/me/konto",
+    ]);
   });
 
-  test("notes sits in the main sidebar group, so the hub entry opts out of Zarządzanie", () => {
-    const notes = MANAGE_SECTIONS.flatMap((s) => s.items).find((i) => i.to === "/notes");
-    expect(notes?.sidebar).toBe(false);
-    expect(NAV_ITEMS.some((i) => i.to === "/notes" && i.inSidebar && !i.inTabBar)).toBe(true);
+  test("main-sidebar destinations (notes, plan) opt their hub entries out of Zarządzanie", () => {
+    for (const to of ["/notes", "/plan"] as const) {
+      const item = MANAGE_SECTIONS.flatMap((s) => s.items).find((i) => i.to === to);
+      expect(item?.sidebar).toBe(false);
+      expect(NAV_ITEMS.some((i) => i.to === to && i.inSidebar && !i.inTabBar)).toBe(true);
+    }
   });
 });

@@ -14,8 +14,14 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import type { DashboardData, Trend } from "@/features/dashboard/server/dashboard";
 import { formatGoalTarget, goalDisplayTitle, goalProgress } from "@/features/goals/lib/goal-progress";
-import { PLAN_INTENSITY_CLASS, PLAN_INTENSITY_DOT, PLAN_INTENSITY_LABEL } from "@/features/plan/constants";
-import { planTrainingLabel } from "@/features/plan/lib/plan-display";
+import {
+  UNIT_INTENSITY_CLASS,
+  UNIT_INTENSITY_DOT,
+  UNIT_INTENSITY_LABEL,
+  type UnitIntensity,
+} from "@/features/plan/constants";
+import { unitTrainingLabel } from "@/features/plan/lib/plan-display";
+import { type ScheduleEntry, warsawTodayIso } from "@/features/plan/lib/schedule";
 import { E1rmSparkline, formatChartDate } from "@/features/strength/components/E1rmSparkline";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import { formatSet } from "@/features/strength/lib/format-set";
@@ -79,47 +85,65 @@ export function Tile({
   );
 }
 
-export function TodayTile({ plan, className = "" }: { plan: DashboardData["plan"]; className?: string }) {
-  const today = warsawWeekday();
-  const entry = plan.find((d) => d.dayOfWeek === today);
+export function TodayTile({ schedule, className = "" }: { schedule: DashboardData["schedule"]; className?: string }) {
+  // Resolved schedule: a workout dragged onto today shows up here too.
+  const today = warsawTodayIso();
+  const entries = schedule.entries.filter((e) => e.date === today);
 
   return (
     <Link
       to="/plan"
+      // Nothing scheduled at all → land on the library, not an empty week.
+      search={schedule.entries.length === 0 ? { tab: "plany" } : undefined}
       className={`min-w-0 rounded-2xl border border-primary/40 bg-linear-to-br from-primary/10 to-transparent p-4 ${TILE_INTERACTIVE_CLASS} hover:border-primary/70 ${className}`}
     >
       <TileHeader icon={CalendarDays} title="Dziś wg planu" action="plan →" accent />
-      {entry ? (
-        <>
-          <div className="mb-1 flex items-center gap-2">
-            <span className="font-black text-lg">{WEEKDAY_FULL_PL[today]}</span>
-            <span
-              className={`rounded-full px-2.5 py-0.5 font-bold text-[10px] uppercase tracking-wide ${
-                PLAN_INTENSITY_CLASS[entry.intensity]
-              }`}
-            >
-              {PLAN_INTENSITY_LABEL[entry.intensity]}
-            </span>
-          </div>
-          {planTrainingLabel(entry) ? (
-            <p className="whitespace-pre-line text-sm leading-relaxed">{planTrainingLabel(entry)}</p>
-          ) : (
-            <p className="text-muted-foreground text-sm">Brak aktywności w planie na dziś.</p>
-          )}
-          {entry.hasStrength && entry.exercises.length > 0 && (
-            <p className="mt-2 flex items-baseline gap-1.5 text-muted-foreground text-xs">
-              <Dumbbell className="size-3 shrink-0 translate-y-px text-primary" />
-              {entry.exercises.map((e) => e.namePl).join(" · ")}
-            </p>
-          )}
-          {entry.goal && <p className="mt-2 text-muted-foreground text-xs">Cel: {entry.goal}</p>}
-        </>
+      <div className="mb-1 flex items-center gap-2">
+        <span className="font-black text-lg">{WEEKDAY_FULL_PL[warsawWeekday()]}</span>
+      </div>
+      {entries.length > 0 ? (
+        <div className="space-y-2.5">
+          {entries.map((entry) => (
+            <TodayTileEntry key={`${entry.source}:${entry.overrideId ?? entry.unitId}`} entry={entry} />
+          ))}
+        </div>
       ) : (
         <p className="text-muted-foreground text-sm">
-          {plan.length === 0 ? "Ułóż plan tygodnia — Home podpowie, co dziś robisz." : "Brak planu na dziś."}
+          {schedule.entries.length === 0 ? "Ułóż plan treningowy — Home podpowie, co dziś robisz." : "Dziś wolne."}
         </p>
       )}
     </Link>
+  );
+}
+
+function TodayTileEntry({ entry }: { entry: ScheduleEntry }) {
+  const label = unitTrainingLabel(entry);
+  return (
+    <div>
+      <div className="flex items-center gap-2">
+        <span className="min-w-0 truncate font-semibold text-sm">{entry.name}</span>
+        {entry.intensity && (
+          <span
+            className={`shrink-0 rounded-full px-2.5 py-0.5 font-bold text-[10px] uppercase tracking-wide ${UNIT_INTENSITY_CLASS[entry.intensity]}`}
+          >
+            {UNIT_INTENSITY_LABEL[entry.intensity]}
+          </span>
+        )}
+        <span className="shrink-0 text-muted-foreground text-xs">
+          {entry.source === "ADHOC" ? "poza planem" : entry.planName}
+        </span>
+      </div>
+      {label && label !== entry.name && <p className="mt-0.5 whitespace-pre-line text-sm leading-relaxed">{label}</p>}
+      {entry.exercises.length > 0 && (
+        <p className="mt-1 flex items-baseline gap-1.5 text-muted-foreground text-xs">
+          <Dumbbell className="size-3 shrink-0 translate-y-px text-primary" />
+          {entry.exercises.map((e) => e.namePl).join(" · ")}
+        </p>
+      )}
+      {(entry.goal ?? entry.note) && (
+        <p className="mt-1 text-muted-foreground text-xs">Cel: {entry.goal ?? entry.note}</p>
+      )}
+    </div>
   );
 }
 
@@ -344,30 +368,45 @@ export function SessionsTile({
   );
 }
 
-export function WeekTile({ plan }: { plan: DashboardData["plan"] }) {
-  const today = warsawWeekday();
+const INTENSITY_RANK: Record<UnitIntensity, number> = { HARD: 3, MEDIUM: 2, EASY: 1 };
+
+export function WeekTile({ schedule }: { schedule: DashboardData["schedule"] }) {
+  const today = warsawTodayIso();
   return (
-    <Link to="/plan" className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}>
+    <Link
+      to="/plan"
+      search={schedule.entries.length === 0 ? { tab: "plany" } : undefined}
+      className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}
+    >
       <TileHeader icon={CalendarDays} title="Tydzień" action="plan →" />
-      {plan.length === 0 ? (
-        <p className="text-muted-foreground text-sm">Ułóż plan tygodnia →</p>
+      {schedule.entries.length === 0 ? (
+        <p className="text-muted-foreground text-sm">Ułóż plan treningowy →</p>
       ) : (
         <ul className="space-y-1.5">
-          {WEEKDAY_LABELS_PL.map((label, day) => {
-            const entry = plan.find((d) => d.dayOfWeek === day);
-            const isToday = day === today;
+          {schedule.dates.map((date, day) => {
+            const entries = schedule.entries.filter((e) => e.date === date);
+            // Dot = the day's highest intensity; ad-hoc-only days get a
+            // neutral filled dot, free days stay muted.
+            const top = entries.reduce<UnitIntensity | null>(
+              (acc, e) =>
+                e.intensity && (!acc || INTENSITY_RANK[e.intensity] > INTENSITY_RANK[acc]) ? e.intensity : acc,
+              null,
+            );
+            const isToday = date === today;
             return (
               <li
-                key={label}
+                key={date}
                 className={`flex items-center gap-2 text-xs ${
                   isToday ? "font-bold text-foreground" : "text-muted-foreground"
                 }`}
               >
                 <span
-                  className={`size-2 shrink-0 rounded-full ${entry ? PLAN_INTENSITY_DOT[entry.intensity] : "bg-muted"}`}
+                  className={`size-2 shrink-0 rounded-full ${
+                    top ? UNIT_INTENSITY_DOT[top] : entries.length > 0 ? "bg-muted-foreground/40" : "bg-muted"
+                  }`}
                 />
-                <span className="w-8 shrink-0">{label}</span>
-                <span className="truncate">{entry ? (planTrainingLabel(entry)?.split("\n")[0] ?? "—") : "—"}</span>
+                <span className="w-8 shrink-0">{WEEKDAY_LABELS_PL[day]}</span>
+                <span className="truncate">{entries.length > 0 ? entries.map((e) => e.name).join(" · ") : "—"}</span>
               </li>
             );
           })}

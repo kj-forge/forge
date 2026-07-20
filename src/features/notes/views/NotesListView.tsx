@@ -4,10 +4,10 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { noteParts } from "@/features/notes/lib/note-title";
 import { createNote } from "@/features/notes/server/notes";
 import { getErrorMessage } from "@/lib/error-message";
+import { SearchInput } from "@/shared/components/SearchInput";
 
 const route = getRouteApi("/_shell/notes/");
 
@@ -45,8 +45,7 @@ export function NotesListView() {
       </div>
 
       {notes.length > 0 && (
-        <Input
-          type="search"
+        <SearchInput
           placeholder="Szukaj w notatkach..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}

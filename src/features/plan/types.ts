@@ -1,3 +1,6 @@
-import type { getTrainingPlan } from "./server/plan";
+import type { getPlanScreen } from "./server/plan";
 
-export type PlanDay = Awaited<ReturnType<typeof getTrainingPlan>>[number];
+export type PlanScreenData = Awaited<ReturnType<typeof getPlanScreen>>;
+export type WeekSchedule = PlanScreenData["schedule"];
+export type PlanWithUnits = PlanScreenData["plans"][number];
+export type PlanUnit = PlanWithUnits["units"][number];

@@ -28,6 +28,8 @@ ADRs are immutable once accepted. To change a decision, write a new ADR that sup
 | [ADR-0018](ADR-0018-folder-architecture.md) | Folder architecture — feature-first with thin routes | Accepted |
 | [ADR-0019](ADR-0019-app-shell-fixed-viewport.md) | App shell with a fixed viewport and inner scroll container | Proposed |
 | [ADR-0020](ADR-0020-per-user-exercise-catalogue.md) | Per-user exercise catalogue (copy-on-provision) | Proposed |
+| [ADR-0021](ADR-0021-training-plans-with-units-and-schedule-overrides.md) | Training plans as unit libraries with weekday activation and per-date schedule overrides | Accepted |
+| [ADR-0022](ADR-0022-session-steps-and-rounds.md) | Session steps & rounds — circuit logging on multi-block sessions | Proposed |
 
 ## How to add an ADR
 

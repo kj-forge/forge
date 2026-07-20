@@ -4,51 +4,7 @@ import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
-import { blockMovements, sessionBlocks, sessions, sets } from "../../../../db/schema";
-
-const addExerciseInput = z.object({
-  sessionId: z.uuid(),
-  exerciseId: z.uuid(),
-});
-
-export const addExerciseToSession = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) => parseInput(addExerciseInput, data))
-  .handler(async ({ data }) => {
-    const { athleteId } = await getCurrentAthleteOrThrow();
-
-    // Find the session's block + next orderIndex. Strength MVP keeps a single
-    // block per session, so block lookup is always one row.
-    const [block] = await db
-      .select({ id: sessionBlocks.id })
-      .from(sessionBlocks)
-      .innerJoin(sessions, eq(sessionBlocks.sessionId, sessions.id))
-      .where(and(eq(sessionBlocks.sessionId, data.sessionId), eq(sessions.athleteId, athleteId)))
-      .limit(1);
-    if (!block) throw new Error("Nie znaleziono sesji.");
-
-    const [{ nextIndex }] = await db
-      .select({ nextIndex: sql<number>`COALESCE(MAX(${blockMovements.orderIndex}), -1) + 1` })
-      .from(blockMovements)
-      .where(eq(blockMovements.blockId, block.id));
-
-    // The (block_id, exercise_id) unique index is the source of truth against
-    // double-add races (slow network / double-tap). ON CONFLICT DO NOTHING
-    // makes the duplicate a no-op; an empty `returning` means it was already
-    // there.
-    const [row] = await db
-      .insert(blockMovements)
-      .values({
-        athleteId,
-        blockId: block.id,
-        orderIndex: nextIndex,
-        exerciseId: data.exerciseId,
-      })
-      .onConflictDoNothing({ target: [blockMovements.blockId, blockMovements.exerciseId] })
-      .returning({ id: blockMovements.id });
-    if (!row) throw new Error("To ćwiczenie jest już w tej sesji.");
-
-    return { blockMovementId: row.id, orderIndex: nextIndex };
-  });
+import { blockMovements, sessionBlocks, sets } from "../../../../db/schema";
 
 const removeExerciseInput = z.object({ blockMovementId: z.uuid() });
 
@@ -73,8 +29,22 @@ export const removeExerciseFromSession = createServerFn({ method: "POST" })
           sql`NOT EXISTS (SELECT 1 FROM ${sets} WHERE ${sets.blockMovementId} = ${blockMovements.id})`,
         ),
       )
-      .returning({ id: blockMovements.id });
-    if (row) return row;
+      .returning({ id: blockMovements.id, blockId: blockMovements.blockId });
+    if (row) {
+      // A step emptied of its last exercise is meaningless — drop the block
+      // too (best-effort; a concurrent addExerciseToStep loses the race and
+      // errors on the FK, which is the rarer flow).
+      await db
+        .delete(sessionBlocks)
+        .where(
+          and(
+            eq(sessionBlocks.id, row.blockId),
+            eq(sessionBlocks.athleteId, athleteId),
+            sql`NOT EXISTS (SELECT 1 FROM ${blockMovements} WHERE ${blockMovements.blockId} = ${sessionBlocks.id})`,
+          ),
+        );
+      return { id: row.id };
+    }
 
     // Nothing deleted — distinguish "has sets" from "not found" for the message.
     const [{ setCount }] = await db

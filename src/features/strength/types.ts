@@ -6,6 +6,7 @@ export type SetKind = (typeof SET_KINDS)[number];
 export type SessionType = (typeof SESSION_TYPES)[number];
 
 export type SessionDetails = Awaited<ReturnType<typeof getSessionDetails>>;
-export type Movement = SessionDetails["movements"][number];
+export type Step = SessionDetails["steps"][number];
+export type Movement = Step["movements"][number];
 export type SetRow = Movement["sets"][number];
 export type ManagedExercise = Awaited<ReturnType<typeof listManagedExercises>>[number];

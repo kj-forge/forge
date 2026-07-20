@@ -96,18 +96,6 @@ export const SET_KIND_LABEL: Record<SetKind, string> = {
   DROP_SET: "Drop set",
 };
 
-// Emoji split out from the label so it can be used sparingly — only as a
-// once-per-kind header in the session details. Inline/repeated places use
-// SET_KIND_COLOR instead, so the icon never stacks down a list.
-export const SET_KIND_ICON: Record<SetKind, string> = {
-  WARMUP: "🔥",
-  TOP_SET: "⭐",
-  WORK: "•",
-  BACK_OFF: "💪",
-  FAILURE: "⚠️",
-  DROP_SET: "↘",
-};
-
 export const SET_KIND_COLOR: Record<SetKind, string> = {
   WARMUP: "text-muted-foreground",
   TOP_SET: "text-orange-600 dark:text-orange-400",
@@ -117,6 +105,6 @@ export const SET_KIND_COLOR: Record<SetKind, string> = {
   DROP_SET: "text-purple-600 dark:text-purple-400",
 };
 
-// Visual order in ViewOnlyExerciseDrawer (typical session flow:
-// warm up → top → working → back off → tail).
+// Visual order of per-kind lines in the active-session MovementRow preview
+// (typical session flow: warm up → top → working → back off → tail).
 export const SET_KIND_DISPLAY_ORDER: SetKind[] = ["WARMUP", "TOP_SET", "WORK", "BACK_OFF", "FAILURE", "DROP_SET"];
