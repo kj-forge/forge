@@ -27,7 +27,7 @@ export function NoteEditorView() {
 
   if (!note) {
     return (
-      <main className="mx-auto flex w-full max-w-md flex-col gap-3 p-4">
+      <main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4">
         <BackLink />
         <p className="py-6 text-center text-muted-foreground text-sm">Nie znaleziono notatki.</p>
       </main>
@@ -52,6 +52,30 @@ function NoteEditorBody({ note, onDeleted }: { note: { id: string; body: string 
   const lastSavedRef = useRef(note.body);
 
   useEffect(() => () => clearTimeout(timerRef.current ?? undefined), []);
+
+  // iOS "reveals" a focused textarea by force-scrolling both the locked
+  // window and the shell's scroll container, even when the caret is already
+  // on screen — the page visibly jumps as the keyboard opens. Pin the
+  // positions captured at focus for the keyboard's entrance, then let go.
+  const unpinRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => unpinRef.current?.(), []);
+  const pinScrollWhileKeyboardOpens = (textarea: HTMLElement) => {
+    unpinRef.current?.();
+    let scroller: HTMLElement | null = textarea.parentElement;
+    while (scroller && scroller.scrollHeight <= scroller.clientHeight) scroller = scroller.parentElement;
+    const top = scroller?.scrollTop ?? 0;
+    const undo = () => {
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+      if (scroller && scroller.scrollTop !== top) scroller.scrollTop = top;
+    };
+    window.addEventListener("scroll", undo, true);
+    const timer = setTimeout(() => unpinRef.current?.(), 700);
+    unpinRef.current = () => {
+      clearTimeout(timer);
+      window.removeEventListener("scroll", undo, true);
+      unpinRef.current = null;
+    };
+  };
 
   const save = (text: string) => {
     const seq = ++seqRef.current;
@@ -98,7 +122,7 @@ function NoteEditorBody({ note, onDeleted }: { note: { id: string; body: string 
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-col gap-3 p-4">
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4">
       <div className="flex items-center justify-between pt-2">
         <BackLink onNavigate={flush} />
         <span className="flex items-center gap-2">
@@ -122,6 +146,7 @@ function NoteEditorBody({ note, onDeleted }: { note: { id: string; body: string 
         value={body}
         maxLength={20000}
         autoFocus={note.body.length === 0}
+        onFocus={(e) => pinScrollWhileKeyboardOpens(e.currentTarget)}
         onChange={(e) => handleChange(e.target.value)}
         onBlur={flush}
       />
