@@ -27,7 +27,7 @@ export function NoteEditorView() {
 
   if (!note) {
     return (
-      <main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4">
+      <main className="flex w-full flex-col gap-3 p-4">
         <BackLink />
         <p className="py-6 text-center text-muted-foreground text-sm">Nie znaleziono notatki.</p>
       </main>
@@ -53,28 +53,20 @@ function NoteEditorBody({ note, onDeleted }: { note: { id: string; body: string 
 
   useEffect(() => () => clearTimeout(timerRef.current ?? undefined), []);
 
-  // iOS "reveals" a focused textarea by force-scrolling both the locked
-  // window and the shell's scroll container, even when the caret is already
-  // on screen — the page visibly jumps as the keyboard opens. Pin the
-  // positions captured at focus for the keyboard's entrance, then let go.
-  const unpinRef = useRef<(() => void) | null>(null);
-  useEffect(() => () => unpinRef.current?.(), []);
-  const pinScrollWhileKeyboardOpens = (textarea: HTMLElement) => {
-    unpinRef.current?.();
-    let scroller: HTMLElement | null = textarea.parentElement;
-    while (scroller && scroller.scrollHeight <= scroller.clientHeight) scroller = scroller.parentElement;
-    const top = scroller?.scrollTop ?? 0;
-    const undo = () => {
-      if (window.scrollY !== 0) window.scrollTo(0, 0);
-      if (scroller && scroller.scrollTop !== top) scroller.scrollTop = top;
-    };
-    window.addEventListener("scroll", undo, true);
-    const timer = setTimeout(() => unpinRef.current?.(), 700);
-    unpinRef.current = () => {
-      clearTimeout(timer);
-      window.removeEventListener("scroll", undo, true);
-      unpinRef.current = null;
-    };
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // The blank space under the text is still "the page" — tapping it focuses
+  // the textarea with the caret at the end, like tapping the empty part of a
+  // paper note. focus({ preventScroll }) skips the browser's reveal-scroll:
+  // the tapped spot is on screen by definition, so no jump.
+  const focusPage = (e: React.PointerEvent) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    // Keep the native focus/blur cycle out of it (a blur here would also
+    // fire the autosave flush for no reason).
+    e.preventDefault();
+    ta.focus({ preventScroll: true });
+    ta.setSelectionRange(ta.value.length, ta.value.length);
   };
 
   const save = (text: string) => {
@@ -122,7 +114,9 @@ function NoteEditorBody({ note, onDeleted }: { note: { id: string; body: string 
   };
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4">
+    // Full width and full height of the shell's scroll area: the note IS the
+    // page (Apple Notes style), padding is the only inset.
+    <main className="flex min-h-full w-full flex-col gap-3 p-4">
       <div className="flex items-center justify-between pt-2">
         <BackLink onNavigate={flush} />
         <span className="flex items-center gap-2">
@@ -139,17 +133,22 @@ function NoteEditorBody({ note, onDeleted }: { note: { id: string; body: string 
       </div>
 
       <Textarea
+        ref={textareaRef}
         // Borderless notebook page; field-sizing-content (base Textarea)
-        // grows with the text. text-base keeps iOS from zooming on focus.
-        className="min-h-[55dvh] resize-none rounded-none border-none bg-transparent px-0 text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
+        // grows with the text, so the element is never taller than the note
+        // itself — on mobile that keeps iOS from "revealing" it with a
+        // forced scroll on focus. text-base keeps iOS from zooming on focus.
+        className="min-h-40 resize-none rounded-none border-none bg-transparent px-0 text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
         placeholder={"Pierwsza linia to tytuł...\n\nWnioski, technika, pomysły na blok."}
         value={body}
         maxLength={20000}
         autoFocus={note.body.length === 0}
-        onFocus={(e) => pinScrollWhileKeyboardOpens(e.currentTarget)}
         onChange={(e) => handleChange(e.target.value)}
         onBlur={flush}
       />
+
+      {/* Pointer-only convenience — the textarea stays the accessible control. */}
+      <div className="-mt-3 min-h-24 flex-1 cursor-text" onPointerDown={focusPage} />
 
       <Dialog
         open={confirmOpen}
