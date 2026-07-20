@@ -42,13 +42,10 @@ export function SessionsListView() {
   // page zero) — not just the types visible in loaded pages.
   const presentTypes = (query.data.pages[0]?.types ?? []) as SessionType[];
 
-  const active = feed.filter((s) => s.endedAt === null);
-  const ended = feed.filter((s) => s.endedAt !== null);
-
   // Month groups in feed order — pages arrive date-desc, so the Map keeps
   // newest months first.
-  const byMonth = new Map<string, typeof ended>();
-  for (const s of ended) {
+  const byMonth = new Map<string, typeof feed>();
+  for (const s of feed) {
     const key = String(s.date).slice(0, 7);
     const arr = byMonth.get(key) ?? [];
     arr.push(s);
@@ -89,17 +86,6 @@ export function SessionsListView() {
         )
       ) : (
         <InfiniteScrollList query={query} className="flex flex-col gap-3">
-          {active.length > 0 && (
-            <section className="flex flex-col gap-2">
-              <SectionHeader>W trakcie</SectionHeader>
-              <ul className="space-y-2">
-                {active.map((s) => (
-                  <SessionListItem key={s.id} session={s} detail="names" />
-                ))}
-              </ul>
-            </section>
-          )}
-
           {[...byMonth.entries()].map(([month, rows]) => (
             <section key={month} className="flex flex-col gap-2">
               <SectionHeader>

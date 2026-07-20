@@ -90,7 +90,7 @@ function UnitDrawerBody({
     // without strength content needs written training, and a workout step
     // can't be empty.
     if (unitTrainingRequired(values.sessionType, totalExercises) && values.training.trim().length === 0) {
-      form.setError("training", { type: "manual", message: "Wpisz trening albo dodaj ćwiczenia siłowe." });
+      form.setError("training", { type: "manual", message: "Wpisz opis albo dodaj ćwiczenia siłowe." });
       return;
     }
     if (
@@ -99,7 +99,7 @@ function UnitDrawerBody({
     ) {
       form.setError("root.serverError", {
         type: "manual",
-        message: "Każdy krok treningowy musi mieć przynajmniej jedno ćwiczenie (albo usuń pusty krok).",
+        message: "Obwód musi mieć przynajmniej jedno ćwiczenie (albo usuń pusty obwód).",
       });
       return;
     }
@@ -247,9 +247,17 @@ function UnitDrawerBody({
             name="training"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Trening</FormLabel>
+                <FormLabel>Opis</FormLabel>
                 <FormControl>
-                  <Textarea rows={4} placeholder={"Interwały bieżnia 6×3′\nalbo opis sesji siłowej"} {...field} />
+                  <Textarea
+                    rows={4}
+                    placeholder={
+                      sessionType === "STRENGTH"
+                        ? "np. Przysiad + OHP + drążek + RDL + akcesoria"
+                        : "np. Interwały bieżnia 6×3′"
+                    }
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -274,7 +282,9 @@ function UnitDrawerBody({
               1 exercise = classic step, 2+ = circuit, plus REST breaks. */}
           {sessionType === "STRENGTH" && (
             <div className="space-y-2">
-              <span className="font-medium text-sm">Kroki treningu</span>
+              {/* leading-none matches FormLabel so the gap below reads the
+                  same as the RHF fields above. */}
+              <span className="font-medium text-sm leading-none">Ćwiczenia i obwody</span>
               <UnitStepsEditor
                 steps={steps}
                 onChange={setSteps}
