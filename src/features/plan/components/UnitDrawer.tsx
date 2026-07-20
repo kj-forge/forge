@@ -282,7 +282,9 @@ function UnitDrawerBody({
               1 exercise = classic step, 2+ = circuit, plus REST breaks. */}
           {sessionType === "STRENGTH" && (
             <div className="space-y-2">
-              <span className="font-medium text-sm">Ćwiczenia i obwody</span>
+              {/* leading-none matches FormLabel so the gap below reads the
+                  same as the RHF fields above. */}
+              <span className="font-medium text-sm leading-none">Ćwiczenia i obwody</span>
               <UnitStepsEditor
                 steps={steps}
                 onChange={setSteps}
