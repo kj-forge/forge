@@ -24,17 +24,20 @@ const listSessionsInput = z.object({
   typ: z.enum(SESSION_TYPES).optional(),
 });
 
-// History feed, paged: in-progress sessions included (the view pins them above
-// the month groups), type filter applied server-side so paging respects it.
-// Offset paging + client-side dedupe by id is right-sized here; keyset cursors
-// become worth it when imports multiply the data (sort key is nullable-ridden).
+// History feed, paged: ended sessions only (the dashboard is where an
+// in-progress session lives), type filter applied server-side so paging
+// respects it. Offset paging + client-side dedupe by id is right-sized here;
+// keyset cursors become worth it when imports multiply the data (sort key is
+// nullable-ridden).
 export const listCompletedSessions = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => parseInput(listSessionsInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
-    const scope = data.typ
-      ? and(eq(sessions.athleteId, athleteId), eq(sessions.type, data.typ))
-      : eq(sessions.athleteId, athleteId);
+    const scope = and(
+      eq(sessions.athleteId, athleteId),
+      isNotNull(sessions.endedAt),
+      ...(data.typ ? [eq(sessions.type, data.typ)] : []),
+    );
     // One extra row answers "is there a next page" without a COUNT query.
     const rows = await db
       .select({
@@ -57,7 +60,10 @@ export const listCompletedSessions = createServerFn({ method: "GET" })
     const types =
       data.offset === 0
         ? (
-            await db.selectDistinct({ type: sessions.type }).from(sessions).where(eq(sessions.athleteId, athleteId))
+            await db
+              .selectDistinct({ type: sessions.type })
+              .from(sessions)
+              .where(and(eq(sessions.athleteId, athleteId), isNotNull(sessions.endedAt)))
           ).map((r) => r.type)
         : undefined;
 

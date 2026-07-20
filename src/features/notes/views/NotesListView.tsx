@@ -1,11 +1,20 @@
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { NotebookPen } from "lucide-react";
+import { getRouteApi, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { NotebookPen, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { noteParts } from "@/features/notes/lib/note-title";
-import { createNote } from "@/features/notes/server/notes";
+import { createNote, deleteNote } from "@/features/notes/server/notes";
 import { getErrorMessage } from "@/lib/error-message";
 import { SearchInput } from "@/shared/components/SearchInput";
 
@@ -16,9 +25,13 @@ const NOTE_DATE_FMT = new Intl.DateTimeFormat("pl-PL", { day: "numeric", month: 
 export function NotesListView() {
   const notes = route.useLoaderData();
   const navigate = useNavigate();
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Note picked for deletion — its title feeds the confirm dialog.
+  const [toDelete, setToDelete] = useState<{ id: string; title: string | null } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const q = query.trim().toLowerCase();
   const filtered = q ? notes.filter((n) => n.body.toLowerCase().includes(q)) : notes;
@@ -33,6 +46,21 @@ export function NotesListView() {
         setError(getErrorMessage(err, "Nie udało się utworzyć notatki."));
         setCreating(false);
       });
+  };
+
+  const handleDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      await deleteNote({ data: { noteId: toDelete.id } });
+      await router.invalidate();
+      setToDelete(null);
+    } catch (err) {
+      setError(getErrorMessage(err, "Nie udało się usunąć notatki."));
+      setToDelete(null);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -73,11 +101,11 @@ export function NotesListView() {
           {filtered.map((n) => {
             const { title, preview } = noteParts(n.body);
             return (
-              <li key={n.id} className="border-b last:border-b-0">
+              <li key={n.id} className="flex items-center border-b last:border-b-0">
                 <Link
                   to="/notes/$noteId"
                   params={{ noteId: n.id }}
-                  className="block px-4 py-3 transition-colors hover:bg-accent"
+                  className="block min-w-0 flex-1 py-3 pl-4 transition-colors hover:bg-accent"
                 >
                   <p className={`truncate font-semibold text-sm ${title ? "" : "text-muted-foreground"}`}>
                     {title ?? "Bez tytułu"}
@@ -87,11 +115,45 @@ export function NotesListView() {
                     {preview ? ` · ${preview}` : ""}
                   </p>
                 </Link>
+                <button
+                  type="button"
+                  aria-label={`Usuń notatkę: ${title ?? "Bez tytułu"}`}
+                  className="flex shrink-0 items-center self-stretch px-4 text-muted-foreground/70 transition-colors hover:text-destructive"
+                  onClick={() => setToDelete({ id: n.id, title })}
+                >
+                  <Trash2 className="size-4" />
+                </button>
               </li>
             );
           })}
         </ul>
       )}
+
+      <Dialog
+        open={toDelete !== null}
+        onOpenChange={(o) => {
+          if (!o && !deleting) setToDelete(null);
+        }}
+      >
+        <DialogContent mobileSheet>
+          <div className="mx-auto w-full max-w-md">
+            <DialogHeader>
+              <DialogTitle>Usunąć „{toDelete?.title ?? "Bez tytułu"}”?</DialogTitle>
+              <DialogDescription>Nie da się tego cofnąć.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2">
+              <Button variant="destructive" className="w-full" disabled={deleting} onClick={handleDelete}>
+                {deleting ? "Usuwam..." : "Tak, usuń"}
+              </Button>
+              <DialogClose asChild>
+                <Button variant="outline" className="w-full" disabled={deleting}>
+                  Anuluj
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

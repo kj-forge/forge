@@ -79,13 +79,12 @@ type RowValues = { reps: string; weightKg: string; durationSeconds: string; rpe:
 
 type RoundKind = "WARMUP" | "TOP_SET" | "BACK_OFF";
 
-// Same chips as the classic picker (VISIBLE_SET_KINDS), same spirit as
-// suggestKind: nothing logged → warm up; after a warm-up lap → top set;
-// otherwise mirror the previous lap (legacy WORK falls back to BACK_OFF).
+// Same chips as the classic picker (VISIBLE_SET_KINDS): nothing logged →
+// warm up; otherwise mirror the previous lap — warm-up rounds usually come
+// in series, so no auto-advance (legacy WORK falls back to BACK_OFF).
 function suggestRoundKind(lastLapKind: string | null): RoundKind {
   if (lastLapKind === null) return "WARMUP";
-  if (lastLapKind === "WARMUP") return "TOP_SET";
-  return lastLapKind === "TOP_SET" || lastLapKind === "BACK_OFF" ? lastLapKind : "BACK_OFF";
+  return lastLapKind === "WARMUP" || lastLapKind === "TOP_SET" || lastLapKind === "BACK_OFF" ? lastLapKind : "BACK_OFF";
 }
 
 // Seed a row from the movement's latest logged set (usually the previous
