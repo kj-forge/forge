@@ -1,6 +1,6 @@
 # ADR-0021: Training plans as unit libraries with weekday activation and per-date schedule overrides
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-07-19
 - **Deciders:** @kj-ninja
 - **Linear:** [FRG-19](https://linear.app/kj-forge/issue/FRG-19)

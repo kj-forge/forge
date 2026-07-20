@@ -968,11 +968,13 @@ export const trainingPlanUnits = pgTable(
   (t) => [index("training_plan_units_plan_order_idx").on(t.planId, t.orderIndex)],
 );
 
-// The ordered strength exercises of a unit — the sequence they'll appear in
-// when the unit seeds a new session. Mirrors block_movements (orderIndex,
-// exercise FK restrict).
-export const trainingPlanUnitExercises = pgTable(
-  "training_plan_unit_exercises",
+// The ordered STEPS of a unit — each materializes into one session_block on
+// session start. kind reuses blockKind but units only ever hold STRAIGHT_SETS
+// (workout step, 1..n exercises) or REST (informational break) — enforced in
+// zod, not a separate enum. A 2+-exercise step is a superset; there is no
+// SUPERSET kind — the shape is derived from the exercise count.
+export const trainingPlanUnitSteps = pgTable(
+  "training_plan_unit_steps",
   {
     id: uuid().primaryKey().defaultRandom(),
     athleteId: uuid()
@@ -982,13 +984,39 @@ export const trainingPlanUnitExercises = pgTable(
       .notNull()
       .references(() => trainingPlanUnits.id, { onDelete: "cascade" }),
     orderIndex: integer().notNull(),
+    kind: blockKind().notNull(),
+    // Planned rounds of a workout step ("Runda 2/4"); null = no target.
+    targetRounds: integer(),
+    // REST steps: planned break length.
+    durationSeconds: integer(),
+    note: text(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("training_plan_unit_steps_unit_idx").on(t.unitId, t.orderIndex)],
+);
+
+// The ordered exercises of one step — round order within the superset.
+// Mirrors block_movements (orderIndex, exercise FK restrict). Uniqueness is
+// per step, not per unit: the same exercise may appear in two steps.
+export const trainingPlanUnitStepExercises = pgTable(
+  "training_plan_unit_step_exercises",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    athleteId: uuid()
+      .notNull()
+      .references(() => athletes.id, { onDelete: "cascade" }),
+    stepId: uuid()
+      .notNull()
+      .references(() => trainingPlanUnitSteps.id, { onDelete: "cascade" }),
+    orderIndex: integer().notNull(),
     exerciseId: uuid()
       .notNull()
       .references(() => exercises.id, { onDelete: "restrict" }),
   },
   (t) => [
-    index("training_plan_unit_exercises_unit_idx").on(t.unitId, t.orderIndex),
-    uniqueIndex("training_plan_unit_exercises_unit_exercise_uq").on(t.unitId, t.exerciseId),
+    index("training_plan_unit_step_exercises_step_idx").on(t.stepId, t.orderIndex),
+    uniqueIndex("training_plan_unit_step_exercises_step_exercise_uq").on(t.stepId, t.exerciseId),
+    index("training_plan_unit_step_exercises_athlete_exercise_idx").on(t.athleteId, t.exerciseId),
   ],
 );
 

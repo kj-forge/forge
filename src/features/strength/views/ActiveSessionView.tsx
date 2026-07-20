@@ -6,36 +6,42 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DeleteSessionDrawer } from "@/features/strength/components/DeleteSessionDrawer";
+import { EndedStepCard } from "@/features/strength/components/EndedStepCard";
 import { EndSessionDrawer } from "@/features/strength/components/EndSessionDrawer";
-import { ExerciseDrawer } from "@/features/strength/components/ExerciseDrawer";
 import { ExercisePickerDrawer } from "@/features/strength/components/ExercisePickerDrawer";
 import { MovementRow } from "@/features/strength/components/MovementRow";
 import { NotesDrawer } from "@/features/strength/components/NotesDrawer";
-import { ViewOnlyExerciseDrawer } from "@/features/strength/components/ViewOnlyExerciseDrawer";
-import { addExerciseToSession } from "@/features/strength/server/movements";
+import { StepDrawer } from "@/features/strength/components/StepDrawer";
+import { RestStepRow, SupersetRow } from "@/features/strength/components/StepRows";
 import { createSession, deleteSession, endSession, updateSessionNotes } from "@/features/strength/server/sessions";
+import { addExerciseToStep, addStep } from "@/features/strength/server/steps";
 import { getErrorMessage } from "@/lib/error-message";
 import { StatusBadge } from "@/shared/components/StatusBadge";
+
+// What the exercise picker feeds when it confirms: a new single step, a new
+// superset step, or one more exercise for an existing step (morph).
+type PickerMode = { kind: "single" } | { kind: "multi" } | { kind: "morph"; blockId: string };
 
 const route = getRouteApi("/_shell/sessions/$sessionId");
 
 export function ActiveSessionView() {
-  const { session, movements } = route.useLoaderData();
+  const { session, steps } = route.useLoaderData();
+  const movements = steps.flatMap((s) => s.movements);
   const router = useRouter();
   const navigate = useNavigate();
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [picker, setPicker] = useState<PickerMode | null>(null);
   const [endOpen, setEndOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [copying, setCopying] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
-  // One drawer for the whole session, selected by movement id — lets it
-  // navigate across exercises (arrows/dots) without closing. Id, not index,
-  // so it survives router.invalidate() after add/remove.
-  const [openId, setOpenId] = useState<string | null>(null);
+  // One drawer for the whole session, selected by BLOCK id — lets it navigate
+  // across steps (arrows/dots) without closing. Id, not index, so it survives
+  // router.invalidate() after add/remove. Ended sessions keep the read-only
+  // per-exercise drawer, selected by movement id.
+  const [openBlockId, setOpenBlockId] = useState<string | null>(null);
 
   const isEnded = session.endedAt !== null;
-  const openMovement = movements.find((m) => m.id === openId) ?? null;
 
   // Same-day repeat of an ended session: new session cloned from this one's
   // exercise list (sets start empty; the drawer seeds weights from history).
@@ -69,17 +75,28 @@ export function ActiveSessionView() {
         </div>
       </div>
 
-      {movements.length === 0 ? (
+      {steps.length === 0 ? (
         <Card>
           <CardContent className="py-6 text-center text-muted-foreground text-sm">
-            Brak ćwiczeń. Dodaj pierwsze poniżej.
+            Brak ćwiczeń. Dodaj pojedyncze ćwiczenie albo obwód poniżej.
           </CardContent>
         </Card>
       ) : (
         <ul className="space-y-2">
-          {movements.map((m) => (
-            <li key={m.id}>
-              <MovementRow movement={m} isEnded={isEnded} onOpen={() => setOpenId(m.id)} />
+          {steps.map((step) => (
+            <li key={step.id}>
+              {isEnded ? (
+                // Results inline — an ended session is a summary, not a hub.
+                step.kind === "REST" ? null : (
+                  <EndedStepCard step={step} />
+                )
+              ) : step.kind === "REST" ? (
+                <RestStepRow step={step} onOpen={() => setOpenBlockId(step.id)} />
+              ) : step.movements.length === 1 ? (
+                <MovementRow movement={step.movements[0]} isEnded={isEnded} onOpen={() => setOpenBlockId(step.id)} />
+              ) : (
+                <SupersetRow step={step} isEnded={isEnded} onOpen={() => setOpenBlockId(step.id)} />
+              )}
             </li>
           ))}
         </ul>
@@ -116,9 +133,14 @@ export function ActiveSessionView() {
       <div className="sticky bottom-0 -mx-4 mt-auto space-y-2 border-t bg-background px-4 pt-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)-1.75rem))]">
         {!isEnded ? (
           <>
-            <Button type="button" variant="outline" className="w-full" onClick={() => setPickerOpen(true)}>
-              + Dodaj ćwiczenie
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant="outline" onClick={() => setPicker({ kind: "single" })}>
+                + Ćwiczenie
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setPicker({ kind: "multi" })}>
+                + Obwód
+              </Button>
+            </div>
             <Button type="button" className="w-full bg-ember shadow-ember" onClick={() => setEndOpen(true)}>
               Zakończ sesję
             </Button>
@@ -154,35 +176,38 @@ export function ActiveSessionView() {
         </button>
       </div>
 
-      {isEnded ? (
-        <ViewOnlyExerciseDrawer
-          open={openMovement !== null}
+      {!isEnded && (
+        <StepDrawer
+          steps={steps}
+          openId={openBlockId}
           onOpenChange={(o) => {
-            if (!o) setOpenId(null);
+            if (!o) setOpenBlockId(null);
           }}
-          movement={openMovement}
-          movements={movements}
-          onNavigate={setOpenId}
-        />
-      ) : (
-        <ExerciseDrawer
-          open={openMovement !== null}
-          onOpenChange={(o) => {
-            if (!o) setOpenId(null);
-          }}
-          movement={openMovement}
-          movements={movements}
-          onNavigate={setOpenId}
+          onNavigate={setOpenBlockId}
+          onAddToStep={(blockId) => setPicker({ kind: "morph", blockId })}
         />
       )}
 
       <ExercisePickerDrawer
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
+        open={picker !== null}
+        onOpenChange={(o) => {
+          if (!o) setPicker(null);
+        }}
+        multi={picker?.kind === "multi"}
+        title={picker?.kind === "morph" ? "Dodaj ćwiczenie do kroku" : undefined}
         onPicked={async (exerciseId) => {
-          await addExerciseToSession({ data: { sessionId: session.id, exerciseId } });
+          if (picker?.kind === "morph") {
+            await addExerciseToStep({ data: { blockId: picker.blockId, exerciseId } });
+          } else {
+            await addStep({ data: { sessionId: session.id, exerciseIds: [exerciseId] } });
+          }
           await router.invalidate();
-          setPickerOpen(false);
+          setPicker(null);
+        }}
+        onPickedMany={async (exerciseIds) => {
+          await addStep({ data: { sessionId: session.id, exerciseIds } });
+          await router.invalidate();
+          setPicker(null);
         }}
       />
 

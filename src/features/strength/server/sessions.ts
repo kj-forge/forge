@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, desc, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
-import { loadUnitExerciseIds } from "@/features/plan/server/queries";
+import { loadUnitSteps } from "@/features/plan/server/queries";
 import { SESSION_TYPES } from "@/features/strength/constants";
 import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
@@ -200,6 +200,8 @@ export const getSessionDetails = createServerFn({ method: "GET" })
     }
     if (!session) throw new Error("Nie znaleziono sesji.");
 
+    // Steps = ALL blocks in order. A 1-movement block renders the classic
+    // exercise view, 2+ the round view, kind=REST an informational page.
     const blocks = await db
       .select()
       .from(sessionBlocks)
@@ -220,7 +222,12 @@ export const getSessionDetails = createServerFn({ method: "GET" })
           })
           .from(blockMovements)
           .innerJoin(exercises, eq(blockMovements.exerciseId, exercises.id))
-          .where(eq(blockMovements.blockId, blocks[0].id))
+          .where(
+            inArray(
+              blockMovements.blockId,
+              blocks.map((b) => b.id),
+            ),
+          )
           .orderBy(blockMovements.orderIndex)
       : [];
 
@@ -250,18 +257,22 @@ export const getSessionDetails = createServerFn({ method: "GET" })
           movements.map((m) => m.exerciseId),
         );
 
+    const enrich = (m: (typeof movements)[number]) => {
+      const lastEntry = lastByKindMap.get(m.exerciseId);
+      return {
+        ...m,
+        sets: setsByMovement.get(m.id) ?? [],
+        lastByKind: lastEntry?.refs ?? ({} as LastByKind),
+        lastSession: lastEntry?.last ?? null,
+      };
+    };
+
     return {
       session,
-      block: blocks[0] ?? null,
-      movements: movements.map((m) => {
-        const lastEntry = lastByKindMap.get(m.exerciseId);
-        return {
-          ...m,
-          sets: setsByMovement.get(m.id) ?? [],
-          lastByKind: lastEntry?.refs ?? ({} as LastByKind),
-          lastSession: lastEntry?.last ?? null,
-        };
-      }),
+      steps: blocks.map((block) => ({
+        ...block,
+        movements: movements.filter((m) => m.blockId === block.id).map(enrich),
+      })),
     };
   });
 
@@ -287,18 +298,27 @@ const createSessionInput = z.object({
   fromUnitId: z.uuid().optional(),
 });
 
+// One step to materialize into a session_block (+ its ordered exercises).
+export interface SeedStep {
+  kind: "STRAIGHT_SETS" | "REST";
+  targetRounds: number | null;
+  durationSeconds: number | null;
+  // REST steps carry their instruction in the block notes.
+  note: string | null;
+  exerciseIds: string[];
+}
+
 interface RunCreateSessionArgs {
   athleteId: string;
   type: z.infer<typeof createSessionInput>["type"];
   date: string;
   fromTemplateSessionId?: string;
-  // Ordered exercise ids to seed the block with (from the plan day).
-  seedExerciseIds?: string[];
+  // Ordered steps to seed the session with (from the plan unit).
+  seedSteps?: SeedStep[];
 }
 
 interface CreateSessionResult {
   sessionId: string;
-  blockId: string;
 }
 
 // NOT exported — keeping it module-internal ensures the bundler can strip the
@@ -308,35 +328,59 @@ interface CreateSessionResult {
 // `DATABASE_URL is not set`. When we add integration tests, we'll re-export
 // behind a `serverOnly` wrapper or split into a server-only file.
 //
-// Atomic: session + 1 block (+ N movements if cloning template). All inserts
-// ROLLBACK together if any step fails. A fresh WebSocket pool is acquired
-// per call — Workers terminates idle sockets between requests, so module-
-// scope reuse is unsafe — and disposed in the finally block.
+// Atomic: session + step blocks (+ movements). All inserts ROLLBACK together
+// if any step fails. A fresh WebSocket pool is acquired per call — Workers
+// terminates idle sockets between requests, so module-scope reuse is unsafe —
+// and disposed in the finally block.
 async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessionResult> {
   const { db: tx_db, end } = await createPool();
   try {
     return await tx_db.transaction(async (tx) => {
-      // 1. Seed the EXERCISE LIST — either cloned from a template session
-      // (repeat) or from the day's plan (seedExerciseIds, resolved by the
-      // caller). Just exercises + order; per-set defaults are NOT copied — the
-      // drawer derives them at load time from the athlete's per-kind history
-      // (loadLastByKind), decoupling "what to train" from "how much".
-      const seedMovements = args.fromTemplateSessionId
-        ? await tx
-            .select({
-              exerciseId: blockMovements.exerciseId,
-              orderIndex: blockMovements.orderIndex,
-            })
-            .from(blockMovements)
-            .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
-            .where(
-              and(
-                eq(sessionBlocks.sessionId, args.fromTemplateSessionId),
-                eq(blockMovements.athleteId, args.athleteId),
-              ),
-            )
-            .orderBy(blockMovements.orderIndex)
-        : (args.seedExerciseIds ?? []).map((exerciseId, orderIndex) => ({ exerciseId, orderIndex }));
+      // 1. Seed the STEP STRUCTURE — either cloned from a template session
+      // (repeat: block rows + their movements) or materialized from the plan
+      // unit's steps (seedSteps, resolved by the caller). Exercises + order
+      // only; per-set defaults are NOT copied — the drawer derives them at
+      // load time from history (loadLastByKind), decoupling "what to train"
+      // from "how much". WORK-block notes are outcome commentary and are NOT
+      // cloned; REST notes are structural instructions and ARE.
+      let seedSteps: SeedStep[];
+      if (args.fromTemplateSessionId) {
+        const blocks = await tx
+          .select()
+          .from(sessionBlocks)
+          .where(
+            and(eq(sessionBlocks.sessionId, args.fromTemplateSessionId), eq(sessionBlocks.athleteId, args.athleteId)),
+          )
+          .orderBy(sessionBlocks.orderIndex);
+        const movementRows = blocks.length
+          ? await tx
+              .select({
+                blockId: blockMovements.blockId,
+                exerciseId: blockMovements.exerciseId,
+                orderIndex: blockMovements.orderIndex,
+              })
+              .from(blockMovements)
+              .where(
+                inArray(
+                  blockMovements.blockId,
+                  blocks.map((b) => b.id),
+                ),
+              )
+              .orderBy(blockMovements.orderIndex)
+          : [];
+        seedSteps = blocks
+          .map((b) => ({
+            kind: b.kind === "REST" ? ("REST" as const) : ("STRAIGHT_SETS" as const),
+            targetRounds: b.targetRounds,
+            durationSeconds: b.durationSeconds,
+            note: b.kind === "REST" ? b.notes : null,
+            exerciseIds: movementRows.filter((m) => m.blockId === b.id).map((m) => m.exerciseId),
+          }))
+          // A template's empty WORK blocks carry no information — skip them.
+          .filter((s) => s.kind === "REST" || s.exerciseIds.length > 0);
+      } else {
+        seedSteps = args.seedSteps ?? [];
+      }
 
       // 2. INSERT the session row.
       const [session] = await tx
@@ -350,31 +394,34 @@ async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessi
         })
         .returning({ id: sessions.id });
 
-      // 3. INSERT one block (strength is always a single STRAIGHT_SETS block in
-      // MVP — Hyrox / interval layouts will reuse this fn with a different kind).
-      const [block] = await tx
-        .insert(sessionBlocks)
-        .values({
-          athleteId: args.athleteId,
-          sessionId: session.id,
-          orderIndex: 0,
-          kind: "STRAIGHT_SETS",
-        })
-        .returning({ id: sessionBlocks.id });
-
-      // 4. Optionally INSERT the seeded movements (exercise + order only).
-      if (seedMovements.length > 0) {
-        await tx.insert(blockMovements).values(
-          seedMovements.map((m) => ({
+      // 3. INSERT the step blocks. A blank session gets none — the athlete
+      // builds steps ad hoc ("+ Ćwiczenie" / "+ Superseria").
+      for (const [orderIndex, step] of seedSteps.entries()) {
+        const [block] = await tx
+          .insert(sessionBlocks)
+          .values({
             athleteId: args.athleteId,
-            blockId: block.id,
-            orderIndex: m.orderIndex,
-            exerciseId: m.exerciseId,
-          })),
-        );
+            sessionId: session.id,
+            orderIndex,
+            kind: step.kind,
+            targetRounds: step.targetRounds,
+            durationSeconds: step.durationSeconds,
+            notes: step.note,
+          })
+          .returning({ id: sessionBlocks.id });
+        if (step.exerciseIds.length > 0) {
+          await tx.insert(blockMovements).values(
+            step.exerciseIds.map((exerciseId, i) => ({
+              athleteId: args.athleteId,
+              blockId: block.id,
+              orderIndex: i,
+              exerciseId,
+            })),
+          );
+        }
       }
 
-      return { sessionId: session.id, blockId: block.id };
+      return { sessionId: session.id };
     });
   } finally {
     await end();
@@ -385,10 +432,9 @@ export const createSession = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => parseInput(createSessionInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
-    // Resolve the unit's exercises server-side rather than trusting
-    // client-passed ids.
-    const seedExerciseIds = data.fromUnitId ? await loadUnitExerciseIds(athleteId, data.fromUnitId) : undefined;
-    return runCreateSession({ athleteId, ...data, seedExerciseIds });
+    // Resolve the unit's steps server-side rather than trusting client input.
+    const seedSteps = data.fromUnitId ? await loadUnitSteps(athleteId, data.fromUnitId) : undefined;
+    return runCreateSession({ athleteId, ...data, seedSteps });
   });
 
 const endSessionInput = z.object({

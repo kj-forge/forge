@@ -10,7 +10,8 @@ import {
   scheduleOverrides,
   trainingPlans,
   trainingPlanUnitDays,
-  trainingPlanUnitExercises,
+  trainingPlanUnitStepExercises,
+  trainingPlanUnitSteps,
   trainingPlanUnits,
 } from "../../../../db/schema";
 import { UNIT_INTENSITIES } from "../constants";
@@ -82,6 +83,20 @@ export const deletePlan = createServerFn({ method: "POST" })
 // ---------------------------------------------------------------------------
 // Unit CRUD
 
+// A unit step: a workout step (1..n exercises, optional round target) or a
+// REST break. Kind values are the blockKind subset units may hold.
+const unitStepInput = z
+  .object({
+    kind: z.enum(["STRAIGHT_SETS", "REST"]),
+    targetRounds: z.number().int().min(1).max(30).optional(),
+    durationSeconds: z.number().int().min(5).max(3600).optional(),
+    note: z.string().trim().max(500).optional(),
+    exerciseIds: z.array(z.uuid()).max(12).default([]),
+  })
+  .refine((s) => (s.kind === "REST" ? s.exerciseIds.length === 0 : s.exerciseIds.length > 0), {
+    message: "Krok treningowy musi mieć ćwiczenia, a przerwa nie może ich mieć.",
+  });
+
 const upsertUnitInput = z
   .object({
     planId: z.uuid(),
@@ -91,15 +106,19 @@ const upsertUnitInput = z
     intensity: z.enum(UNIT_INTENSITIES),
     training: z.string().trim().max(2000),
     goal: z.string().trim().max(500).optional(),
-    // Ordered strength exercises; only persisted for STRENGTH units.
-    exerciseIds: z.array(z.uuid()).max(30).default([]),
+    // Ordered steps; only persisted for STRENGTH units.
+    steps: z.array(unitStepInput).max(20).default([]),
   })
   .refine(
     (v) =>
-      !unitTrainingRequired(v.sessionType, v.sessionType === "STRENGTH" ? v.exerciseIds.length : 0) ||
-      v.training.length > 0,
+      !unitTrainingRequired(
+        v.sessionType,
+        v.sessionType === "STRENGTH" ? v.steps.reduce((n, s) => n + s.exerciseIds.length, 0) : 0,
+      ) || v.training.length > 0,
     { path: ["training"], message: "Trening jest wymagany, chyba że jednostka ma ćwiczenia siłowe." },
   );
+
+type UnitStepInput = z.infer<typeof unitStepInput>;
 
 interface RunUpsertUnitArgs {
   athleteId: string;
@@ -110,7 +129,7 @@ interface RunUpsertUnitArgs {
   intensity: (typeof UNIT_INTENSITIES)[number];
   training: string;
   goal: string | null;
-  exerciseIds: string[];
+  steps: UnitStepInput[];
 }
 
 // NOT exported — keeps the pool import out of the client bundle. Persisting
@@ -157,18 +176,33 @@ async function runUpsertUnit(args: RunUpsertUnitArgs): Promise<{ id: string }> {
         unitId = created.id;
       }
 
-      // Replace the ordered exercise list wholesale — simpler and race-free
-      // vs diffing. Non-strength unit ends up with none.
-      await tx.delete(trainingPlanUnitExercises).where(eq(trainingPlanUnitExercises.unitId, unitId));
-      if (args.exerciseIds.length > 0) {
-        await tx.insert(trainingPlanUnitExercises).values(
-          args.exerciseIds.map((exerciseId, orderIndex) => ({
+      // Replace the ordered steps wholesale — simpler and race-free vs
+      // diffing (cascade takes the step exercises). Non-strength unit ends
+      // up with none.
+      await tx.delete(trainingPlanUnitSteps).where(eq(trainingPlanUnitSteps.unitId, unitId));
+      for (const [orderIndex, step] of args.steps.entries()) {
+        const [created] = await tx
+          .insert(trainingPlanUnitSteps)
+          .values({
             athleteId: args.athleteId,
-            unitId: unitId as string,
+            unitId,
             orderIndex,
-            exerciseId,
-          })),
-        );
+            kind: step.kind,
+            targetRounds: step.targetRounds ?? null,
+            durationSeconds: step.durationSeconds ?? null,
+            note: step.note || null,
+          })
+          .returning({ id: trainingPlanUnitSteps.id });
+        if (step.exerciseIds.length > 0) {
+          await tx.insert(trainingPlanUnitStepExercises).values(
+            step.exerciseIds.map((exerciseId, i) => ({
+              athleteId: args.athleteId,
+              stepId: created.id,
+              orderIndex: i,
+              exerciseId,
+            })),
+          );
+        }
       }
       return { id: unitId };
     });
@@ -190,7 +224,7 @@ export const upsertUnit = createServerFn({ method: "POST" })
       intensity: data.intensity,
       training: data.training,
       goal: data.goal ? data.goal : null,
-      exerciseIds: data.sessionType === "STRENGTH" ? data.exerciseIds : [],
+      steps: data.sessionType === "STRENGTH" ? data.steps : [],
     });
   });
 

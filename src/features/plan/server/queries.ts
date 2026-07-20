@@ -8,7 +8,8 @@ import {
   sessions,
   trainingPlans,
   trainingPlanUnitDays,
-  trainingPlanUnitExercises,
+  trainingPlanUnitStepExercises,
+  trainingPlanUnitSteps,
   trainingPlanUnits,
 } from "../../../../db/schema";
 import {
@@ -22,23 +23,83 @@ import {
   weekStartIso,
 } from "../lib/schedule";
 
-async function loadExercisesByUnit(athleteId: string, unitIds: string[]) {
-  const byUnit = new Map<string, ScheduleExercise[]>();
+// Ordered step rows (+ joined exercises) of the given units, in one pass.
+// Steps drive both the flattened schedule display and session materialization.
+async function loadStepsByUnit(athleteId: string, unitIds: string[]) {
+  const byUnit = new Map<
+    string,
+    {
+      id: string;
+      kind: "STRAIGHT_SETS" | "REST";
+      targetRounds: number | null;
+      durationSeconds: number | null;
+      note: string | null;
+      exercises: ScheduleExercise[];
+    }[]
+  >();
   if (unitIds.length === 0) return byUnit;
-  const rows = await db
+
+  const stepRows = await db
     .select({
-      unitId: trainingPlanUnitExercises.unitId,
-      exerciseId: trainingPlanUnitExercises.exerciseId,
+      id: trainingPlanUnitSteps.id,
+      unitId: trainingPlanUnitSteps.unitId,
+      kind: trainingPlanUnitSteps.kind,
+      targetRounds: trainingPlanUnitSteps.targetRounds,
+      durationSeconds: trainingPlanUnitSteps.durationSeconds,
+      note: trainingPlanUnitSteps.note,
+    })
+    .from(trainingPlanUnitSteps)
+    .where(and(eq(trainingPlanUnitSteps.athleteId, athleteId), inArray(trainingPlanUnitSteps.unitId, unitIds)))
+    .orderBy(asc(trainingPlanUnitSteps.unitId), asc(trainingPlanUnitSteps.orderIndex));
+  if (stepRows.length === 0) return byUnit;
+
+  const exRows = await db
+    .select({
+      stepId: trainingPlanUnitStepExercises.stepId,
+      exerciseId: trainingPlanUnitStepExercises.exerciseId,
       namePl: exercises.namePl,
     })
-    .from(trainingPlanUnitExercises)
-    .innerJoin(exercises, eq(trainingPlanUnitExercises.exerciseId, exercises.id))
-    .where(and(eq(trainingPlanUnitExercises.athleteId, athleteId), inArray(trainingPlanUnitExercises.unitId, unitIds)))
-    .orderBy(asc(trainingPlanUnitExercises.unitId), asc(trainingPlanUnitExercises.orderIndex));
-  for (const row of rows) {
-    const arr = byUnit.get(row.unitId) ?? [];
+    .from(trainingPlanUnitStepExercises)
+    .innerJoin(exercises, eq(trainingPlanUnitStepExercises.exerciseId, exercises.id))
+    .where(
+      inArray(
+        trainingPlanUnitStepExercises.stepId,
+        stepRows.map((s) => s.id),
+      ),
+    )
+    .orderBy(asc(trainingPlanUnitStepExercises.stepId), asc(trainingPlanUnitStepExercises.orderIndex));
+  const exByStep = new Map<string, ScheduleExercise[]>();
+  for (const row of exRows) {
+    const arr = exByStep.get(row.stepId) ?? [];
     arr.push({ exerciseId: row.exerciseId, namePl: row.namePl });
-    byUnit.set(row.unitId, arr);
+    exByStep.set(row.stepId, arr);
+  }
+
+  for (const step of stepRows) {
+    const arr = byUnit.get(step.unitId) ?? [];
+    arr.push({
+      id: step.id,
+      kind: step.kind === "REST" ? "REST" : "STRAIGHT_SETS",
+      targetRounds: step.targetRounds,
+      durationSeconds: step.durationSeconds,
+      note: step.note,
+      exercises: exByStep.get(step.id) ?? [],
+    });
+    byUnit.set(step.unitId, arr);
+  }
+  return byUnit;
+}
+
+// Flattened exercise list per unit — the schedule/dashboard display shape
+// (unchanged consumers); order = step order, then order within the step.
+async function loadExercisesByUnit(athleteId: string, unitIds: string[]) {
+  const byUnit = new Map<string, ScheduleExercise[]>();
+  const steps = await loadStepsByUnit(athleteId, unitIds);
+  for (const [unitId, unitSteps] of steps) {
+    byUnit.set(
+      unitId,
+      unitSteps.flatMap((s) => s.exercises),
+    );
   }
   return byUnit;
 }
@@ -220,7 +281,7 @@ export async function loadPlans(athleteId: string) {
     .where(eq(trainingPlanUnitDays.athleteId, athleteId))
     .orderBy(asc(trainingPlanUnitDays.dayOfWeek));
 
-  const exByUnit = await loadExercisesByUnit(
+  const stepsByUnit = await loadStepsByUnit(
     athleteId,
     unitRows.map((u) => u.id),
   );
@@ -235,11 +296,16 @@ export async function loadPlans(athleteId: string) {
     ...plan,
     units: unitRows
       .filter((u) => u.planId === plan.id)
-      .map(({ planId: _planId, ...u }) => ({
-        ...u,
-        days: daysByUnit.get(u.id) ?? [],
-        exercises: exByUnit.get(u.id) ?? [],
-      })),
+      .map(({ planId: _planId, ...u }) => {
+        const steps = stepsByUnit.get(u.id) ?? [];
+        return {
+          ...u,
+          days: daysByUnit.get(u.id) ?? [],
+          steps,
+          // Flattened for compact displays (library preview, activation).
+          exercises: steps.flatMap((s) => s.exercises),
+        };
+      }),
   }));
 }
 
@@ -278,14 +344,16 @@ export async function loadStartableUnits(athleteId: string) {
     .filter((u) => u.exercises.length > 0);
 }
 
-// Ordered exercise ids of one unit — used to seed a new session. Scoped by
-// athlete; any owned unit is seedable regardless of its plan's status, which
-// preserves the "run any unit on any day" flexibility.
-export async function loadUnitExerciseIds(athleteId: string, unitId: string): Promise<string[]> {
-  const rows = await db
-    .select({ exerciseId: trainingPlanUnitExercises.exerciseId })
-    .from(trainingPlanUnitExercises)
-    .where(and(eq(trainingPlanUnitExercises.athleteId, athleteId), eq(trainingPlanUnitExercises.unitId, unitId)))
-    .orderBy(asc(trainingPlanUnitExercises.orderIndex));
-  return rows.map((r) => r.exerciseId);
+// Ordered steps of one unit in the seed shape createSession materializes.
+// Scoped by athlete; any owned unit is seedable regardless of its plan's
+// status, which preserves the "run any unit on any day" flexibility.
+export async function loadUnitSteps(athleteId: string, unitId: string) {
+  const byUnit = await loadStepsByUnit(athleteId, [unitId]);
+  return (byUnit.get(unitId) ?? []).map((s) => ({
+    kind: s.kind,
+    targetRounds: s.targetRounds,
+    durationSeconds: s.durationSeconds,
+    note: s.note,
+    exerciseIds: s.exercises.map((e) => e.exerciseId),
+  }));
 }
