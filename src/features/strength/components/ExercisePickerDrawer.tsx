@@ -86,6 +86,7 @@ function ExercisePickerForm({
   const [error, setError] = useState<string | null>(null);
   // Multi mode: selection survives searches (name kept for the chips row).
   const [selected, setSelected] = useState<{ id: string; namePl: string }[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Monotonic counter: each search reserves a seq; after the await we apply the
   // result only if no newer search has started. On flaky networks an earlier,
@@ -128,9 +129,18 @@ function ExercisePickerForm({
     );
   };
 
+  // Multi mode adds several exercises in a row — after each pick the search
+  // resets and the input regains focus, ready for the next name.
+  const resetSearch = () => {
+    setQuery("");
+    setResults([]);
+    inputRef.current?.focus();
+  };
+
   const handlePick = async (ex: { id: string; namePl: string }) => {
     if (multi) {
       toggleSelected(ex);
+      resetSearch();
       return;
     }
     setError(null);
@@ -177,9 +187,8 @@ function ExercisePickerForm({
       });
       if (multi) {
         toggleSelected({ id: created.id, namePl });
-        setQuery("");
-        setResults([]);
         setPickingId(null);
+        resetSearch();
         return;
       }
       await onPicked(created.id);
@@ -199,6 +208,7 @@ function ExercisePickerForm({
         onChange={(e) => handleSearch(e.target.value)}
         maxLength={50}
         autoFocus
+        ref={inputRef}
         disabled={pickingId !== null}
       />
 
