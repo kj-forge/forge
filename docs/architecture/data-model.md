@@ -38,7 +38,7 @@
 
 | Entity | Purpose | Key fields |
 |---|---|---|
-| `sessions` | One training session (or rehab session). | id, athlete_id, date, started_at, ended_at, type (`STRENGTH` \| `HYROX_EMOM` \| `HYROX_AMRAP` \| `HYROX_WORK` \| `CARDIO` \| `COMPROMISED_RUN` \| `REHAB` \| `MOBILITY`), title, location, notes (TEXT, markdown), source (`MANUAL` \| `IMPORTED`), ai_summary (TEXT, markdown — populated by weekly summary job in P1), created_at, updated_at |
+| `sessions` | One training session (or rehab session). | id, athlete_id, date, started_at, ended_at, type (`STRENGTH` \| `HYROX` \| `RUNNING` \| `OTHER` \| `HYROX_EMOM` \| `HYROX_AMRAP` \| `HYROX_WORK` \| `CARDIO` \| `COMPROMISED_RUN` \| `REHAB` \| `MOBILITY`), title, location, notes (TEXT, markdown), source (`MANUAL` \| `IMPORTED`), ai_summary (TEXT, markdown — populated by weekly summary job in P1), created_at, updated_at |
 | `session_blocks` | A block within a session. EMOM = 1 block, AMRAP finisher = 1 block, strength session = 1 block per exercise, Hyrox WORK = multiple. | id, session_id, order_index, kind (`STRAIGHT_SETS` \| `EMOM` \| `AMRAP` \| `WORK_INTERVAL` \| `REST`), duration_seconds, work_seconds, rest_seconds, target_rounds, notes |
 | `block_movements` | A movement within a block. For strength: one row per exercise (with sets below). For EMOM/AMRAP: one row per movement in the rotation. | id, block_id, order_index, exercise_id, target_reps, target_weight_kg, target_duration_seconds, target_distance_m, target_calories, rpe_cap |
 | `sets` | Concrete set log (the thing user enters quick-log style). | id, block_movement_id, set_number, reps, weight_kg, duration_seconds, distance_m, calories, rpe, is_warmup, notes |
