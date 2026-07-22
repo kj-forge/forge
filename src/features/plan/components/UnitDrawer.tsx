@@ -99,11 +99,26 @@ function UnitDrawerBody({
       : steps.reduce((n, s) => n + s.exercises.length, 0);
 
   const onSubmit = form.handleSubmit(async (values) => {
+    // Switching a unit's type would silently drop the other editor's declared
+    // content (targets, rest) on save — force an explicit cleanup instead.
+    const persistedHasSteps = (unit?.steps ?? []).some((s) => s.exercises.length > 0);
+    if (unit && persistedHasSteps && values.sessionType !== (unit.sessionType as UnitFormValues["sessionType"])) {
+      form.setError("root.serverError", {
+        type: "manual",
+        message:
+          "Zmiana typu jednostki z zadeklarowanymi krokami usunęłaby ich zawartość. Usuń kroki przed zmianą typu.",
+      });
+      return;
+    }
     // Cross-field rules the schema can't see (steps are local state): a unit
     // without strength content needs written training, and a workout step
     // can't be empty.
     if (unitTrainingRequired(values.sessionType, totalExercises) && values.training.trim().length === 0) {
-      form.setError("training", { type: "manual", message: "Wpisz opis albo dodaj ćwiczenia siłowe." });
+      form.setError("training", {
+        type: "manual",
+        message:
+          values.sessionType === "HYROX" ? "Wpisz opis albo dodaj stacje." : "Wpisz opis albo dodaj ćwiczenia siłowe.",
+      });
       return;
     }
     if (

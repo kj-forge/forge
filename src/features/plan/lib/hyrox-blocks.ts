@@ -92,8 +92,14 @@ export function validateHyroxBlocks(drafts: HyroxBlockDraft[]): string | null {
       if (restSeconds < 5 || restSeconds > 3600) return `${label}: przerwa musi mieścić się w 5 s – 60 min.`;
     }
     for (const s of b.stations) {
-      if (s.target && (!Number.isInteger(Number(s.target)) || Number(s.target) < 1))
+      if (!s.target) continue;
+      const target = Number(s.target);
+      if (!Number.isInteger(target) || target < 1)
         return `${label}: target stacji „${s.namePl}” musi być dodatnią liczbą całkowitą.`;
+      if (s.defaultUnit === "REPS" && target > 1000)
+        return `${label}: target stacji „${s.namePl}” może wynosić najwyżej 1000 powtórzeń.`;
+      if (s.defaultUnit === "DISTANCE" && target > 50000)
+        return `${label}: target stacji „${s.namePl}” może wynosić najwyżej 50 000 m.`;
     }
   }
   return null;

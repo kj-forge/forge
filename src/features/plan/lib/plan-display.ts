@@ -5,11 +5,12 @@ type TrainingLabelInput = {
 };
 
 // The headline shown where a unit's training would go: the written text if
-// any, else "Trening siłowy" for a strength unit (the exercise list is the
-// content), else null so the caller renders its own empty state ("—" / a
-// "brak aktywności" message).
+// any, else "Trening siłowy" / "Trening Hyrox" for a strength/Hyrox unit (the
+// exercise list is the content), else null so the caller renders its own
+// empty state ("—" / a "brak aktywności" message).
 export function unitTrainingLabel(entry: TrainingLabelInput): string | null {
   if (entry.training.trim().length > 0) return entry.training;
   if (entry.sessionType === "STRENGTH" && entry.exercises.length > 0) return "Trening siłowy";
+  if (entry.sessionType === "HYROX" && entry.exercises.length > 0) return "Trening Hyrox";
   return null;
 }

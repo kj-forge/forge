@@ -67,6 +67,9 @@ export function HyroxBlocksEditor({ blocks, onChange, allExercises, onError }: H
                       inputMode="numeric"
                       decimalScale={0}
                       allowNegative={false}
+                      isAllowed={(v) =>
+                        v.value === "" || Number(v.value) <= (station.defaultUnit === "REPS" ? 1000 : 50000)
+                      }
                       value={station.target}
                       valueIsNumericString
                       onValueChange={(v) =>

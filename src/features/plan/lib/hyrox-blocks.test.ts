@@ -89,4 +89,10 @@ describe("validateHyroxBlocks", () => {
   test("requires at least one block", () => {
     expect(validateHyroxBlocks([])).toMatch(/blok/i);
   });
+  test("rejects targets above unit maxima", () => {
+    expect(validateHyroxBlocks([block({ stations: [station({ defaultUnit: "REPS", target: "1001" })] })])).toMatch(
+      /najwyżej 1000/,
+    );
+    expect(validateHyroxBlocks([block({ stations: [station({ target: "50001" })] })])).toMatch(/najwyżej 50 000/);
+  });
 });
