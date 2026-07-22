@@ -7,7 +7,12 @@ import { createExercise } from "@/features/strength/server/exercises";
 import { getErrorMessage } from "@/lib/error-message";
 import { Spinner } from "@/shared/components/Spinner";
 
-export type ExerciseOption = { id: string; namePl: string; aliases: string[] };
+export type ExerciseOption = {
+  id: string;
+  namePl: string;
+  aliases: string[];
+  defaultUnit: "REPS" | "TIME" | "DISTANCE" | "CALORIES";
+};
 export type PickedExercise = { exerciseId: string; namePl: string };
 
 // Search + inline create over the exercise catalogue: each confirmed pick
