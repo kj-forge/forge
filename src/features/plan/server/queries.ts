@@ -374,7 +374,12 @@ export async function loadUnitSteps(athleteId: string, unitId: string) {
     kind: s.kind,
     targetRounds: s.targetRounds,
     durationSeconds: s.durationSeconds,
+    restSeconds: s.restSeconds,
     note: s.note,
-    exerciseIds: s.exercises.map((e) => e.exerciseId),
+    exercises: s.exercises.map((e) => ({
+      exerciseId: e.exerciseId,
+      targetReps: e.targetReps,
+      targetDistanceM: e.targetDistanceM,
+    })),
   }));
 }

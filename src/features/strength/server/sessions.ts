@@ -309,9 +309,11 @@ export interface SeedStep {
   kind: "STRAIGHT_SETS" | "REST";
   targetRounds: number | null;
   durationSeconds: number | null;
+  // Hyrox blocks: declared rest between rounds.
+  restSeconds: number | null;
   // REST steps carry their instruction in the block notes.
   note: string | null;
-  exerciseIds: string[];
+  exercises: { exerciseId: string; targetReps: number | null; targetDistanceM: number | null }[];
 }
 
 interface RunCreateSessionArgs {
@@ -364,6 +366,8 @@ async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessi
                 blockId: blockMovements.blockId,
                 exerciseId: blockMovements.exerciseId,
                 orderIndex: blockMovements.orderIndex,
+                targetReps: blockMovements.targetReps,
+                targetDistanceM: blockMovements.targetDistanceM,
               })
               .from(blockMovements)
               .where(
@@ -379,11 +383,14 @@ async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessi
             kind: b.kind === "REST" ? ("REST" as const) : ("STRAIGHT_SETS" as const),
             targetRounds: b.targetRounds,
             durationSeconds: b.durationSeconds,
+            restSeconds: b.restSeconds,
             note: b.kind === "REST" ? b.notes : null,
-            exerciseIds: movementRows.filter((m) => m.blockId === b.id).map((m) => m.exerciseId),
+            exercises: movementRows
+              .filter((m) => m.blockId === b.id)
+              .map((m) => ({ exerciseId: m.exerciseId, targetReps: m.targetReps, targetDistanceM: m.targetDistanceM })),
           }))
           // A template's empty WORK blocks carry no information — skip them.
-          .filter((s) => s.kind === "REST" || s.exerciseIds.length > 0);
+          .filter((s) => s.kind === "REST" || s.exercises.length > 0);
       } else {
         seedSteps = args.seedSteps ?? [];
       }
@@ -412,16 +419,19 @@ async function runCreateSession(args: RunCreateSessionArgs): Promise<CreateSessi
             kind: step.kind,
             targetRounds: step.targetRounds,
             durationSeconds: step.durationSeconds,
+            restSeconds: step.restSeconds,
             notes: step.note,
           })
           .returning({ id: sessionBlocks.id });
-        if (step.exerciseIds.length > 0) {
+        if (step.exercises.length > 0) {
           await tx.insert(blockMovements).values(
-            step.exerciseIds.map((exerciseId, i) => ({
+            step.exercises.map((ex, i) => ({
               athleteId: args.athleteId,
               blockId: block.id,
               orderIndex: i,
-              exerciseId,
+              exerciseId: ex.exerciseId,
+              targetReps: ex.targetReps,
+              targetDistanceM: ex.targetDistanceM,
             })),
           );
         }
