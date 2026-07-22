@@ -9,6 +9,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRoo
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { UNIT_INTENSITIES, UNIT_INTENSITY_LABEL } from "@/features/plan/constants";
+import {
+  type HyroxBlockDraft,
+  hyroxDraftsFromUnitSteps,
+  hyroxStepsPayload,
+  validateHyroxBlocks,
+} from "@/features/plan/lib/hyrox-blocks";
 import { type UnitFormValues, unitFormSchema, unitTrainingRequired } from "@/features/plan/lib/unit-form";
 import { deleteUnit, upsertUnit } from "@/features/plan/server/plan";
 import type { PlanUnit } from "@/features/plan/types";
@@ -16,6 +22,7 @@ import { PICKABLE_SESSION_TYPES, SESSION_TYPE_LABEL_PL } from "@/features/streng
 import { getErrorMessage } from "@/lib/error-message";
 import { Spinner } from "@/shared/components/Spinner";
 import type { ExerciseOption } from "./ExerciseListPicker";
+import { HyroxBlocksEditor } from "./HyroxBlocksEditor";
 import { draftsFromUnitSteps, type UnitStepDraft, UnitStepsEditor } from "./UnitStepsEditor";
 
 export type UnitEditing = {
@@ -80,10 +87,16 @@ function UnitDrawerBody({
   // The ordered step structure lives outside RHF (nested ordered lists are
   // awkward as field arrays); merged into the payload at save.
   const [steps, setSteps] = useState<UnitStepDraft[]>(() => draftsFromUnitSteps(unit?.steps));
+  const [hyroxBlocks, setHyroxBlocks] = useState<HyroxBlockDraft[]>(() =>
+    unit?.sessionType === "HYROX" ? hyroxDraftsFromUnitSteps(unit?.steps) : [],
+  );
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const totalExercises = steps.reduce((n, s) => n + s.exercises.length, 0);
+  const totalExercises =
+    sessionType === "HYROX"
+      ? hyroxBlocks.reduce((n, b) => n + b.stations.length, 0)
+      : steps.reduce((n, s) => n + s.exercises.length, 0);
 
   const onSubmit = form.handleSubmit(async (values) => {
     // Cross-field rules the schema can't see (steps are local state): a unit
@@ -103,6 +116,13 @@ function UnitDrawerBody({
       });
       return;
     }
+    if (values.sessionType === "HYROX") {
+      const hyroxError = validateHyroxBlocks(hyroxBlocks);
+      if (hyroxError && totalExercises > 0) {
+        form.setError("root.serverError", { type: "manual", message: hyroxError });
+        return;
+      }
+    }
     try {
       await upsertUnit({
         data: {
@@ -113,20 +133,25 @@ function UnitDrawerBody({
           intensity: values.intensity,
           training: values.training,
           goal: values.goal || undefined,
-          steps: steps.map((s) =>
-            s.kind === "REST"
-              ? {
-                  kind: "REST" as const,
-                  durationSeconds: s.durationMinutes ? Math.round(Number(s.durationMinutes) * 60) : undefined,
-                  note: s.note.trim() || undefined,
-                  exercises: [],
-                }
-              : {
-                  kind: "STRAIGHT_SETS" as const,
-                  targetRounds: s.exercises.length > 1 && s.targetRounds ? Number(s.targetRounds) : undefined,
-                  exercises: s.exercises.map((e) => ({ exerciseId: e.exerciseId })),
-                },
-          ),
+          steps:
+            values.sessionType === "HYROX"
+              ? totalExercises > 0
+                ? hyroxStepsPayload(hyroxBlocks)
+                : []
+              : steps.map((s) =>
+                  s.kind === "REST"
+                    ? {
+                        kind: "REST" as const,
+                        durationSeconds: s.durationMinutes ? Math.round(Number(s.durationMinutes) * 60) : undefined,
+                        note: s.note.trim() || undefined,
+                        exercises: [],
+                      }
+                    : {
+                        kind: "STRAIGHT_SETS" as const,
+                        targetRounds: s.exercises.length > 1 && s.targetRounds ? Number(s.targetRounds) : undefined,
+                        exercises: s.exercises.map((e) => ({ exerciseId: e.exerciseId })),
+                      },
+                ),
         },
       });
       await router.invalidate();
@@ -288,6 +313,18 @@ function UnitDrawerBody({
               <UnitStepsEditor
                 steps={steps}
                 onChange={setSteps}
+                allExercises={allExercises}
+                onError={(message) => form.setError("root.serverError", { type: "server", message })}
+              />
+            </div>
+          )}
+
+          {sessionType === "HYROX" && (
+            <div className="space-y-2">
+              <span className="font-medium text-sm leading-none">Bloki i stacje</span>
+              <HyroxBlocksEditor
+                blocks={hyroxBlocks}
+                onChange={setHyroxBlocks}
                 allExercises={allExercises}
                 onError={(message) => form.setError("root.serverError", { type: "server", message })}
               />
