@@ -10,11 +10,12 @@
 > - [ADR-0012](../adr/ADR-0012-drizzle-conventions.md) — Drizzle conventions (snake_case, UUID, denormalization, no soft delete)
 > - [ADR-0013](../adr/ADR-0013-monetization-ready-schema.md) — Monetization-ready additions (locale/tz/subscription, public profile, audit_log, consent, referrals)
 > - [ADR-0014](../adr/ADR-0014-observability-and-llm-gateway.md) — Observability stack + `ai_usage` table
+> - [ADR-0023](../adr/ADR-0023-hyrox-training-data-model.md) — Hyrox segment timeline, repeated stations, type-driven view
 
 ## Design principles
 
 1. **Multi-tenant from day 1.** Every owned row has `athlete_id`. `users` is the auth principal; `athletes` are profiles linked to users (1:1 default, expandable). UI is single-user in P0; coach linking activates in P1. See ADR-0010.
-2. **Block model for sessions.** A `session` doesn't directly own sets — it owns `blocks` which own `block_movements` which own `sets`. This lets one schema model strength (1 block, many movements, many sets), Hyrox EMOM (1 block, many movements, time-boxed), AMRAP finisher (1 block, multiple rounds), compromised run, etc. See ADR-0009.
+2. **Block model for sessions.** A `session` doesn't directly own sets — it owns `blocks` which own `block_movements` which own `sets`. This lets one schema model strength (1 block, many movements, many sets), Hyrox EMOM (1 block, many movements, time-boxed), AMRAP finisher (1 block, multiple rounds), compromised run, etc. See ADR-0009. A block's movements may repeat the same exercise (a Hyrox round can run "500 m Run" twice) — `block_movements` and `training_plan_unit_step_exercises` intentionally carry no unique `(block/step, exercise)` index; the double-add guard for the ordinary "add exercise" flow lives in application code instead. Declared per-round rest between stations lives on the block (`session_blocks.rest_seconds`, `training_plan_unit_steps.rest_seconds`) alongside optional per-movement targets (`block_movements.target_reps`, `training_plan_unit_step_exercises.target_reps`/`target_distance_m`). See ADR-0023.
 3. **Rehab is a separate domain, not a workout.** `rehab_sessions` and `protocols` live in their own tables because rehab cadence (daily check-in, Protokół A/B), constraints (post-injury), and questions (pain trends vs load) are different from training.
 4. **Wellness metrics are daily, wide, and few.** No TimescaleDB — ~5 metrics × years = thousands of rows. Wide `daily_metrics` table + BRIN index on `(athlete_id, day)` is sufficient.
 5. **Long-form reflection is TEXT (markdown), not VARCHAR.** AI extracts structured insights into a separate jsonb column; the raw text stays editable.
@@ -42,6 +43,15 @@
 | `block_movements` | A movement within a block. For strength: one row per exercise (with sets below). For EMOM/AMRAP: one row per movement in the rotation. | id, block_id, order_index, exercise_id, target_reps, target_weight_kg, target_duration_seconds, target_distance_m, target_calories, rpe_cap |
 | `sets` | Concrete set log (the thing user enters quick-log style). | id, block_movement_id, set_number, reps, weight_kg, duration_seconds, distance_m, calories, rpe, is_warmup, notes |
 | `cardio_segments` | For cardio sessions: per-modality segment within a single session. Lets us model "15 min Ski + 30 min Row" in one session. | id, session_id, order_index, modality (`RUN` \| `BIKE` \| `ROW` \| `SKI` \| `SWIM` \| `MIXED`), zone (`Z1` \| `Z2` \| `Z3` \| `Z4` \| `Z5` \| `THRESHOLD` \| `COMPROMISED`), duration_seconds, distance_m, avg_hr, max_hr, avg_pace_sec_per_km, avg_power_w, notes |
+
+### Training plan unit steps (declared in the plan, materialize into blocks)
+
+| Entity | Purpose | Key fields |
+|---|---|---|
+| `training_plan_unit_steps` | One step of a plan unit — materializes 1:1 into a `session_blocks` row when a session is started from the unit. | id, unit_id, order_index, kind, target_rounds, duration_seconds, **rest_seconds** (Hyrox: declared rest between rounds), note |
+| `training_plan_unit_step_exercises` | The exercises of one step, in round order. Materializes into `block_movements`. | id, step_id, order_index, exercise_id, **target_reps**, **target_distance_m** (Hyrox station targets, optional and unit-dependent) |
+
+No unique index on `(step_id, exercise_id)` — see the repeated-exercise note above. ADR-0021 (plan units), ADR-0022 (steps/rounds), ADR-0023 (Hyrox targets/rest, dropped unique indexes).
 
 ### Exercises & Hyrox stations (reference data)
 

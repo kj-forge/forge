@@ -30,6 +30,7 @@ ADRs are immutable once accepted. To change a decision, write a new ADR that sup
 | [ADR-0020](ADR-0020-per-user-exercise-catalogue.md) | Per-user exercise catalogue (copy-on-provision) | Proposed |
 | [ADR-0021](ADR-0021-training-plans-with-units-and-schedule-overrides.md) | Training plans as unit libraries with weekday activation and per-date schedule overrides | Accepted |
 | [ADR-0022](ADR-0022-session-steps-and-rounds.md) | Session steps & rounds — circuit logging on multi-block sessions | Proposed |
+| [ADR-0023](ADR-0023-hyrox-training-data-model.md) | Hyrox training data model — segment timeline, repeated stations, type-driven view | Proposed |
 
 ## How to add an ADR
 
