@@ -109,6 +109,12 @@ export const addExerciseToStep = createServerFn({ method: "POST" })
       .where(and(eq(sessionBlocks.id, data.blockId), eq(sessionBlocks.athleteId, athleteId)));
     if (!block) throw new Error("Nie znaleziono kroku.");
 
+    const [existing] = await db
+      .select({ id: blockMovements.id })
+      .from(blockMovements)
+      .where(and(eq(blockMovements.blockId, data.blockId), eq(blockMovements.exerciseId, data.exerciseId)));
+    if (existing) throw new Error("To ćwiczenie jest już w tym kroku.");
+
     const [row] = await db
       .insert(blockMovements)
       .values({
@@ -117,9 +123,7 @@ export const addExerciseToStep = createServerFn({ method: "POST" })
         orderIndex: sql`coalesce((select max(order_index) + 1 from block_movements where block_id = ${data.blockId}), 0)`,
         exerciseId: data.exerciseId,
       })
-      .onConflictDoNothing({ target: [blockMovements.blockId, blockMovements.exerciseId] })
       .returning({ id: blockMovements.id });
-    if (!row) throw new Error("To ćwiczenie jest już w tym kroku.");
     return { blockMovementId: row.id };
   });
 
