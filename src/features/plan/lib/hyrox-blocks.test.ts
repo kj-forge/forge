@@ -84,6 +84,7 @@ describe("validateHyroxBlocks", () => {
     expect(validateHyroxBlocks([block({ stations: [] })])).toMatch(/stacj/i);
     expect(validateHyroxBlocks([block({ rounds: "" })])).toMatch(/rund/i);
     expect(validateHyroxBlocks([block({ restMinutes: "90" })])).toMatch(/przerw/i);
+    expect(validateHyroxBlocks([block({ stations: [station({ target: "1.5" })] })])).toMatch(/musi być dodatnią/);
   });
   test("requires at least one block", () => {
     expect(validateHyroxBlocks([])).toMatch(/blok/i);
