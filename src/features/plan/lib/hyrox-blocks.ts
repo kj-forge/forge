@@ -93,7 +93,7 @@ export function validateHyroxBlocks(drafts: HyroxBlockDraft[]): string | null {
     }
     for (const s of b.stations) {
       if (s.target && (!Number.isInteger(Number(s.target)) || Number(s.target) < 1))
-        return `${label}: target stacji „${s.namePl}" musi być dodatnią liczbą całkowitą.`;
+        return `${label}: target stacji „${s.namePl}” musi być dodatnią liczbą całkowitą.`;
     }
   }
   return null;
