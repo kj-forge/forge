@@ -68,8 +68,8 @@ export const addStep = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => parseInput(addStepInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
-    // Dedupe defensively — the (blockId, exerciseId) unique index would abort
-    // the whole insert otherwise.
+    // Dedupe defensively — a double-picked exercise in one submit would
+    // otherwise insert duplicate rows.
     const exerciseIds = [...new Set(data.exerciseIds)];
     return runAddStep({ athleteId, sessionId: data.sessionId, exerciseIds });
   });
