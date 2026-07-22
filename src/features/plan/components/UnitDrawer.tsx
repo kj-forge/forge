@@ -119,12 +119,12 @@ function UnitDrawerBody({
                   kind: "REST" as const,
                   durationSeconds: s.durationMinutes ? Math.round(Number(s.durationMinutes) * 60) : undefined,
                   note: s.note.trim() || undefined,
-                  exerciseIds: [],
+                  exercises: [],
                 }
               : {
                   kind: "STRAIGHT_SETS" as const,
                   targetRounds: s.exercises.length > 1 && s.targetRounds ? Number(s.targetRounds) : undefined,
-                  exerciseIds: s.exercises.map((e) => e.exerciseId),
+                  exercises: s.exercises.map((e) => ({ exerciseId: e.exerciseId })),
                 },
           ),
         },
