@@ -528,6 +528,8 @@ export const blockMovements = pgTable(
     exerciseId: uuid()
       .notNull()
       .references(() => exercises.id, { onDelete: "restrict" }),
+    // Hyrox stations: declared target (reps or meters, by exercise unit).
+    targetReps: integer(),
     targetDurationSeconds: integer(),
     targetDistanceM: integer(),
     targetCalories: integer(),
@@ -539,11 +541,6 @@ export const blockMovements = pgTable(
     index("block_movements_exercise_idx").on(t.exerciseId),
     // Powers "this athlete's progression on this exercise" queries.
     index("block_movements_athlete_exercise_idx").on(t.athleteId, t.exerciseId, t.createdAt.desc()),
-    // One row per exercise per block — server-side guard against the double-add
-    // race (slow network / double-tap). addExerciseToSession relies on this via
-    // INSERT … ON CONFLICT. Existing duplicates are removed in the same
-    // migration before the index is created.
-    uniqueIndex("block_movements_block_exercise_uq").on(t.blockId, t.exerciseId),
   ],
 );
 
@@ -989,6 +986,8 @@ export const trainingPlanUnitSteps = pgTable(
     targetRounds: integer(),
     // REST steps: planned break length.
     durationSeconds: integer(),
+    // Hyrox blocks: declared rest between rounds.
+    restSeconds: integer(),
     note: text(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
@@ -996,8 +995,9 @@ export const trainingPlanUnitSteps = pgTable(
 );
 
 // The ordered exercises of one step — round order within the superset.
-// Mirrors block_movements (orderIndex, exercise FK restrict). Uniqueness is
-// per step, not per unit: the same exercise may appear in two steps.
+// Mirrors block_movements (orderIndex, exercise FK restrict).
+// A Hyrox sequence may repeat an exercise (e.g. Bieg twice per round), so
+// there is no per-step uniqueness.
 export const trainingPlanUnitStepExercises = pgTable(
   "training_plan_unit_step_exercises",
   {
@@ -1012,10 +1012,12 @@ export const trainingPlanUnitStepExercises = pgTable(
     exerciseId: uuid()
       .notNull()
       .references(() => exercises.id, { onDelete: "restrict" }),
+    // Hyrox stations: declared target (reps or meters, by exercise unit).
+    targetReps: integer(),
+    targetDistanceM: integer(),
   },
   (t) => [
     index("training_plan_unit_step_exercises_step_idx").on(t.stepId, t.orderIndex),
-    uniqueIndex("training_plan_unit_step_exercises_step_exercise_uq").on(t.stepId, t.exerciseId),
     index("training_plan_unit_step_exercises_athlete_exercise_idx").on(t.athleteId, t.exerciseId),
   ],
 );

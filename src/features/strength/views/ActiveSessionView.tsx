@@ -13,6 +13,7 @@ import { MovementRow } from "@/features/strength/components/MovementRow";
 import { NotesDrawer } from "@/features/strength/components/NotesDrawer";
 import { StepDrawer } from "@/features/strength/components/StepDrawer";
 import { RestStepRow, SupersetRow } from "@/features/strength/components/StepRows";
+import { SESSION_TYPE_LABEL_PL_ADJ } from "@/features/strength/constants";
 import { createSession, deleteSession, endSession, updateSessionNotes } from "@/features/strength/server/sessions";
 import { addExerciseToStep, addStep } from "@/features/strength/server/steps";
 import { getErrorMessage } from "@/lib/error-message";
@@ -68,7 +69,9 @@ export function ActiveSessionView() {
       </header>
 
       <div className="space-y-2">
-        <h1 className="font-bold text-2xl tracking-tight">Sesja siłowa</h1>
+        <h1 className="font-bold text-2xl tracking-tight">
+          {SESSION_TYPE_LABEL_PL_ADJ[session.type] ? `Sesja ${SESSION_TYPE_LABEL_PL_ADJ[session.type]}` : "Sesja"}
+        </h1>
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <StatusBadge endedAt={session.endedAt} />
           {movements.length > 0 && <span>· {movements.length} ćwiczeń</span>}
@@ -78,7 +81,9 @@ export function ActiveSessionView() {
       {steps.length === 0 ? (
         <Card>
           <CardContent className="py-6 text-center text-muted-foreground text-sm">
-            Brak ćwiczeń. Dodaj pojedyncze ćwiczenie albo obwód poniżej.
+            {session.type === "HYROX"
+              ? "Trening Hyrox deklarujesz w planie. Wystartuj sesję z planu, żeby dostać bloki i stoper."
+              : "Brak ćwiczeń. Dodaj pojedyncze ćwiczenie albo obwód poniżej."}
           </CardContent>
         </Card>
       ) : (
@@ -133,14 +138,16 @@ export function ActiveSessionView() {
       <div className="sticky bottom-0 -mx-4 mt-auto space-y-2 border-t bg-background px-4 pt-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)-1.75rem))]">
         {!isEnded ? (
           <>
-            <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" onClick={() => setPicker({ kind: "single" })}>
-                + Ćwiczenie
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setPicker({ kind: "multi" })}>
-                + Obwód
-              </Button>
-            </div>
+            {session.type !== "HYROX" && (
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="outline" onClick={() => setPicker({ kind: "single" })}>
+                  + Ćwiczenie
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setPicker({ kind: "multi" })}>
+                  + Obwód
+                </Button>
+              </div>
+            )}
             <Button type="button" className="w-full bg-ember shadow-ember" onClick={() => setEndOpen(true)}>
               Zakończ sesję
             </Button>

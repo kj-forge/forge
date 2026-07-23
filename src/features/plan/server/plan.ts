@@ -83,6 +83,12 @@ export const deletePlan = createServerFn({ method: "POST" })
 // ---------------------------------------------------------------------------
 // Unit CRUD
 
+const stepExerciseInput = z.object({
+  exerciseId: z.uuid(),
+  targetReps: z.number().int().min(1).max(1000).optional(),
+  targetDistanceM: z.number().int().min(1).max(50000).optional(),
+});
+
 // A unit step: a workout step (1..n exercises, optional round target) or a
 // REST break. Kind values are the blockKind subset units may hold.
 const unitStepInput = z
@@ -90,10 +96,11 @@ const unitStepInput = z
     kind: z.enum(["STRAIGHT_SETS", "REST"]),
     targetRounds: z.number().int().min(1).max(30).optional(),
     durationSeconds: z.number().int().min(5).max(3600).optional(),
+    restSeconds: z.number().int().min(5).max(3600).optional(),
     note: z.string().trim().max(500).optional(),
-    exerciseIds: z.array(z.uuid()).max(12).default([]),
+    exercises: z.array(stepExerciseInput).max(12).default([]),
   })
-  .refine((s) => (s.kind === "REST" ? s.exerciseIds.length === 0 : s.exerciseIds.length > 0), {
+  .refine((s) => (s.kind === "REST" ? s.exercises.length === 0 : s.exercises.length > 0), {
     message: "Krok treningowy musi mieć ćwiczenia, a przerwa nie może ich mieć.",
   });
 
@@ -106,14 +113,16 @@ const upsertUnitInput = z
     intensity: z.enum(UNIT_INTENSITIES),
     training: z.string().trim().max(2000),
     goal: z.string().trim().max(500).optional(),
-    // Ordered steps; only persisted for STRENGTH units.
+    // Ordered steps; persisted for STRENGTH and HYROX units.
     steps: z.array(unitStepInput).max(20).default([]),
   })
   .refine(
     (v) =>
       !unitTrainingRequired(
         v.sessionType,
-        v.sessionType === "STRENGTH" ? v.steps.reduce((n, s) => n + s.exerciseIds.length, 0) : 0,
+        v.sessionType === "STRENGTH" || v.sessionType === "HYROX"
+          ? v.steps.reduce((n, s) => n + s.exercises.length, 0)
+          : 0,
       ) || v.training.length > 0,
     { path: ["training"], message: "Trening jest wymagany, chyba że jednostka ma ćwiczenia siłowe." },
   );
@@ -190,16 +199,19 @@ async function runUpsertUnit(args: RunUpsertUnitArgs): Promise<{ id: string }> {
             kind: step.kind,
             targetRounds: step.targetRounds ?? null,
             durationSeconds: step.durationSeconds ?? null,
+            restSeconds: step.restSeconds ?? null,
             note: step.note || null,
           })
           .returning({ id: trainingPlanUnitSteps.id });
-        if (step.exerciseIds.length > 0) {
+        if (step.exercises.length > 0) {
           await tx.insert(trainingPlanUnitStepExercises).values(
-            step.exerciseIds.map((exerciseId, i) => ({
+            step.exercises.map((ex, i) => ({
               athleteId: args.athleteId,
               stepId: created.id,
               orderIndex: i,
-              exerciseId,
+              exerciseId: ex.exerciseId,
+              targetReps: ex.targetReps ?? null,
+              targetDistanceM: ex.targetDistanceM ?? null,
             })),
           );
         }
@@ -224,7 +236,7 @@ export const upsertUnit = createServerFn({ method: "POST" })
       intensity: data.intensity,
       training: data.training,
       goal: data.goal ? data.goal : null,
-      steps: data.sessionType === "STRENGTH" ? data.steps : [],
+      steps: data.sessionType === "STRENGTH" || data.sessionType === "HYROX" ? data.steps : [],
     });
   });
 

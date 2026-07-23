@@ -113,6 +113,13 @@
       "when": 1784478831113,
       "tag": "0015_calm_green_goblin",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1784747376189,
+      "tag": "0016_panoramic_hobgoblin",
+      "breakpoints": true
     }
   ]
 }
