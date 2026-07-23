@@ -81,9 +81,7 @@ export function ActiveSessionView() {
       {steps.length === 0 ? (
         <Card>
           <CardContent className="py-6 text-center text-muted-foreground text-sm">
-            {session.type === "HYROX"
-              ? "Trening Hyrox deklarujesz w planie. Wystartuj sesję z planu, żeby dostać bloki i stoper."
-              : "Brak ćwiczeń. Dodaj pojedyncze ćwiczenie albo obwód poniżej."}
+            Brak ćwiczeń. Dodaj pojedyncze ćwiczenie albo obwód poniżej.
           </CardContent>
         </Card>
       ) : (
@@ -138,16 +136,14 @@ export function ActiveSessionView() {
       <div className="sticky bottom-0 -mx-4 mt-auto space-y-2 border-t bg-background px-4 pt-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)-1.75rem))]">
         {!isEnded ? (
           <>
-            {session.type !== "HYROX" && (
-              <div className="grid grid-cols-2 gap-2">
-                <Button type="button" variant="outline" onClick={() => setPicker({ kind: "single" })}>
-                  + Ćwiczenie
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setPicker({ kind: "multi" })}>
-                  + Obwód
-                </Button>
-              </div>
-            )}
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant="outline" onClick={() => setPicker({ kind: "single" })}>
+                + Ćwiczenie
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setPicker({ kind: "multi" })}>
+                + Obwód
+              </Button>
+            </div>
             <Button type="button" className="w-full bg-ember shadow-ember" onClick={() => setEndOpen(true)}>
               Zakończ sesję
             </Button>
