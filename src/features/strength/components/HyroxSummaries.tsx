@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteSessionDrawer } from "@/features/strength/components/DeleteSessionDrawer";
+import { blockLetter, formatMs } from "@/features/strength/components/HyroxLiveScreens";
 import { NotesDrawer } from "@/features/strength/components/NotesDrawer";
 import type { HyroxLive } from "@/features/strength/components/useHyroxLive";
 import {
@@ -15,19 +16,6 @@ import {
   roundMs,
   roxMs,
 } from "@/features/strength/lib/hyrox-timer";
-
-function blockLetter(blockIndex: number): string {
-  return String.fromCharCode(65 + blockIndex);
-}
-
-// Duplicated from HyroxLiveScreens on purpose — that file exports only the
-// screens, not its formatting helpers.
-function formatMs(ms: number): string {
-  const totalSeconds = Math.floor(Math.max(0, ms) / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-}
 
 function SyncErrorBar({ syncError }: { syncError: string | null }) {
   if (!syncError) return null;

@@ -115,7 +115,7 @@ export function HyroxSessionView() {
     );
   }
 
-  const finishStationCount = live.plan[live.state.blockIndex]?.stations.length ?? 0;
+  const finishStationCount = live.plan.reduce((n, b) => n + b.stations.length, 0);
 
   return (
     <>

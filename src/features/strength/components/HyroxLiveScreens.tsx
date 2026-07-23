@@ -14,11 +14,11 @@ import {
   runningMs,
 } from "@/features/strength/lib/hyrox-timer";
 
-function blockLetter(blockIndex: number): string {
+export function blockLetter(blockIndex: number): string {
   return String.fromCharCode(65 + blockIndex);
 }
 
-function formatMs(ms: number): string {
+export function formatMs(ms: number): string {
   const totalSeconds = Math.floor(Math.max(0, ms) / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
