@@ -107,7 +107,7 @@ Motywy: oba (tokeny Żaru kuźni); ember nigdy jako kolor tekstu body; ikony luc
 ## Obsługa błędów
 
 - Utrata sieci w trakcie: trening liczy dalej (stan lokalny autorytatywny), zapisy dosyłane kolejką; komunikat dopiero po powtarzających się porażkach.
-- Zabita karta / restart telefonu: rehydracja z `localStorage` — wraca dokładny stan (z pauzą ustawioną, jeśli była).
+- Zabita karta / restart telefonu: rehydracja z DB wznawia od następnej stacji niedokończonej rundy (segmenty sprzed pada zachowane, bieżący segment przepada); `localStorage` nadal wznawia dokładny stan.
 - Podwójny flush (retry po timeout, który jednak doszedł): idempotencja przez unikalny indeks.
 - Wejście w aktywną sesję Hyrox z innego urządzenia: v1 poza zakresem (jeden telefon); stan żyje lokalnie + w zapisanych rundach.
 

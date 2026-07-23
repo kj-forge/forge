@@ -101,15 +101,19 @@ function handleTap(state: HyroxTimerState, plan: HyroxBlockPlan[], atMs: number)
 
   switch (state.phase) {
     case "idle": {
+      // Resumes at whatever stationIndex the state already carries (0 for a
+      // fresh block, or a rehydrated mid-round position) — never reset here.
+      if (plan.length === 0 || !block || block.stations.length === 0) return state;
+      const station = block.stations[state.stationIndex];
       const segments = openSeg(
         state.segments,
         "STATION",
         state.blockIndex,
         state.round,
-        block.stations[0].blockMovementId,
+        station.blockMovementId,
         vnow(state, atMs),
       );
-      return { ...state, phase: "station", stationIndex: 0, segments };
+      return { ...state, phase: "station", segments };
     }
     case "station": {
       const closed = closeTail(state.segments, state, atMs);
@@ -119,7 +123,7 @@ function handleTap(state: HyroxTimerState, plan: HyroxBlockPlan[], atMs: number)
         return { ...state, phase: "rox", segments };
       }
       const rounds = effectiveRounds(state, plan, state.blockIndex);
-      if (state.round === rounds) {
+      if (state.round >= rounds) {
         return { ...state, phase: "blockDone", segments: closed };
       }
       // REST carries the roundNumber of the round it closes, not the next one.
@@ -204,6 +208,7 @@ function handleEndBlockEarly(state: HyroxTimerState, atMs: number): HyroxTimerSt
 }
 
 function handleExtraRound(state: HyroxTimerState, atMs: number): HyroxTimerState {
+  // Undo after extraRound leaves extraRounds incremented (accepted): endBlockEarly is the escape hatch.
   if (state.phase !== "blockDone") return state;
   const extraRounds = { ...state.extraRounds, [state.blockIndex]: (state.extraRounds[state.blockIndex] ?? 0) + 1 };
   const segments = openSeg(state.segments, "REST", state.blockIndex, state.round, null, vnow(state, atMs));
@@ -232,14 +237,16 @@ export function hyroxTimerReducer(
 }
 
 export function rehydrateFromSegments(plan: HyroxBlockPlan[], persisted: PersistedSegment[]): HyroxTimerState {
-  if (persisted.length === 0) return initialTimerState();
-
   const blockIndexOf = (blockId: string) => plan.findIndex((b) => b.blockId === blockId);
+  // Assumes the loader delivers segments ordered by (blockId, orderIndex) —
+  // required so "the last entry" below is the last-touched block/position.
+  const known = persisted.filter((p) => blockIndexOf(p.blockId) !== -1);
+  if (known.length === 0) return initialTimerState();
 
   // No wall-clock data survives a crash: closed segments get a synthetic
   // cumulative startMs (per block) since only their durationMs is ever read.
   const offsets: Record<number, number> = {};
-  const segments: LiveSegment[] = persisted.map((p) => {
+  const segments: LiveSegment[] = known.map((p) => {
     const blockIndex = blockIndexOf(p.blockId);
     const startMs = offsets[blockIndex] ?? 0;
     offsets[blockIndex] = startMs + p.durationMs;
@@ -254,36 +261,42 @@ export function rehydrateFromSegments(plan: HyroxBlockPlan[], persisted: Persist
     };
   });
 
-  const lastSeg = persisted[persisted.length - 1];
+  const lastSeg = known[known.length - 1];
   const blockIndex = blockIndexOf(lastSeg.blockId);
   const block = plan[blockIndex];
-  const blockSegs = persisted.filter((p) => blockIndexOf(p.blockId) === blockIndex);
+  const blockSegs = known.filter((p) => blockIndexOf(p.blockId) === blockIndex);
   const maxRound = Math.max(...blockSegs.map((s) => s.roundNumber));
-  const stationCountForMaxRound = blockSegs.filter((s) => s.roundNumber === maxRound && s.kind === "STATION").length;
-  const maxRoundComplete = stationCountForMaxRound === block.stations.length;
-  const isFinalRound = maxRound === block.targetRounds;
+  const completedStations = blockSegs.filter((s) => s.roundNumber === maxRound && s.kind === "STATION").length;
+  const roundComplete = completedStations === block.stations.length;
+  const extra = Math.max(0, maxRound - block.targetRounds);
+  const extraRounds: Record<number, number> = extra > 0 ? { [blockIndex]: extra } : {};
+  const blockComplete = roundComplete && maxRound >= block.targetRounds + extra;
 
   let phase: HyroxPhase;
   let round: number;
-  if (maxRoundComplete && isFinalRound) {
+  let stationIndex: number;
+  if (blockComplete) {
     phase = "blockDone";
     round = maxRound;
-  } else if (maxRoundComplete) {
+    stationIndex = 0;
+  } else if (roundComplete) {
     phase = "idle";
     round = maxRound + 1;
+    stationIndex = 0;
   } else {
-    // Round in progress at crash time: lost open segment discarded, position
-    // reverts to this round's boundary (last FULLY completed round + 1).
+    // Mid-round crash: resume at the next station boundary, not a round
+    // replay — the pending rox/running segment at crash time is dropped.
     phase = "idle";
     round = maxRound;
+    stationIndex = completedStations;
   }
 
   return {
     phase,
     blockIndex,
     round,
-    stationIndex: 0,
-    extraRounds: {},
+    stationIndex,
+    extraRounds,
     segments,
     persistedCount: segments.length,
     pausedAtMs: null,

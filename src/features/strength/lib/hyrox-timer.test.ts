@@ -8,6 +8,7 @@ import {
   type HyroxTimerState,
   hyroxTimerReducer,
   initialTimerState,
+  type PersistedSegment,
   rehydrateFromSegments,
   restRemainingMs,
   roundMs,
@@ -319,5 +320,124 @@ describe("rehydrateFromSegments", () => {
     const s = rehydrateFromSegments(plan2, persisted);
     expect(s.blockIndex).toBe(1);
     expect(s.phase).toBe("blockDone");
+  });
+});
+
+describe("rehydrateFromSegments — partial and extra rounds", () => {
+  const r1: PersistedSegment[] = [
+    {
+      blockId: "blk-a",
+      roundNumber: 1,
+      orderIndex: 0,
+      kind: "STATION",
+      blockMovementId: "bm-burpee",
+      durationMs: 90_000,
+    },
+    { blockId: "blk-a", roundNumber: 1, orderIndex: 1, kind: "ROX_ZONE", blockMovementId: null, durationMs: 8_000 },
+    {
+      blockId: "blk-a",
+      roundNumber: 1,
+      orderIndex: 2,
+      kind: "STATION",
+      blockMovementId: "bm-run",
+      durationMs: 150_000,
+    },
+    { blockId: "blk-a", roundNumber: 1, orderIndex: 3, kind: "ROX_ZONE", blockMovementId: null, durationMs: 9_000 },
+    { blockId: "blk-a", roundNumber: 1, orderIndex: 4, kind: "STATION", blockMovementId: "bm-wb", durationMs: 120_000 },
+    { blockId: "blk-a", roundNumber: 1, orderIndex: 5, kind: "REST", blockMovementId: null, durationMs: 118_000 },
+  ];
+  test("mid-round crash resumes at the next station without double counting", () => {
+    const persisted = [
+      ...r1,
+      {
+        blockId: "blk-a",
+        roundNumber: 2,
+        orderIndex: 6,
+        kind: "STATION" as const,
+        blockMovementId: "bm-burpee",
+        durationMs: 95_000,
+      },
+      {
+        blockId: "blk-a",
+        roundNumber: 2,
+        orderIndex: 7,
+        kind: "ROX_ZONE" as const,
+        blockMovementId: null,
+        durationMs: 9_000,
+      },
+    ];
+    const s = rehydrateFromSegments(plan2, persisted);
+    expect(s.phase).toBe("idle");
+    expect(s.round).toBe(2);
+    expect(s.stationIndex).toBe(1);
+    expect(s.persistedCount).toBe(8);
+    const next = hyroxTimerReducer(s, plan2, { type: "tap", atMs: 1_000 });
+    expect(next.phase).toBe("station");
+    expect(next.stationIndex).toBe(1);
+    const tail = next.segments[next.segments.length - 1];
+    expect(tail.orderIndex).toBe(8);
+    expect(tail.roundNumber).toBe(2);
+    expect(roundMs(next, 1_000, 0, 2)).toBe(104_000);
+  });
+  test("persisted extra round rehydrates to blockDone with extraRounds reconstructed", () => {
+    const extraRoundSegs = [2, 3].flatMap((r, i) => [
+      {
+        blockId: "blk-a",
+        roundNumber: r,
+        orderIndex: 6 + i * 6,
+        kind: "STATION" as const,
+        blockMovementId: "bm-burpee",
+        durationMs: 90_000,
+      },
+      {
+        blockId: "blk-a",
+        roundNumber: r,
+        orderIndex: 7 + i * 6,
+        kind: "ROX_ZONE" as const,
+        blockMovementId: null,
+        durationMs: 8_000,
+      },
+      {
+        blockId: "blk-a",
+        roundNumber: r,
+        orderIndex: 8 + i * 6,
+        kind: "STATION" as const,
+        blockMovementId: "bm-run",
+        durationMs: 150_000,
+      },
+      {
+        blockId: "blk-a",
+        roundNumber: r,
+        orderIndex: 9 + i * 6,
+        kind: "ROX_ZONE" as const,
+        blockMovementId: null,
+        durationMs: 9_000,
+      },
+      {
+        blockId: "blk-a",
+        roundNumber: r,
+        orderIndex: 10 + i * 6,
+        kind: "STATION" as const,
+        blockMovementId: "bm-wb",
+        durationMs: 120_000,
+      },
+      {
+        blockId: "blk-a",
+        roundNumber: r,
+        orderIndex: 11 + i * 6,
+        kind: "REST" as const,
+        blockMovementId: null,
+        durationMs: 60_000,
+      },
+    ]);
+    const s = rehydrateFromSegments(plan2, [...r1, ...extraRoundSegs]);
+    expect(s.phase).toBe("blockDone");
+    expect(effectiveRounds(s, plan2, 0)).toBe(3);
+  });
+  test("segments with unknown blockId are ignored", () => {
+    const s = rehydrateFromSegments(plan2, [
+      { blockId: "blk-zombie", roundNumber: 1, orderIndex: 0, kind: "STATION", blockMovementId: "x", durationMs: 1000 },
+    ]);
+    expect(s).toEqual(initialTimerState());
   });
 });

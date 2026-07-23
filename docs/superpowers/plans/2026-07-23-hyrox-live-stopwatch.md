@@ -130,7 +130,7 @@ export type HyroxTimerEvent =
   | { type: "extraRound"; atMs: number } | { type: "markSaved"; count: number };
 export function initialTimerState(): HyroxTimerState;
 export function hyroxTimerReducer(state: HyroxTimerState, plan: HyroxBlockPlan[], event: HyroxTimerEvent): HyroxTimerState;
-export function rehydrateFromSegments(plan: HyroxBlockPlan[], persisted: PersistedSegment[]): HyroxTimerState; // crash recovery without localStorage: positioned at next round boundary
+export function rehydrateFromSegments(plan: HyroxBlockPlan[], persisted: PersistedSegment[]): HyroxTimerState; // crash recovery without localStorage: positioned at the next station of the unfinished round
 export interface PersistedSegment { blockId: string; roundNumber: number; orderIndex: number; kind: LiveSegment["kind"]; blockMovementId: string | null; durationMs: number }
 // selectors (all pure, atMs-in):
 export function canUndo(state: HyroxTimerState): boolean;
@@ -151,7 +151,7 @@ Semantyka przejść (port 1:1 z silnika makiety, z ADR-owym niuansem REST):
 - `endBlockEarly`: tylko w fazie rest → domyka REST → blockDone.
 - `extraRound`: tylko w blockDone → `extraRounds[block]++` → otwiera REST (roundNumber = ostatnia ukończona runda) → faza rest.
 - `markSaved`: `persistedCount = max(persistedCount, count)`.
-- `rehydrateFromSegments`: wszystkie przekazane segmenty jako domknięte i persisted; pozycja = następna nierozpoczęta runda bloku z ostatniego segmentu (faza idle jeśli blok nietknięty; blockDone jeśli rundy komplet; w przeciwnym razie faza rest z natychmiast domkniętym... NIE — bez syntetycznych segmentów: faza "idle-like" per blok → ustaw `phase: "blockDone"` gdy komplet rund, inaczej `phase: "idle"` z `blockIndex` bieżącego bloku i `round` = ostatnia pełna runda + 1; ekran idle pokaże „wznowienie od rundy N” bo `round > 1`). Utracony niedomknięty segment przepada świadomie (spec: crash na innym urządzeniu = powrót do granicy zapisu).
+- `rehydrateFromSegments` (zdecydowane na code review, nadpisuje wcześniejszy opis "następna runda"): rehydracja z DB wznawia od następnej stacji niedokończonej rundy (segmenty sprzed pada zachowane, bieżący segment przepada); `localStorage` nadal wznawia dokładny stan. Wszystkie przekazane segmenty (odfiltrowane po nieznanym `blockId`; brak znanych → `initialTimerState()`) trafiają do `segments` jako domknięte i persisted (`persistedCount = segments.length`). Blok/pozycja = ostatni dotknięty blok (ostatni segment w tablicy); `completedStations` = liczba `STATION` w `maxRound` tego bloku. Jeśli `completedStations < stations.length` (runda w trakcie w momencie crasha) → `phase: "idle"`, `round: maxRound`, `stationIndex: completedStations` (bez replayu rundy — ogon/rox z chwili crasha przepada świadomie). Jeśli runda kompletna: `extra = max(0, maxRound - targetRounds)` odtwarza `extraRounds[blockIndex]`; `maxRound >= targetRounds + extra` → `phase: "blockDone"`, inaczej `phase: "idle"`, `round: maxRound + 1`, `stationIndex: 0`.
 
 - [ ] **Step 1: Testy (failing)** — `hyrox-timer.test.ts`, port scenariuszy harnessu + nowe brzegi. Plan bazowy testów (helper `plan2` = Blok A: 3 stacje × 2 rundy, rest 120 s; Blok B: 1 stacja × 3 rundy, rest 60 s; `tick` = helper trzymający `t` i dispatchujący z rosnącym `atMs`):
 
