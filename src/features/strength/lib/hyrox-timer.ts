@@ -1,5 +1,52 @@
 // Pure Hyrox live-session stopwatch reducer. No wall-clock reads: every event
 // carries atMs (epoch ms) and pause freezes a virtual clock derived from it.
+//
+// Map of the machine below (`tap` is the only forward driver of phase;
+// undo/pauseToggle/extraRound/endBlockEarly/markSaved are annotated as notes
+// because they either move backward in time, don't touch phase at all, or
+// only apply from one specific phase — see docs/learning/hyrox-live-timing.md
+// §8 for the same thing as a grep-able event→transition table).
+//
+// ```mermaid
+// stateDiagram-v2
+//     [*] --> idle
+//     idle --> station: tap (opens STATION)
+//     station --> rox: tap (not last station in block)
+//     station --> rest: tap (last station, round < effectiveRounds)
+//     station --> blockDone: tap (last station, round >= effectiveRounds)
+//     rox --> station: tap (next stationIndex, opens STATION)
+//     rest --> station: tap (opens STATION for round + 1)
+//     blockDone --> idle: tap (blockIndex + 1 < plan.length)
+//     blockDone --> done: tap (last block)
+//     blockDone --> rest: extraRound (opens a new REST for the current round)
+//     rest --> blockDone: endBlockEarly (closes the open REST early)
+//     done --> done: tap (no-op)
+//
+//     note right of rest
+//         REST's roundNumber is the round it CLOSES, not the
+//         one that follows: REST after round 1 carries
+//         roundNumber = 1, even though the STATION opened by
+//         the next tap starts round = 2. rehydrateFromSegments
+//         and saveHyroxSegments both depend on this.
+//     end note
+//
+//     note right of station
+//         undo (no edge above - it moves backward) reopens the
+//         most recently CLOSED segment and sets phase back to
+//         match its kind (STATION/ROX_ZONE/REST -> station/rox/
+//         rest). canUndo() blocks it once that segment's index
+//         is < persistedCount (already flushed to the server)
+//         or belongs to a previous block - the undo boundary is
+//         always the persisted/unpersisted line, never earlier.
+//     end note
+//
+//     note left of idle
+//         pauseToggle only freezes/thaws the virtual clock
+//         (vnow) - phase never changes. markSaved only advances
+//         persistedCount (the already-flushed prefix of
+//         segments) - phase never changes there either.
+//     end note
+// ```
 
 export type HyroxPhase = "idle" | "station" | "rox" | "rest" | "blockDone" | "done";
 
