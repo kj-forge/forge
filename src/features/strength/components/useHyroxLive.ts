@@ -155,9 +155,16 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
   // in flight; if so, mark one fewer as saved. Accepted residue: the server
   // keeps the pre-undo duration for that segment (insert-ignore contract on
   // (blockId, roundNumber, orderIndex)), local state simply stays consistent.
+  // Clamped to the closed prefix: two undos in one in-flight flush can shrink
+  // segments below count-1, so `segments[count-1]` alone isn't enough — never
+  // mark more than what's actually closed right now.
   function safeMarkSavedCount(count: number): number {
-    const reopened = stateRef.current.segments[count - 1];
-    return reopened && reopened.durationMs === null ? count - 1 : count;
+    const segments = stateRef.current.segments;
+    const reopened = segments[count - 1];
+    const adjustedCount = reopened && reopened.durationMs === null ? count - 1 : count;
+    const firstOpenIndex = segments.findIndex((s) => s.durationMs === null);
+    const closedPrefixLen = firstOpenIndex === -1 ? segments.length : firstOpenIndex;
+    return Math.min(adjustedCount, closedPrefixLen);
   }
 
   async function runFlush() {
@@ -230,6 +237,12 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
           await sentinel?.release();
           return;
         }
+        // The browser can release the lock on its own (e.g. tab backgrounded)
+        // without us calling .release() — null the ref then so the
+        // visibilitychange reacquire doesn't see a stale sentinel and bail.
+        sentinel?.addEventListener("release", () => {
+          if (wakeLockRef.current === sentinel) wakeLockRef.current = null;
+        });
         wakeLockRef.current = sentinel ?? null;
       } catch {
         // Unsupported or refused — no-op.
@@ -257,6 +270,15 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
             void sentinel.release().catch(() => {});
             return;
           }
+          // The acquire effect may have already stored a fresh sentinel while
+          // this one was resolving — don't clobber it, release the redundant one.
+          if (wakeLockRef.current !== null) {
+            void sentinel.release().catch(() => {});
+            return;
+          }
+          sentinel.addEventListener("release", () => {
+            if (wakeLockRef.current === sentinel) wakeLockRef.current = null;
+          });
           wakeLockRef.current = sentinel;
         })
         .catch(() => {
