@@ -151,6 +151,15 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
     void runFlush();
   }
 
+  // Undo can reopen the just-flushed segment while the save request is still
+  // in flight; if so, mark one fewer as saved. Accepted residue: the server
+  // keeps the pre-undo duration for that segment (insert-ignore contract on
+  // (blockId, roundNumber, orderIndex)), local state simply stays consistent.
+  function safeMarkSavedCount(count: number): number {
+    const reopened = stateRef.current.segments[count - 1];
+    return reopened && reopened.durationMs === null ? count - 1 : count;
+  }
+
   async function runFlush() {
     if (flushingRef.current) {
       pendingRetryRef.current = true;
@@ -164,7 +173,7 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
       await flushSegments(sessionId, plan, unsaved);
       failCountRef.current = 0;
       setSyncError(null);
-      dispatch({ type: "markSaved", count: current.persistedCount + unsaved.length });
+      dispatch({ type: "markSaved", count: safeMarkSavedCount(current.persistedCount + unsaved.length) });
     } catch (err) {
       failCountRef.current += 1;
       if (failCountRef.current >= 2) {
@@ -242,6 +251,12 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
       navigator.wakeLock
         ?.request("screen")
         .then((sentinel) => {
+          // The phase may have moved past the wake-lock window while this
+          // request was resolving — release immediately instead of storing.
+          if (!needsWakeLock(stateRef.current)) {
+            void sentinel.release().catch(() => {});
+            return;
+          }
           wakeLockRef.current = sentinel;
         })
         .catch(() => {
@@ -268,7 +283,7 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
     if (unsaved.length > 0) {
       // Let a failure propagate — the caller shows an error and must NOT end the session.
       await flushSegments(sessionId, plan, unsaved);
-      dispatch({ type: "markSaved", count: current.persistedCount + unsaved.length });
+      dispatch({ type: "markSaved", count: safeMarkSavedCount(current.persistedCount + unsaved.length) });
     }
     await endSession({ data: { sessionId, notes } });
     try {
