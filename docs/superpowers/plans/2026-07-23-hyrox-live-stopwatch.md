@@ -658,15 +658,17 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ---
 
-### Task 7: Ekrany live (idle / stacja / rox / przerwa) — wariant A
+### Task 7: Ekrany live (idle / stacja / rox / przerwa) — wariant A + dźwięki przerwy
 
 **Files:**
 - Create: `src/features/strength/components/HyroxLiveScreens.tsx`
+- Create: `src/features/strength/lib/hyrox-sounds.ts`
 - Modify: `src/features/strength/views/HyroxSessionView.tsx` (podpina hook + ekrany)
+- Modify: `src/features/strength/components/useHyroxLive.ts` (dźwięki przy progach przerwy)
 
 **Interfaces:**
 - Consumes: `HyroxLive` (Task 6), selektory (Task 2).
-- Produces: `HyroxIdleScreen`, `HyroxStationScreen` (stacja + rox w jednym — flaga z fazy), `HyroxRestScreen` — wszystkie sterowane przez `live: HyroxLive`.
+- Produces: `HyroxIdleScreen`, `HyroxStationScreen` (stacja + rox w jednym — flaga z fazy), `HyroxRestScreen` — wszystkie sterowane przez `live: HyroxLive`; `createHyroxSounds(): { unlock(): void; warnBeep(): void; endBell(): void }`.
 
 - [ ] **Step 1: Implementacja wg makiety (wariant A), tokeny apki.** Wymagane elementy i copy (PL, cudzysłowy ”):
   - **Idle**: eyebrow `Sesja Hyrox · Blok A`, lista stacji z targetami (karta `bg-muted`), `„Telefon trzyma trener. Ekran nie zgaśnie.”`, CTA `bg-ember shadow-ember` `Start: Blok A` + sub `${rundy} rund × ${n} stacji · przerwa ${m:ss}`. Gdy `state.round > 1` (rehydracja z DB): chip `Wznowienie od rundy ${round}`.
@@ -675,13 +677,16 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
   - **Przerwa**: karta podsumowania rundy (`Runda ${N}` czas + `w tym rox zone ${m:ss} · ${pct}%` w ember); odliczanie `text-8xl` z `restRemainingMs` (ujemne → `+m:ss` w destructive; `restSeconds null` → licznik w górę bez targetu); pod spodem `przerwa ${m:ss deklarowana}`; kontrolki Cofnij/Pauza + `Zakończ blok`; CTA `Start rundy ${N+1}` + sub pierwsza stacja.
   - Layout jak `ActiveSessionView`: `main.mx-auto.flex.min-h-full.max-w-md.flex-col`, CTA w sticky stopce (`sticky bottom-0` wzór z ActiveSessionView), przycisk główny wysoki (`py-5 text-lg font-extrabold`).
   - `syncError` renderowany jako nieblokujący pasek `text-destructive text-xs` nad stopką.
-- [ ] **Step 2: `HyroxSessionView`** — `useHyroxLive(session.id, steps, segments)`; routing faz: idle/station/rox/rest → ekrany z tego taska; blockDone/done → tymczasowo blockDone jako prosty ekran z CTA (pełne podsumowania w Tasku 8); sesja `endedAt` → placeholder (Task 8).
-- [ ] **Step 3: Typecheck + lint + testy + sweep cudzysłowów** (`grep -rn '„[^”]*"' src/` → 0).
-- [ ] **Step 4: Commit**
+- [ ] **Step 2: Dźwięki przerwy (`hyrox-sounds.ts` + rozszerzenie hooka).** Życzenie trenera/fizjo (2026-07-23): sygnał 15 s przed końcem przerwy i gong „jak na ringu” równo z końcem.
+  - `createHyroxSounds()` — syntezowane WebAudio, zero plików audio (CSP/offline-safe): lazy `AudioContext`; `unlock()` wołane przy pierwszym tapnięciu (iOS wymaga gestu — `resume()` + cichy buffer 0 s); `warnBeep()` = sinus 880 Hz, ~150 ms, gain-decay; `endBell()` = gong bokserski: 2 uderzenia (attack z szumem/triangle + wybrzmienie ~500 ms na częstotliwościach ~600/400 Hz), drugie ~250 ms po pierwszym. Całość w try/catch — brak audio nigdy nie psuje stopera.
+  - Hook: edge-detection przerwy rozszerzone o próg 15 000 ms (poprz. > 15 000 && teraz ≤ 15 000 → `warnBeep()` + krótka wibracja) obok istniejącego progu 0 (→ `endBell()` + wibracja 400 ms). Przy `restSeconds < 20` próg 15 s pomijany (beep zlałby się z gongiem). `unlock()` podpięte do `tap`.
+- [ ] **Step 3: `HyroxSessionView`** — `useHyroxLive(session.id, steps, segments)`; routing faz: idle/station/rox/rest → ekrany z tego taska; blockDone/done → tymczasowo blockDone jako prosty ekran z CTA (pełne podsumowania w Tasku 8); sesja `endedAt` → placeholder (Task 8).
+- [ ] **Step 4: Typecheck + lint + testy + sweep cudzysłowów** (`grep -rn '„[^”]*"' src/` → 0).
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/features/strength/components/HyroxLiveScreens.tsx src/features/strength/views/HyroxSessionView.tsx
-git commit -m "feat(strength): hyrox live screens — station, rox zone and rest (variant a)
+git add src/features/strength/components/HyroxLiveScreens.tsx src/features/strength/lib/hyrox-sounds.ts src/features/strength/components/useHyroxLive.ts src/features/strength/views/HyroxSessionView.tsx
+git commit -m "feat(strength): hyrox live screens with rest warning beep and end bell
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
@@ -736,4 +741,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 ## Poza planem (świadomie)
 
-Dźwięki · pominięcie stacji · edycja segmentów po fakcie · multi-device live · Etap 3 (statystyki/estymata — osobny brainstorm z makietami wykresów) · e2e Playwright dla stopera (rozważyć po stabilizacji; dziś brak wzorca dla timer-driven e2e w repo).
+Pominięcie stacji · edycja segmentów po fakcie · multi-device live · Etap 3 (statystyki/estymata — osobny brainstorm z makietami wykresów) · e2e Playwright dla stopera (rozważyć po stabilizacji; dziś brak wzorca dla timer-driven e2e w repo).
+
+## Follow-up bezpośrednio po tym PR (życzenie fizjo, 2026-07-23)
+
+**Korekty w trakcie sesji:** (a) faktyczne wartości na segmentach — `session_segments.distanceM`/`reps` (nullable, prefill z targetu), ołówek na ekranie stacji → drawer z NumericFormat, lustro `sets` zapisuje też `distanceM`/`reps` (kolumny istnieją); pokrywa „challenge 50 m sledów w ostatniej rundzie” i zmianę dystansu biegu bez kłamstwa w statystykach; (b) edycja `restSeconds` bloku w locie (± sekundy). Wymaga: mini-migracja, rozszerzenie `saveHyroxSegments`, event `setActual` w reducerze, drobne UI. Osobny mały PR, żeby ten nie puchł.
