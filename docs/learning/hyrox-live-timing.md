@@ -378,6 +378,29 @@ slightly stale if you undo it exactly while its save is mid-flight. Rare
 enough, and self-correcting enough (the *next* real segment saves normally),
 to accept rather than add reconciliation machinery for.
 
+A second accepted gotcha, flagged directly in `handleExtraRound`'s code
+comment:
+
+```ts
+function handleExtraRound(state: HyroxTimerState, atMs: number): HyroxTimerState {
+  // Undo after extraRound leaves extraRounds incremented (accepted): endBlockEarly is the escape hatch.
+  if (state.phase !== "blockDone") return state;
+  // ...
+}
+```
+
+`extraRound` ("+ Ekstra runda") increments `extraRounds[blockIndex]` *and*
+opens a new `REST` segment in one step — but `undo` only ever reverses the
+*segment* side of that (reopening the `REST` it just opened, per §8's table).
+It does not, and cannot cleanly, decrement `extraRounds` back down — undo has
+no "undo the extraRound decision" event, only "reopen the last closed
+segment." So hitting undo right after tapping "+ Ekstra runda" leaves the
+block still thinking it has one more round than the plan declared
+(`effectiveRounds` stays bumped) even though the segment it opened is back to
+being editable. `endBlockEarly` is the deliberate escape hatch here: it's the
+only way to leave `rest` and land the block in `blockDone` without walking
+through the extra round the machine now believes exists.
+
 ## 7. WebAudio sounds — unlock on the first gesture
 
 `hyrox-sounds.ts` synthesizes tones with WebAudio instead of shipping audio
