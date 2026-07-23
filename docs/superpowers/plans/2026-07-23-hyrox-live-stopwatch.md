@@ -723,7 +723,8 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 - Create: `docs/learning/hyrox-live-timing.md`
 - Modify: `docs/architecture/data-model.md` (wiersz `session_segments`), `docs/adr/ADR-0023-hyrox-training-data-model.md` (Stage 2 → implemented, jedno zdanie w Status/Consequences)
 
-- [ ] **Step 1: Learning doc** (per konwencja epików): sekcje — czemu czysty reducer z epoch-ms (determinizm, serializacja, testy bez zegara), wirtualny zegar pauzy, dziennik localStorage + rehydracja z DB (dwa poziomy odporności), idempotentny zapis batchy przez unikalny indeks + lustro `sets` tylko dla faktycznie wstawionych, wake lock i throttling tła (czemu Date.now, nie performance.now), granice undo.
+- [ ] **Step 1: Learning doc** (per konwencja epików): sekcje — czemu czysty reducer z epoch-ms (determinizm, serializacja, testy bez zegara), wirtualny zegar pauzy, dziennik localStorage + rehydracja z DB (dwa poziomy odporności), idempotentny zapis batchy przez unikalny indeks + lustro `sets` tylko dla faktycznie wstawionych, wake lock i throttling tła (czemu Date.now, nie performance.now), granice undo, dźwięki WebAudio (unlock na geście). Pisany dla KJ jako mapa do poruszania się po kodzie (życzenie 2026-07-23): sekcja „jak czytać hyrox-timer.ts” z tabelą zdarzenie→przejście→kto domyka segment.
+- [ ] **Step 1b: Diagram maszyny stanów w `hyrox-timer.ts`** — komentarz-mapa na górze pliku (mermaid w bloku komentarza): fazy idle/station/rox/rest/blockDone/done, zdarzenia tap/undo/pauseToggle/endBlockEarly/extraRound/markSaved, adnotacje o REST-roundNumber i granicy persistedCount. Zero zmian w kodzie.
 - [ ] **Step 2: data-model.md + ADR-0023 update.**
 - [ ] **Step 3: `bun run check`** — lint/typecheck/testy zielone (knip: dług sprzed brancha akceptowany, ale ZERO nowych trafień z plików Hyrox).
 - [ ] **Step 4: Commit**
@@ -743,6 +744,12 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
 
 Pominięcie stacji · edycja segmentów po fakcie · multi-device live · Etap 3 (statystyki/estymata — osobny brainstorm z makietami wykresów) · e2e Playwright dla stopera (rozważyć po stabilizacji; dziś brak wzorca dla timer-driven e2e w repo).
 
-## Follow-up bezpośrednio po tym PR (życzenie fizjo, 2026-07-23)
+## Follow-up bezpośrednio po tym PR (życzenia fizjo, 2026-07-23)
 
-**Korekty w trakcie sesji:** (a) faktyczne wartości na segmentach — `session_segments.distanceM`/`reps` (nullable, prefill z targetu), ołówek na ekranie stacji → drawer z NumericFormat, lustro `sets` zapisuje też `distanceM`/`reps` (kolumny istnieją); pokrywa „challenge 50 m sledów w ostatniej rundzie” i zmianę dystansu biegu bez kłamstwa w statystykach; (b) edycja `restSeconds` bloku w locie (± sekundy). Wymaga: mini-migracja, rozszerzenie `saveHyroxSegments`, event `setActual` w reducerze, drobne UI. Osobny mały PR, żeby ten nie puchł.
+**Korekty w trakcie sesji:** (a) faktyczne wartości na segmentach — `session_segments.distanceM`/`reps`/`durationTargetSeconds`-owe odchyłki (nullable, prefill z targetu), ołówek na ekranie stacji → drawer z NumericFormat, lustro `sets` zapisuje też `distanceM`/`reps` (kolumny istnieją); pokrywa „challenge 50 m sledów w ostatniej rundzie”, „+15 s czasu biegu” (biegi dostają też targety czasowe — `targetDurationSeconds` istnieje na `block_movements`, edytor planu go dziś nie wystawia) i zmiany bez kłamstwa w statystykach; (b) edycja `restSeconds` bloku w locie (± sekundy).
+
+**Tryb biegu + incline (pod Etap 3):** stacja biegowa z wyborem trybu (bieżnia mechaniczna ~90% przypadków / bieżnia elektryczna / nawierzchnia) i `% incline` na segmencie biegu — incline wchodzi później do algorytmu estymaty (trening na wyższym incline → lepszy czas na zawodach). Model: kolumny na `session_segments` (np. `runMode`, `inclinePercent`) + default w deklaracji stacji.
+
+Wymaga: mini-migracja, rozszerzenie `saveHyroxSegments`, event `setActual` w reducerze, drobne UI. Osobny mały PR, żeby ten nie puchł.
+
+**Po Etapie 3 (decyzja KJ 2026-07-23):** spike/PoC przepisania `hyrox-timer.ts` na XState przy zielonych testach jako siatce bezpieczeństwa — walor edukacyjny/portfolio; do tego czasu maszyna zostaje ręczna (przetestowana, zero zależności).

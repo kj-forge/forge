@@ -25,6 +25,8 @@ Trener trzyma telefon atlety i klika trening: **Koniec stacji** → rox zone (au
 | **2 — Live** | `session_segments` + `HyroxSessionView` (wariant A) + zapis + ekran końcowy | PR 2 (Linear issue, EN) |
 | **3 — Statystyki** | strona statystyk Hyrox: estymata na wierzchu, ręczne cele, algorytmy ze zmęczeniem, wykresy/animowane wizualizacje | osobny brainstorm + spec, poza tym dokumentem |
 
+Notatka pod Etap 3 (fizjo, 2026-07-23): biegi w ~90% na bieżni mechanicznej — segmenty biegowe mają docelowo nieść tryb biegu i `% incline`, bo incline w treningu koreluje z lepszym czasem na zawodach i musi wejść do algorytmu estymaty (dane zbierane od follow-upu „korekty w trakcie sesji”).
+
 Workflow: epic-level → pełna ceremonia (Linear issue → branch z Lineara verbatim → PR). Commity/push tylko po zatwierdzeniu w sesji.
 
 ## Model danych
