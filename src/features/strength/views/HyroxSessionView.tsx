@@ -1,5 +1,5 @@
 import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { EndSessionDrawer } from "@/features/strength/components/EndSessionDrawer";
@@ -68,6 +68,8 @@ export function HyroxSessionView() {
   const isEnded = session.endedAt !== null;
   const live = useHyroxLive(session.id, steps, segments, { enabled: !isEnded });
   const [finishOpen, setFinishOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const saveNotes = async (notes: string) => {
     await updateSessionNotes({ data: { sessionId: session.id, notes } });
@@ -78,19 +80,6 @@ export function HyroxSessionView() {
     await deleteSession({ data: { sessionId: session.id } });
     navigate({ to: "/" });
   };
-
-  if (isEnded) {
-    return (
-      <HyroxDoneSummary
-        plan={live.plan}
-        segments={segments}
-        notes={session.notes}
-        isEnded
-        onSaveNotes={saveNotes}
-        onDeleteSession={removeSession}
-      />
-    );
-  }
 
   if (steps.length === 0) {
     return (
@@ -111,6 +100,38 @@ export function HyroxSessionView() {
             Trening Hyrox deklarujesz w planie. Wystartuj sesję z planu, żeby dostać bloki i stoper.
           </CardContent>
         </Card>
+      </main>
+    );
+  }
+
+  if (isEnded) {
+    return (
+      <HyroxDoneSummary
+        plan={live.plan}
+        segments={segments}
+        notes={session.notes}
+        isEnded
+        onSaveNotes={saveNotes}
+        onDeleteSession={removeSession}
+      />
+    );
+  }
+
+  // The journal (useHyroxLive) lazily reads localStorage on init, so server HTML and the
+  // first client render disagree — keep the live tree client-only until mounted.
+  if (!mounted) {
+    return (
+      <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
+        <header className="flex items-center justify-end pt-2">
+          <span className="text-muted-foreground text-xs">
+            {new Date(session.date).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
+          </span>
+        </header>
+
+        <div className="space-y-2">
+          <h1 className="font-bold text-2xl tracking-tight">Sesja Hyrox</h1>
+          <StatusBadge endedAt={session.endedAt} />
+        </div>
       </main>
     );
   }

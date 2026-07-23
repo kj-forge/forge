@@ -9,7 +9,6 @@ import { NotesDrawer } from "@/features/strength/components/NotesDrawer";
 import type { HyroxLive } from "@/features/strength/components/useHyroxLive";
 import {
   blockMs,
-  effectiveRounds,
   type HyroxBlockPlan,
   type LiveSegment,
   type PersistedSegment,
@@ -98,14 +97,22 @@ export function HyroxBlockDoneScreen({ live, onRequestFinish }: { live: HyroxLiv
   const { state, plan, nowMs } = live;
   const blockIndex = state.blockIndex;
   const letter = blockLetter(blockIndex);
-  const rounds = effectiveRounds(state, plan, blockIndex);
   const hasNextBlock = blockIndex + 1 < plan.length;
 
   const total = blockMs(state, nowMs, blockIndex);
   let roxTotal = 0;
   let roundWorkTotal = 0; // sum of roundMs (STATION + ROX_ZONE) across every round
   const roundRows: RoundSummary[] = [];
-  for (let round = 1; round <= rounds; round++) {
+  // Rounds actually present (>=1 STATION/ROX_ZONE segment), like summarizeSegments —
+  // an early endBlockEarly must not render never-happened rounds as "0:00".
+  const presentRounds = [
+    ...new Set(
+      state.segments
+        .filter((s) => s.blockIndex === blockIndex && (s.kind === "STATION" || s.kind === "ROX_ZONE"))
+        .map((s) => s.roundNumber),
+    ),
+  ].sort((a, b) => a - b);
+  for (const round of presentRounds) {
     const rMs = roundMs(state, nowMs, blockIndex, round);
     const rRoxMs = roxMs(state, nowMs, blockIndex, round);
     roxTotal += rRoxMs;

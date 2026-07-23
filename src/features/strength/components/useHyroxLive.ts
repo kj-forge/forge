@@ -103,7 +103,8 @@ async function flushSegments(sessionId: string, plan: HyroxBlockPlan[], segments
           kind: seg.kind,
           blockMovementId: seg.blockMovementId ?? undefined,
           // unsavedClosedSegments only ever yields closed segments (durationMs !== null).
-          durationMs: seg.durationMs ?? 0,
+          // Clamp to the server's zod max — an overnight-abandoned tab must not brick every subsequent flush/finish.
+          durationMs: Math.min(seg.durationMs ?? 0, 86_400_000),
         })),
       },
     });
