@@ -55,9 +55,12 @@ async function runSaveHyroxSegments(args: {
         .onConflictDoNothing({
           target: [sessionSegments.blockId, sessionSegments.roundNumber, sessionSegments.orderIndex],
         })
-        .returning({ orderIndex: sessionSegments.orderIndex });
-      const insertedOrder = new Set(inserted.map((r) => r.orderIndex));
-      const mirror = args.segments.filter((s) => s.kind === "STATION" && insertedOrder.has(s.orderIndex));
+        .returning({ roundNumber: sessionSegments.roundNumber, orderIndex: sessionSegments.orderIndex });
+      // Composite key: the client's orderIndex is per-block monotonic, but the mirror must stay correct for any client.
+      const insertedKeys = new Set(inserted.map((r) => `${r.roundNumber}:${r.orderIndex}`));
+      const mirror = args.segments.filter(
+        (s) => s.kind === "STATION" && insertedKeys.has(`${s.roundNumber}:${s.orderIndex}`),
+      );
       if (mirror.length > 0) {
         await tx.insert(sets).values(
           mirror.map((s) => ({
