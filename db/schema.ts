@@ -100,6 +100,8 @@ export const progressionKind = pgEnum("progression_kind", [
 // Volume calculations exclude WARMUP.
 export const setKind = pgEnum("set_kind", ["WARMUP", "TOP_SET", "WORK", "BACK_OFF", "FAILURE", "DROP_SET"]);
 
+export const segmentKind = pgEnum("segment_kind", ["STATION", "ROX_ZONE", "REST"]);
+
 export const hyroxStationSlug = pgEnum("hyrox_station_slug", [
   "SKI_ERG",
   "SLED_PUSH",
@@ -571,6 +573,38 @@ export const sets = pgTable(
   (t) => [
     index("sets_movement_idx").on(t.blockMovementId, t.setNumber),
     index("sets_athlete_created_idx").on(t.athleteId, t.createdAt.desc()),
+  ],
+);
+
+// Live Hyrox timeline (ADR-0023): one row per coach-tapped segment. REST after
+// round N carries roundNumber = N (the rest closes the round it follows).
+// blockMovementId is required iff kind = STATION — enforced in zod, not CHECK.
+export const sessionSegments = pgTable(
+  "session_segments",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    // Denormalized from sessions.athleteId per ADR-0010.
+    athleteId: uuid()
+      .notNull()
+      .references(() => athletes.id, { onDelete: "cascade" }),
+    sessionId: uuid()
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    blockId: uuid()
+      .notNull()
+      .references(() => sessionBlocks.id, { onDelete: "cascade" }),
+    roundNumber: integer().notNull(),
+    orderIndex: integer().notNull(),
+    kind: segmentKind().notNull(),
+    blockMovementId: uuid().references(() => blockMovements.id, { onDelete: "cascade" }),
+    // Milliseconds — the live display shows tenths without loss.
+    durationMs: integer().notNull(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("session_segments_session_idx").on(t.sessionId, t.blockId, t.orderIndex),
+    // Retry-safe writes: saveHyroxSegments inserts with ON CONFLICT DO NOTHING.
+    uniqueIndex("session_segments_block_round_order_uq").on(t.blockId, t.roundNumber, t.orderIndex),
   ],
 );
 
