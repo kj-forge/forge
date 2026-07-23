@@ -440,4 +440,29 @@ describe("rehydrateFromSegments — partial and extra rounds", () => {
     ]);
     expect(s).toEqual(initialTimerState());
   });
+  test("resume block is chosen by plan order, not array order", () => {
+    const blockB = [
+      {
+        blockId: "blk-b",
+        roundNumber: 1,
+        orderIndex: 0,
+        kind: "STATION" as const,
+        blockMovementId: "bm-sled",
+        durationMs: 45_000,
+      },
+      {
+        blockId: "blk-b",
+        roundNumber: 1,
+        orderIndex: 1,
+        kind: "REST" as const,
+        blockMovementId: null,
+        durationMs: 60_000,
+      },
+    ];
+    // block B rows FIRST — simulates uuid-ordered loader output where blk-a sorts after blk-b
+    const s = rehydrateFromSegments(plan2, [...blockB, ...r1]);
+    expect(s.blockIndex).toBe(1);
+    expect(s.round).toBe(2);
+    expect(s.phase).toBe("idle");
+  });
 });

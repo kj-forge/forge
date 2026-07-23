@@ -282,7 +282,7 @@ export const getSessionDetails = createServerFn({ method: "GET" })
             .select()
             .from(sessionSegments)
             .where(eq(sessionSegments.sessionId, session.id))
-            .orderBy(sessionSegments.blockId, sessionSegments.orderIndex)
+            .orderBy(sessionSegments.createdAt, sessionSegments.orderIndex)
         : [];
 
     return {

@@ -285,8 +285,12 @@ export function hyroxTimerReducer(
 
 export function rehydrateFromSegments(plan: HyroxBlockPlan[], persisted: PersistedSegment[]): HyroxTimerState {
   const blockIndexOf = (blockId: string) => plan.findIndex((b) => b.blockId === blockId);
-  // Assumes the loader delivers segments ordered by (blockId, orderIndex) —
-  // required so "the last entry" below is the last-touched block/position.
+  // Does NOT assume the loader delivers segments in any particular cross-block
+  // order (blockId is a random UUID, not a plan-order key): the resume block
+  // is the furthest one reached in PLAN order (blocks only ever advance
+  // forward), found via max(blockIndexOf) below. Within that block, the
+  // round/station math already uses max()/counts over its segments, so it is
+  // robust to within-block ordering too.
   const known = persisted.filter((p) => blockIndexOf(p.blockId) !== -1);
   if (known.length === 0) return initialTimerState();
 
@@ -308,8 +312,7 @@ export function rehydrateFromSegments(plan: HyroxBlockPlan[], persisted: Persist
     };
   });
 
-  const lastSeg = known[known.length - 1];
-  const blockIndex = blockIndexOf(lastSeg.blockId);
+  const blockIndex = Math.max(...known.map((p) => blockIndexOf(p.blockId)));
   const block = plan[blockIndex];
   const blockSegs = known.filter((p) => blockIndexOf(p.blockId) === blockIndex);
   const maxRound = Math.max(...blockSegs.map((s) => s.roundNumber));
