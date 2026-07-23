@@ -110,7 +110,20 @@ async function flushSegments(sessionId: string, plan: HyroxBlockPlan[], segments
   }
 }
 
-export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: PersistedSegment[]): HyroxLive {
+export interface UseHyroxLiveOptions {
+  // Ended sessions render this hook's state read-only (HyroxDoneSummary from
+  // the loader's segments) — false skips the rAF loop, wake lock, sounds, and
+  // flush triggers entirely, since none of them have anything left to do.
+  enabled?: boolean;
+}
+
+export function useHyroxLive(
+  sessionId: string,
+  steps: LoaderStep[],
+  persisted: PersistedSegment[],
+  options?: UseHyroxLiveOptions,
+): HyroxLive {
+  const enabled = options?.enabled ?? true;
   const router = useRouter();
   const plan = useMemo(() => buildPlan(steps), [steps]);
 
@@ -148,6 +161,7 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
   }
 
   function maybeFlush(next: HyroxTimerState) {
+    if (!enabled) return;
     if (next.phase !== "rest" && next.phase !== "blockDone" && next.phase !== "done") return;
     if (unsavedClosedSegments(next).length === 0) return;
     void runFlush();
@@ -200,10 +214,11 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
   // Retry a previously failed flush once connectivity is back, independent of phase.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runFlush closes over refs/stable setters only — mount-once listener is intentional.
   useEffect(() => {
+    if (!enabled) return;
     const onOnline = () => void runFlush();
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
-  }, []);
+  }, [enabled]);
 
   // Fresh timestamp for the first render after any event, even while ticking
   // is otherwise paused/idle.
@@ -214,7 +229,7 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
 
   const hasTail = state.segments.length > 0 && state.segments[state.segments.length - 1].durationMs === null;
   const paused = state.pausedAtMs !== null;
-  const ticking = (hasTail || state.phase === "rest") && !paused;
+  const ticking = enabled && (hasTail || state.phase === "rest") && !paused;
 
   useEffect(() => {
     if (!ticking) return;
@@ -228,7 +243,7 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
   // Wake lock: acquire while needed, release on the phase falling out of that
   // window OR on unmount (same cleanup path covers both). Safari without
   // support (no navigator.wakeLock) or a refused request is a silent no-op.
-  const shouldHoldWakeLock = needsWakeLock(state);
+  const shouldHoldWakeLock = enabled && needsWakeLock(state);
   useEffect(() => {
     if (!shouldHoldWakeLock) return;
     let cancelled = false;
@@ -260,6 +275,7 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
 
   // Chrome silently drops the wake lock when the tab is backgrounded — reacquire it once visible again.
   useEffect(() => {
+    if (!enabled) return;
     const onVisibility = () => {
       if (document.visibilityState !== "visible") return;
       if (wakeLockRef.current || !needsWakeLock(stateRef.current)) return;
@@ -289,13 +305,14 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, []);
+  }, [enabled]);
 
   // Rest countdown edges (level crossings, not levels): 15s-to-go warns with a
   // beep, 0-crossing rings the end bell. Both fire at most once per crossing.
   // The 15s warning is skipped for short rests (<20s declared) — it would
   // overlap the end bell into noise.
   useEffect(() => {
+    if (!enabled) return;
     const remaining = restRemainingMs(state, nowMs, plan);
     const prev = prevRestRemainingRef.current;
     const restSeconds = plan[state.blockIndex]?.restSeconds ?? null;
@@ -309,7 +326,7 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
       }
     }
     prevRestRemainingRef.current = remaining;
-  }, [state, nowMs, plan, sounds]);
+  }, [state, nowMs, plan, sounds, enabled]);
 
   async function finish(notes?: string): Promise<void> {
     const current = stateRef.current;
