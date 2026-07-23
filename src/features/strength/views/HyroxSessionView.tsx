@@ -2,6 +2,8 @@ import { getRouteApi } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { HyroxIdleScreen, HyroxRestScreen, HyroxStationScreen } from "@/features/strength/components/HyroxLiveScreens";
+import { type HyroxLive, useHyroxLive } from "@/features/strength/components/useHyroxLive";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
 const route = getRouteApi("/_shell/sessions/$sessionId");
@@ -19,31 +21,67 @@ function formatRest(restSeconds: number | null): string | null {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-// Skeleton per Stage 2 Task 5: header + read-only block cards, no stopwatch
-// yet (Tasks 7-8 wire the live timeline onto sessionSegments).
-export function HyroxSessionView() {
-  const { session, steps } = route.useLoaderData();
+// Placeholder for the finish flow (block-done / whole-session summaries land
+// in Task 8): current block's letter plus a CTA that either advances into the
+// next block (still enabled — that transition itself needs no summary UI) or,
+// on the last block, stops here disabled until the real finish screen exists.
+function HyroxBlockDoneScreen({ live }: { live: HyroxLive }) {
+  const { state, plan } = live;
+  const letter = String.fromCharCode(65 + state.blockIndex);
+  const hasNextBlock = state.phase === "blockDone" && state.blockIndex + 1 < plan.length;
 
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
-      <header className="flex items-center justify-end pt-2">
-        <span className="text-muted-foreground text-xs">
-          {new Date(session.date).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
-        </span>
-      </header>
-
-      <div className="space-y-2">
-        <h1 className="font-bold text-2xl tracking-tight">Sesja Hyrox</h1>
-        <StatusBadge endedAt={session.endedAt} />
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+        <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">Blok {letter}</p>
+        <h1 className="font-extrabold text-2xl">Blok zakończony</h1>
       </div>
 
-      {steps.length === 0 ? (
-        <Card>
-          <CardContent className="py-6 text-center text-muted-foreground text-sm">
-            Trening Hyrox deklarujesz w planie. Wystartuj sesję z planu, żeby dostać bloki i stoper.
-          </CardContent>
-        </Card>
-      ) : (
+      <div className="sticky bottom-0 -mx-4 mt-auto space-y-2 border-t bg-background px-4 pt-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)-1.75rem))]">
+        {live.syncError && (
+          <p className="text-destructive text-xs" role="alert">
+            {live.syncError}
+          </p>
+        )}
+        {hasNextBlock ? (
+          <Button type="button" className="w-full bg-ember py-5 font-extrabold text-lg shadow-ember" onClick={live.tap}>
+            Start: Blok {String.fromCharCode(65 + state.blockIndex + 1)}
+          </Button>
+        ) : (
+          <>
+            <Button type="button" className="w-full py-5 font-extrabold text-lg" disabled>
+              Zakończ trening
+            </Button>
+            <p className="text-center text-muted-foreground text-xs">(w budowie)</p>
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
+
+// Session view for HYROX-type sessions: read-only block preview until start,
+// then Task 7's live screens driven entirely by useHyroxLive's phase. Ended
+// sessions and empty (undeclared) sessions keep the original read-only cards
+// — the live timeline only ever applies to an in-progress session with steps.
+export function HyroxSessionView() {
+  const { session, steps, segments } = route.useLoaderData();
+  const live = useHyroxLive(session.id, steps, segments);
+
+  if (session.endedAt !== null) {
+    return (
+      <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
+        <header className="flex items-center justify-end pt-2">
+          <span className="text-muted-foreground text-xs">
+            {new Date(session.date).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
+          </span>
+        </header>
+
+        <div className="space-y-2">
+          <h1 className="font-bold text-2xl tracking-tight">Sesja Hyrox</h1>
+          <StatusBadge endedAt={session.endedAt} />
+        </div>
+
         <ul className="space-y-2">
           {steps.map((step, i) => {
             const meta = [
@@ -74,13 +112,43 @@ export function HyroxSessionView() {
             );
           })}
         </ul>
-      )}
+      </main>
+    );
+  }
 
-      <div className="sticky bottom-0 -mx-4 mt-auto space-y-2 border-t bg-background px-4 pt-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)-1.75rem))]">
-        <Button type="button" className="w-full bg-ember shadow-ember" disabled>
-          Stoper (w budowie)
-        </Button>
-      </div>
-    </main>
-  );
+  if (steps.length === 0) {
+    return (
+      <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
+        <header className="flex items-center justify-end pt-2">
+          <span className="text-muted-foreground text-xs">
+            {new Date(session.date).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
+          </span>
+        </header>
+
+        <div className="space-y-2">
+          <h1 className="font-bold text-2xl tracking-tight">Sesja Hyrox</h1>
+          <StatusBadge endedAt={session.endedAt} />
+        </div>
+
+        <Card>
+          <CardContent className="py-6 text-center text-muted-foreground text-sm">
+            Trening Hyrox deklarujesz w planie. Wystartuj sesję z planu, żeby dostać bloki i stoper.
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
+  switch (live.state.phase) {
+    case "idle":
+      return <HyroxIdleScreen live={live} />;
+    case "station":
+    case "rox":
+      return <HyroxStationScreen live={live} />;
+    case "rest":
+      return <HyroxRestScreen live={live} />;
+    case "blockDone":
+    case "done":
+      return <HyroxBlockDoneScreen live={live} />;
+  }
 }

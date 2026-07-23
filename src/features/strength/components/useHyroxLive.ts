@@ -2,6 +2,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { liveStateKey, parseLiveState, serializeLiveState } from "@/features/strength/lib/hyrox-live-store";
+import { createHyroxSounds } from "@/features/strength/lib/hyrox-sounds";
 import {
   type HyroxBlockPlan,
   type HyroxTimerEvent,
@@ -132,6 +133,7 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
   const failCountRef = useRef(0);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const prevRestRemainingRef = useRef<number | null>(null);
+  const sounds = useMemo(() => createHyroxSounds(), []);
 
   function dispatch(event: HyroxTimerEvent) {
     const next = hyroxTimerReducer(stateRef.current, plan, event);
@@ -289,15 +291,25 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
 
-  // Vibrate exactly once on the rest countdown crossing zero (edge, not level).
+  // Rest countdown edges (level crossings, not levels): 15s-to-go warns with a
+  // beep, 0-crossing rings the end bell. Both fire at most once per crossing.
+  // The 15s warning is skipped for short rests (<20s declared) — it would
+  // overlap the end bell into noise.
   useEffect(() => {
     const remaining = restRemainingMs(state, nowMs, plan);
     const prev = prevRestRemainingRef.current;
-    if (prev !== null && prev > 0 && remaining !== null && remaining <= 0) {
-      navigator.vibrate?.(200);
+    const restSeconds = plan[state.blockIndex]?.restSeconds ?? null;
+    if (prev !== null && remaining !== null) {
+      if (prev > 0 && remaining <= 0) {
+        sounds.endBell();
+        navigator.vibrate?.(400);
+      } else if (restSeconds !== null && restSeconds >= 20 && prev > 15_000 && remaining <= 15_000) {
+        sounds.warnBeep();
+        navigator.vibrate?.(100);
+      }
     }
     prevRestRemainingRef.current = remaining;
-  }, [state, nowMs, plan]);
+  }, [state, nowMs, plan, sounds]);
 
   async function finish(notes?: string): Promise<void> {
     const current = stateRef.current;
@@ -320,7 +332,10 @@ export function useHyroxLive(sessionId: string, steps: LoaderStep[], persisted: 
     state,
     plan,
     nowMs,
-    tap: () => dispatch({ type: "tap", atMs: Date.now() }),
+    tap: () => {
+      sounds.unlock();
+      dispatch({ type: "tap", atMs: Date.now() });
+    },
     undo: () => dispatch({ type: "undo", atMs: Date.now() }),
     pauseToggle: () => dispatch({ type: "pauseToggle", atMs: Date.now() }),
     endBlockEarly: () => dispatch({ type: "endBlockEarly", atMs: Date.now() }),
