@@ -41,4 +41,13 @@ describe("seedSetFields", () => {
     const sets = [{ kind: "TOP_SET", reps: 5, weightKg: 132.5 }];
     expect(seedSetFields(sets, {}, "BACK_OFF")).toBeUndefined();
   });
+
+  test("seeds durationSeconds from the current session set", () => {
+    const seed = seedSetFields(
+      [{ kind: "WORK", reps: null, weightKg: null, durationSeconds: 45 }],
+      {} as never,
+      "WORK",
+    );
+    expect(seed?.durationSeconds).toBe(45);
+  });
 });

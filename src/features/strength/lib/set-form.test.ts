@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { numToInputStr, setFormSchema, stepReps, stepWeight } from "./set-form";
+import { numToInputStr, setFormSchema, stepReps, stepSeconds, stepWeight, timeSetFormSchema } from "./set-form";
 
 const valid = { kind: "TOP_SET", reps: "5", weightKg: "132.5", rpe: null };
 
@@ -95,5 +95,25 @@ describe("numToInputStr", () => {
     expect(numToInputStr(132.5)).toBe("132.5");
     expect(numToInputStr(0)).toBe("0");
     expect(numToInputStr(undefined)).toBe("");
+  });
+});
+
+describe("timeSetFormSchema", () => {
+  test("parses seconds string to int", () => {
+    const parsed = timeSetFormSchema.parse({ kind: "WORK", durationSeconds: "30", rpe: null });
+    expect(parsed.durationSeconds).toBe(30);
+  });
+
+  test("rejects empty and zero", () => {
+    expect(timeSetFormSchema.safeParse({ kind: "WORK", durationSeconds: "", rpe: null }).success).toBe(false);
+    expect(timeSetFormSchema.safeParse({ kind: "WORK", durationSeconds: "0", rpe: null }).success).toBe(false);
+  });
+});
+
+describe("stepSeconds", () => {
+  test("steps by delta with floor 1", () => {
+    expect(stepSeconds("30", 5)).toBe("35");
+    expect(stepSeconds("3", -5)).toBe("1");
+    expect(stepSeconds("", 5)).toBe("5");
   });
 });
