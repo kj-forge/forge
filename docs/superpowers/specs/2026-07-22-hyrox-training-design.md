@@ -25,6 +25,8 @@ Trener trzyma telefon atlety i klika trening: **Koniec stacji** → rox zone (au
 | **2 — Live** | `session_segments` + `HyroxSessionView` (wariant A) + zapis + ekran końcowy | PR 2 (Linear issue, EN) |
 | **3 — Statystyki** | strona statystyk Hyrox: estymata na wierzchu, ręczne cele, algorytmy ze zmęczeniem, wykresy/animowane wizualizacje | osobny brainstorm + spec, poza tym dokumentem |
 
+Notatka pod Etap 3 (fizjo, 2026-07-23): biegi w ~90% na bieżni mechanicznej — segmenty biegowe mają docelowo nieść tryb biegu i `% incline`, bo incline w treningu koreluje z lepszym czasem na zawodach i musi wejść do algorytmu estymaty (dane zbierane od follow-upu „korekty w trakcie sesji”).
+
 Workflow: epic-level → pełna ceremonia (Linear issue → branch z Lineara verbatim → PR). Commity/push tylko po zatwierdzeniu w sesji.
 
 ## Model danych
@@ -107,7 +109,7 @@ Motywy: oba (tokeny Żaru kuźni); ember nigdy jako kolor tekstu body; ikony luc
 ## Obsługa błędów
 
 - Utrata sieci w trakcie: trening liczy dalej (stan lokalny autorytatywny), zapisy dosyłane kolejką; komunikat dopiero po powtarzających się porażkach.
-- Zabita karta / restart telefonu: rehydracja z `localStorage` — wraca dokładny stan (z pauzą ustawioną, jeśli była).
+- Zabita karta / restart telefonu: rehydracja z DB wznawia od następnej stacji niedokończonej rundy (segmenty sprzed pada zachowane, bieżący segment przepada); `localStorage` nadal wznawia dokładny stan.
 - Podwójny flush (retry po timeout, który jednak doszedł): idempotencja przez unikalny indeks.
 - Wejście w aktywną sesję Hyrox z innego urządzenia: v1 poza zakresem (jeden telefon); stan żyje lokalnie + w zapisanych rundach.
 

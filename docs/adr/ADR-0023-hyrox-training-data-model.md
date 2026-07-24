@@ -1,13 +1,13 @@
 # ADR-0023: Hyrox training data model — segment timeline, repeated stations, type-driven view
 
-- **Status:** Proposed
+- **Status:** Accepted (Stage 1 and Stage 2 both shipped — updated 2026-07-23)
 - **Date:** 2026-07-22
 - **Deciders:** @kj-ninja
 - **Linear:** [FRG-21](https://linear.app/kj-forge/issue/FRG-21)
 
 ## Context
 
-Hyrox training is a coach-operated stopwatch flow: a block is a fixed sequence of stations (e.g. Ski Erg, Sled Push, Run) repeated for N rounds, separated by a rox zone (roughly the run between stations) and, after the last station of a round, a declared rest before the next round starts. The design spec (`docs/superpowers/specs/2026-07-22-hyrox-training-design.md`) splits delivery into three stages: **Stage 1** — declare Hyrox blocks/stations with targets in the plan unit editor and materialize them into a session on start; **Stage 2** — a live stopwatch view (`HyroxSessionView`) that logs every station/rox-zone/rest segment as it happens; **Stage 3** — a stats page with race-time estimation, out of scope here. This ADR is written during Stage 1 but records the data-model decisions for both Stage 1 (shipped in this PR) and Stage 2 (announced, not yet built), because both hang off the same schema choice and splitting them across two ADRs would separate a decision from half its rationale.
+Hyrox training is a coach-operated stopwatch flow: a block is a fixed sequence of stations (e.g. Ski Erg, Sled Push, Run) repeated for N rounds, separated by a rox zone (roughly the run between stations) and, after the last station of a round, a declared rest before the next round starts. The design spec (`docs/superpowers/specs/2026-07-22-hyrox-training-design.md`) splits delivery into three stages: **Stage 1** — declare Hyrox blocks/stations with targets in the plan unit editor and materialize them into a session on start; **Stage 2** — a live stopwatch view (`HyroxSessionView`) that logs every station/rox-zone/rest segment as it happens; **Stage 3** — a stats page with race-time estimation, out of scope here. This ADR was written during Stage 1 but records the data-model decisions for both Stage 1 (shipped in this PR) and Stage 2 (shipped in this branch — announced but not yet built at the time this ADR was first drafted), because both hang off the same schema choice and splitting them across two ADRs would separate a decision from half its rationale.
 
 Two schema questions came up that ADR-0009's block model (`sessions → session_blocks → block_movements → sets`) doesn't answer by itself:
 
@@ -17,7 +17,7 @@ Two schema questions came up that ADR-0009's block model (`sessions → session_
 
 ## Decision
 
-**Segment timeline (Stage 2, announced here):** a new table `session_segments` is the first-class timeline for Hyrox live logging — one row per station/rox-zone/rest interval, `kind` (`STATION | ROX_ZONE | REST`) as a new pg enum, `roundNumber` + `orderIndex` for position, `durationMs` (millisecond precision, since live rounds run in single-digit minutes and tenths matter on screen), and a unique index on `(blockId, roundNumber, orderIndex)` so retried flushes are `onConflictDoNothing`-idempotent. Every `STATION` segment additionally writes a mirror row into `sets` (`setNumber = roundNumber`, `durationSeconds = round(durationMs / 1000)`, `kind = WORK`) in the same transaction, so exercise history/PR pipelines keep working unmodified for Hyrox stations — `session_segments` stays the timeline's source of truth; `sets` is a read-shaped projection of it, not the other way round.
+**Segment timeline (Stage 2, implemented):** a new table `session_segments` is the first-class timeline for Hyrox live logging — one row per station/rox-zone/rest interval, `kind` (`STATION | ROX_ZONE | REST`) as a new pg enum, `roundNumber` + `orderIndex` for position, `durationMs` (millisecond precision, since live rounds run in single-digit minutes and tenths matter on screen), and a unique index on `(blockId, roundNumber, orderIndex)` so retried flushes are `onConflictDoNothing`-idempotent. Every `STATION` segment additionally writes a mirror row into `sets` (`setNumber = roundNumber`, `durationSeconds = round(durationMs / 1000)`, `kind = WORK`) in the same transaction, so exercise history/PR pipelines keep working unmodified for Hyrox stations — `session_segments` stays the timeline's source of truth; `sets` is a read-shaped projection of it, not the other way round.
 
 **Repeated stations (Stage 1, shipped):** the unique indexes `block_movements_block_exercise_uq` (`blockId, exerciseId`) and `training_plan_unit_step_exercises_step_exercise_uq` (`stepId, exerciseId`) are dropped. Both existed only as a server-side guard against a double-add race (slow network / double-tap on "add exercise"), not a schema invariant — Hyrox needs the same exercise to appear twice in one round's sequence. The guard moves into application code (`addExerciseToStep` now does a `select` + explicit check before insert); the accepted trade-off is a removable duplicate row on a genuine double-tap race, not data corruption.
 
@@ -45,7 +45,7 @@ Keep the timeline inside `sets` — add a jsonb `segment_meta` column and let ro
 
 ### Positive
 
-- The segment timeline (Stage 2) is queryable and idempotent from day one — no jsonb parsing, no read-modify-write races on flush retries.
+- The segment timeline (Stage 2, shipped) is queryable and idempotent from day one — no jsonb parsing, no read-modify-write races on flush retries.
 - Exercise history and PR pipelines need zero Hyrox-specific code — the `sets` mirror means a Hyrox station is, from their point of view, just another logged set.
 - A Hyrox sequence can express its real structure (a repeated run between other stations) instead of forcing an artificial second exercise or dummy row to work around a uniqueness constraint that was never a domain rule.
 - The type-based view branch is narrow and explicit (one `session.type === "HYROX"` check at the route/view boundary) rather than leaking into the block/movement schema — `blockKind` stays universal, so Stage 3 stats and any future non-Hyrox multi-round block kind still read through the same tables.
@@ -58,7 +58,7 @@ Keep the timeline inside `sets` — add a jsonb `segment_meta` column and let ro
 
 ### Follow-ups
 
-- Stage 2 implementation: `session_segments` table + `segment_kind` enum + migration, `saveHyroxSegments` server fn (transactional insert + `sets` mirror, `onConflictDoNothing` on the unique index), the `hyrox-timer.ts` reducer, `HyroxSessionView`, and `docs/learning/hyrox-live-timing.md` (wake lock, time anchors vs. rAF throttling, idempotent flush, localStorage journal) — separate plan, separate PR, per the spec's stage split.
+- Stage 2 implementation shipped: `session_segments` table + `segment_kind` enum + migration, `saveHyroxSegments` server fn (transactional insert + `sets` mirror keyed on `(roundNumber, orderIndex)`, `onConflictDoNothing` on the unique index), the `hyrox-timer.ts` reducer, `HyroxSessionView`, and [`docs/learning/hyrox-live-timing.md`](../learning/hyrox-live-timing.md) (wake lock, `Date.now()` vs `performance.now()`, idempotent flush, localStorage journal vs DB rehydrate).
 - Stage 3 (separate spec/brainstorm): race-time estimation reads `session_segments` aggregated by station; a manual-target fallback for athletes missing station data.
 
 ## References

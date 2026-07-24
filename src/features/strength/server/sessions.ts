@@ -7,7 +7,7 @@ import { SESSION_TYPES } from "@/features/strength/constants";
 import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
 import { createPool } from "../../../../db/pool";
-import { blockMovements, exercises, sessionBlocks, sessions, sets } from "../../../../db/schema";
+import { blockMovements, exercises, sessionBlocks, sessionSegments, sessions, sets } from "../../../../db/schema";
 import { attachExercises, loadRecentSessions } from "./queries";
 
 // Dashboard feed: most recent sessions including the in-progress one (the badge
@@ -225,6 +225,8 @@ export const getSessionDetails = createServerFn({ method: "GET" })
             exerciseNamePl: exercises.namePl,
             exerciseDefaultUnit: exercises.defaultUnit,
             exerciseIsLoadedBodyweight: exercises.isLoadedBodyweight,
+            targetReps: blockMovements.targetReps,
+            targetDistanceM: blockMovements.targetDistanceM,
           })
           .from(blockMovements)
           .innerJoin(exercises, eq(blockMovements.exerciseId, exercises.id))
@@ -273,12 +275,23 @@ export const getSessionDetails = createServerFn({ method: "GET" })
       };
     };
 
+    // Live timeline rows exist only for HYROX sessions; other types skip the query.
+    const segments =
+      session.type === "HYROX"
+        ? await db
+            .select()
+            .from(sessionSegments)
+            .where(eq(sessionSegments.sessionId, session.id))
+            .orderBy(sessionSegments.createdAt, sessionSegments.orderIndex)
+        : [];
+
     return {
       session,
       steps: blocks.map((block) => ({
         ...block,
         movements: movements.filter((m) => m.blockId === block.id).map(enrich),
       })),
+      segments,
     };
   });
 

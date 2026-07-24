@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { getSessionDetails } from "@/features/strength/server/sessions";
-import { ActiveSessionView } from "@/features/strength/views/ActiveSessionView";
+import { SessionView } from "@/features/strength/views/SessionView";
 import { getSession } from "@/lib/session";
 
 export const Route = createFileRoute("/_shell/sessions/$sessionId")({
@@ -10,5 +10,5 @@ export const Route = createFileRoute("/_shell/sessions/$sessionId")({
     if (!session) throw redirect({ to: "/login" });
   },
   loader: ({ params }) => getSessionDetails({ data: { sessionId: params.sessionId } }),
-  component: ActiveSessionView,
+  component: SessionView,
 });
