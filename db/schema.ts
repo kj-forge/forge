@@ -100,6 +100,8 @@ export const progressionKind = pgEnum("progression_kind", [
 // Volume calculations exclude WARMUP.
 export const setKind = pgEnum("set_kind", ["WARMUP", "TOP_SET", "WORK", "BACK_OFF", "FAILURE", "DROP_SET"]);
 
+export const daySlot = pgEnum("day_slot", ["MORNING", "EVENING"]);
+
 export const segmentKind = pgEnum("segment_kind", ["STATION", "ROX_ZONE", "REST"]);
 
 export const hyroxStationSlug = pgEnum("hyrox_station_slug", [
@@ -536,6 +538,8 @@ export const blockMovements = pgTable(
     targetDistanceM: integer(),
     targetCalories: integer(),
     rpeCap: smallint(),
+    // Mid-circuit swap: last round this exercise was part of; NULL = active.
+    removedAfterRound: integer(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -1070,6 +1074,7 @@ export const trainingPlanUnitDays = pgTable(
       .notNull()
       .references(() => trainingPlanUnits.id, { onDelete: "cascade" }),
     dayOfWeek: integer().notNull(),
+    slot: daySlot().notNull().default("MORNING"),
   },
   (t) => [
     uniqueIndex("training_plan_unit_days_unit_day_uq").on(t.unitId, t.dayOfWeek),
@@ -1090,6 +1095,7 @@ export const scheduleOverrides = pgTable(
       .references(() => athletes.id, { onDelete: "cascade" }),
     date: date().notNull(),
     kind: scheduleOverrideKind().notNull(),
+    slot: daySlot().notNull().default("MORNING"),
     unitId: uuid().references(() => trainingPlanUnits.id, { onDelete: "cascade" }),
     sessionType: sessionType(),
     name: text(),
