@@ -7,14 +7,17 @@ import { db } from "../../../../db/client";
 import { blockMovements, sessionBlocks, sessions, sets } from "../../../../db/schema";
 import { bestSet, isNewPR, type PrCandidate } from "../lib/pr";
 
-const addSetInput = z.object({
-  blockMovementId: z.uuid(),
-  reps: z.int().min(0).max(1000).optional(),
-  weightKg: z.number().min(0).max(1000).optional(),
-  rpe: z.int().min(1).max(10).optional(),
-  kind: z.enum(["WARMUP", "TOP_SET", "WORK", "BACK_OFF", "FAILURE", "DROP_SET"]).default("WORK"),
-  notes: z.string().max(500).optional(),
-});
+const addSetInput = z
+  .object({
+    blockMovementId: z.uuid(),
+    reps: z.int().min(0).max(1000).optional(),
+    weightKg: z.number().min(0).max(1000).optional(),
+    durationSeconds: z.int().min(1).max(36000).optional(),
+    rpe: z.int().min(1).max(10).optional(),
+    kind: z.enum(["WARMUP", "TOP_SET", "WORK", "BACK_OFF", "FAILURE", "DROP_SET"]).default("WORK"),
+    notes: z.string().max(500).optional(),
+  })
+  .refine((d) => d.reps !== undefined || d.durationSeconds !== undefined, { message: "Pusta seria." });
 
 // A record is a REAL set (more weight, or same weight × more reps) — never
 // an e1RM estimate. previousBest labels the toast ("było 130 × 1").
@@ -63,6 +66,7 @@ export const addSet = createServerFn({ method: "POST" })
         setNumber: nextNum,
         reps: data.reps,
         weightKg: data.weightKg,
+        durationSeconds: data.durationSeconds,
         rpe: data.rpe,
         kind: data.kind,
         notes: data.notes,
@@ -80,6 +84,31 @@ export const deleteSet = createServerFn({ method: "POST" })
     const { athleteId } = await getCurrentAthleteOrThrow();
     const [row] = await db
       .delete(sets)
+      .where(and(eq(sets.id, data.setId), eq(sets.athleteId, athleteId)))
+      .returning({ id: sets.id });
+    if (!row) throw new Error("Nie znaleziono serii.");
+    return row;
+  });
+
+const updateSetInput = z
+  .object({
+    setId: z.uuid(),
+    reps: z.int().min(1).max(999).nullable(),
+    weightKg: z.number().min(0).max(1000).nullable(),
+    durationSeconds: z.int().min(1).max(36000).nullable(),
+    rpe: z.int().min(1).max(10).nullable(),
+  })
+  .refine((d) => d.reps !== null || d.durationSeconds !== null, { message: "Pusta seria." });
+
+// Full replace of the editable fields (the edit modal always sends all four).
+// No PR toast on edits — records celebrate only at logging time.
+export const updateSet = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => parseInput(updateSetInput, data))
+  .handler(async ({ data }) => {
+    const { athleteId } = await getCurrentAthleteOrThrow();
+    const [row] = await db
+      .update(sets)
+      .set({ reps: data.reps, weightKg: data.weightKg, durationSeconds: data.durationSeconds, rpe: data.rpe })
       .where(and(eq(sets.id, data.setId), eq(sets.athleteId, athleteId)))
       .returning({ id: sets.id });
     if (!row) throw new Error("Nie znaleziono serii.");

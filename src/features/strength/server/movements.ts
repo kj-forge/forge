@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { parseInput } from "@/lib/validate";
@@ -53,4 +53,86 @@ export const removeExerciseFromSession = createServerFn({ method: "POST" })
       .where(and(eq(sets.blockMovementId, data.blockMovementId), eq(sets.athleteId, athleteId)));
     if (setCount > 0) throw new Error("Nie można usunąć ćwiczenia, w którym są już zapisane serie.");
     throw new Error("Ćwiczenie nie znalezione");
+  });
+
+const retireInput = z.object({ blockMovementId: z.uuid(), fromRound: z.int().min(1).max(99) });
+
+// Soft-remove from a circuit: the exercise keeps its logged history and stops
+// rendering from `fromRound` on. Guard: the step must keep ≥1 active exercise.
+export const retireExerciseFromStep = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => parseInput(retireInput, data))
+  .handler(async ({ data }) => {
+    const { athleteId } = await getCurrentAthleteOrThrow();
+    const [movement] = await db
+      .select({ id: blockMovements.id, blockId: blockMovements.blockId })
+      .from(blockMovements)
+      .where(and(eq(blockMovements.id, data.blockMovementId), eq(blockMovements.athleteId, athleteId)));
+    if (!movement) throw new Error("Nie znaleziono ćwiczenia w tej sesji.");
+
+    const active = await db
+      .select({ id: blockMovements.id })
+      .from(blockMovements)
+      .where(and(eq(blockMovements.blockId, movement.blockId), isNull(blockMovements.removedAfterRound)));
+    if (active.length <= 1) throw new Error("Obwód musi mieć co najmniej jedno aktywne ćwiczenie.");
+
+    await db
+      .update(blockMovements)
+      .set({ removedAfterRound: data.fromRound - 1 })
+      .where(eq(blockMovements.id, movement.id));
+    return { id: movement.id };
+  });
+
+const swapInput = z.object({ blockMovementId: z.uuid(), newExerciseId: z.uuid(), fromRound: z.int().min(1).max(99) });
+
+// Swap = retire (or hard-delete when set-less) + add the replacement at the
+// same position, atomically from the athlete's perspective.
+export const swapExerciseInStep = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => parseInput(swapInput, data))
+  .handler(async ({ data }) => {
+    const { athleteId } = await getCurrentAthleteOrThrow();
+    const [movement] = await db
+      .select({
+        id: blockMovements.id,
+        blockId: blockMovements.blockId,
+        orderIndex: blockMovements.orderIndex,
+      })
+      .from(blockMovements)
+      .where(and(eq(blockMovements.id, data.blockMovementId), eq(blockMovements.athleteId, athleteId)));
+    if (!movement) throw new Error("Nie znaleziono ćwiczenia w tej sesji.");
+
+    const [duplicate] = await db
+      .select({ id: blockMovements.id })
+      .from(blockMovements)
+      .where(
+        and(
+          eq(blockMovements.blockId, movement.blockId),
+          eq(blockMovements.exerciseId, data.newExerciseId),
+          isNull(blockMovements.removedAfterRound),
+        ),
+      );
+    if (duplicate) throw new Error("To ćwiczenie jest już w tym obwodzie.");
+
+    const [{ setCount }] = await db
+      .select({ setCount: sql<number>`COUNT(*)::int` })
+      .from(sets)
+      .where(eq(sets.blockMovementId, movement.id));
+    if (setCount === 0) {
+      await db.delete(blockMovements).where(eq(blockMovements.id, movement.id));
+    } else {
+      await db
+        .update(blockMovements)
+        .set({ removedAfterRound: data.fromRound - 1 })
+        .where(eq(blockMovements.id, movement.id));
+    }
+
+    const [row] = await db
+      .insert(blockMovements)
+      .values({
+        athleteId,
+        blockId: movement.blockId,
+        orderIndex: movement.orderIndex,
+        exerciseId: data.newExerciseId,
+      })
+      .returning({ id: blockMovements.id });
+    return { blockMovementId: row.id };
   });
