@@ -170,7 +170,7 @@ export function UnitStepsEditor({ steps, onChange, allExercises, onError }: Unit
                 onError={onError}
               />
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-xs">Docelowe obwody:</span>
+                <span className="text-muted-foreground text-xs">Docelowe rundy:</span>
                 <NumericFormat
                   customInput={Input}
                   className="w-16 text-center tabular-nums"
