@@ -1,4 +1,4 @@
-import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { Dumbbell } from "lucide-react";
 import { useState } from "react";
@@ -128,17 +128,32 @@ export function NewSessionView() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Pusta sesja</CardTitle>
-          <CardDescription>Zacznij od zera — sam dodajesz ćwiczenia.</CardDescription>
+          <CardDescription>
+            {type === "HYROX"
+              ? "Trening Hyrox deklarujesz w planie — pusta sesja Hyrox nie ma czego logować."
+              : "Zacznij od zera — sam dodajesz ćwiczenia."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button
-            variant={fromPlan ? "outline" : "default"}
-            className={fromPlan ? "w-full" : "w-full bg-ember shadow-ember"}
-            onClick={() => start(false)}
-            disabled={creating !== null}
-          >
-            {creating === "blank" ? "Tworzę..." : "Pusta sesja"}
-          </Button>
+          {type === "HYROX" ? (
+            <div className="space-y-2">
+              <Button variant="outline" className="w-full" disabled>
+                Pusta sesja
+              </Button>
+              <Button asChild variant="outline" className="w-full">
+                <Link to="/plan">Przejdź do planu</Link>
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant={fromPlan ? "outline" : "default"}
+              className={fromPlan ? "w-full" : "w-full bg-ember shadow-ember"}
+              onClick={() => start(false)}
+              disabled={creating !== null}
+            >
+              {creating === "blank" ? "Tworzę..." : "Pusta sesja"}
+            </Button>
+          )}
         </CardContent>
       </Card>
 
