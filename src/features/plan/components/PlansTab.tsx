@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PLAN_STATUS_CLASS, PLAN_STATUS_LABEL } from "@/features/plan/constants";
 import { warsawTodayIso } from "@/features/plan/lib/schedule";
-import { completePlan, deletePlan, pausePlan } from "@/features/plan/server/plan";
+import { completePlan, pausePlan } from "@/features/plan/server/plan";
 import type { PlanWithUnits } from "@/features/plan/types";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import { getErrorMessage } from "@/lib/error-message";
@@ -110,7 +110,6 @@ function PlanAccordionItem({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const run = async (fn: () => Promise<unknown>, fallback: string) => {
@@ -124,14 +123,6 @@ function PlanAccordionItem({
     } finally {
       setBusy(false);
     }
-  };
-
-  const handleDelete = () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
-    void run(() => deletePlan({ data: { planId: plan.id } }), "Nie udało się usunąć planu.");
   };
 
   const expired = plan.status === "ACTIVE" && plan.endDate !== null && plan.endDate < warsawTodayIso();
@@ -248,18 +239,6 @@ function PlanAccordionItem({
           <Button variant="ghost" size="sm" disabled={busy} onClick={() => onEditPlan(plan)}>
             Edytuj
           </Button>
-
-          {plan.status !== "ACTIVE" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:text-destructive"
-              disabled={busy}
-              onClick={handleDelete}
-            >
-              {confirmDelete ? "Na pewno?" : "Usuń"}
-            </Button>
-          )}
 
           {busy && <Spinner size="sm" className="text-muted-foreground" />}
         </div>

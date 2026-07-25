@@ -20,6 +20,7 @@ import { deleteUnit, upsertUnit } from "@/features/plan/server/plan";
 import type { PlanUnit } from "@/features/plan/types";
 import { PICKABLE_SESSION_TYPES, SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import { getErrorMessage } from "@/lib/error-message";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { Spinner } from "@/shared/components/Spinner";
 import type { ExerciseOption } from "./ExerciseListPicker";
 import { HyroxBlocksEditor } from "./HyroxBlocksEditor";
@@ -181,10 +182,6 @@ function UnitDrawerBody({
 
   const handleDelete = async () => {
     if (!unit) return;
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
     setDeleting(true);
     try {
       await deleteUnit({ data: { unitId: unit.id } });
@@ -359,13 +356,25 @@ function UnitDrawerBody({
               variant="outline"
               className="w-full text-destructive hover:text-destructive"
               disabled={isSubmitting || deleting}
-              onClick={handleDelete}
+              onClick={() => setConfirmDelete(true)}
             >
-              {deleting ? <Spinner size="sm" /> : confirmDelete ? "Na pewno usunąć?" : "Usuń trening"}
+              {deleting ? <Spinner size="sm" /> : "Usuń trening"}
             </Button>
           )}
         </div>
       </form>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Usunąć trening z planu?"
+        confirmLabel="Usuń trening"
+        pending={deleting}
+        onConfirm={() => {
+          setConfirmDelete(false);
+          void handleDelete();
+        }}
+      />
     </Form>
   );
 }
