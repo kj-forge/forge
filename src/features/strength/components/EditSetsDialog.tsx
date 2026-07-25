@@ -94,20 +94,23 @@ function EditSetsBody({ movement, close }: { movement: Movement; close: () => vo
     const dirty = visibleSets.filter((s) => draftDirty(s, drafts[s.id]));
     const invalid = dirty.find((s) => {
       const d = drafts[s.id];
-      return isTime ? d.durationSeconds === "" : d.reps === "";
+      return isTime ? d.durationSeconds === "" || Number(d.durationSeconds) < 1 : d.reps === "" || Number(d.reps) < 1;
     });
     if (invalid) {
       setError(isTime ? "Podaj czas w sekundach." : "Podaj liczbę powtórzeń.");
       return;
     }
     setSaving(true);
+    let wrote = false;
     try {
       for (const s of dirty) {
         await updateSet({ data: draftToPayload(s.id, drafts[s.id]) });
+        wrote = true;
       }
       if (dirty.length > 0) await router.invalidate();
       close();
     } catch (err) {
+      if (wrote) await router.invalidate();
       setError(getErrorMessage(err, "Nie udało się zapisać zmian."));
       setSaving(false);
     }
@@ -148,6 +151,7 @@ function EditSetsBody({ movement, close }: { movement: Movement; close: () => vo
                   inputMode="numeric"
                   decimalScale={0}
                   allowNegative={false}
+                  isAllowed={(v) => v.value === "" || Number(v.value) <= 36000}
                   value={d.durationSeconds}
                   valueIsNumericString
                   onValueChange={(v) => patch(s.id, "durationSeconds", v.value)}
@@ -161,6 +165,7 @@ function EditSetsBody({ movement, close }: { movement: Movement; close: () => vo
                     inputMode="numeric"
                     decimalScale={0}
                     allowNegative={false}
+                    isAllowed={(v) => v.value === "" || Number(v.value) <= 999}
                     value={d.reps}
                     valueIsNumericString
                     onValueChange={(v) => patch(s.id, "reps", v.value)}
@@ -172,6 +177,7 @@ function EditSetsBody({ movement, close }: { movement: Movement; close: () => vo
                     inputMode="decimal"
                     decimalScale={2}
                     allowNegative={false}
+                    isAllowed={(v) => v.value === "" || Number(v.value) <= 1000}
                     value={d.weightKg}
                     valueIsNumericString
                     onValueChange={(v) => patch(s.id, "weightKg", v.value)}
@@ -216,7 +222,13 @@ function EditSetsBody({ movement, close }: { movement: Movement; close: () => vo
         <Button type="button" className="w-full bg-ember shadow-ember" disabled={saving} onClick={handleSave}>
           {saving ? "Zapisuję..." : "Zapisz zmiany"}
         </Button>
-        <Button type="button" variant="outline" className="w-full" onClick={close}>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={close}
+          disabled={saving || deletingId !== null}
+        >
           Anuluj
         </Button>
       </div>

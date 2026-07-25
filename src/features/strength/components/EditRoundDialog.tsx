@@ -59,13 +59,14 @@ function EditRoundBody({ step, round, close }: { step: Step; round: number; clos
     const invalid = dirty.find((e) => {
       const d = drafts[e.set.id];
       const isTime = e.movement.exerciseDefaultUnit === "TIME";
-      return isTime ? d.durationSeconds === "" : d.reps === "";
+      return isTime ? d.durationSeconds === "" || Number(d.durationSeconds) < 1 : d.reps === "" || Number(d.reps) < 1;
     });
     if (invalid) {
       setError(`Uzupełnij wartości: ${invalid.movement.exerciseNamePl}.`);
       return;
     }
     setSaving("save");
+    let wrote = false;
     try {
       for (const e of dirty) {
         const d = drafts[e.set.id];
@@ -78,10 +79,12 @@ function EditRoundBody({ step, round, close }: { step: Step; round: number; clos
             rpe: d.rpe === "" ? null : Number(d.rpe),
           },
         });
+        wrote = true;
       }
       if (dirty.length > 0) await router.invalidate();
       close();
     } catch (err) {
+      if (wrote) await router.invalidate();
       setError(getErrorMessage(err, "Nie udało się zapisać zmian."));
       setSaving(null);
     }
@@ -123,6 +126,7 @@ function EditRoundBody({ step, round, close }: { step: Step; round: number; clos
                     inputMode="numeric"
                     decimalScale={0}
                     allowNegative={false}
+                    isAllowed={(v) => v.value === "" || Number(v.value) <= 36000}
                     value={d.durationSeconds}
                     valueIsNumericString
                     onValueChange={(v) => patch(set.id, "durationSeconds", v.value)}
@@ -137,6 +141,7 @@ function EditRoundBody({ step, round, close }: { step: Step; round: number; clos
                       inputMode="numeric"
                       decimalScale={0}
                       allowNegative={false}
+                      isAllowed={(v) => v.value === "" || Number(v.value) <= 999}
                       value={d.reps}
                       valueIsNumericString
                       onValueChange={(v) => patch(set.id, "reps", v.value)}
@@ -149,6 +154,7 @@ function EditRoundBody({ step, round, close }: { step: Step; round: number; clos
                       inputMode="decimal"
                       decimalScale={2}
                       allowNegative={false}
+                      isAllowed={(v) => v.value === "" || Number(v.value) <= 1000}
                       value={d.weightKg}
                       valueIsNumericString
                       onValueChange={(v) => patch(set.id, "weightKg", v.value)}
