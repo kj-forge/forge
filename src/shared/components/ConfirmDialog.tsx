@@ -15,6 +15,7 @@ interface ConfirmDialogProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
+  error?: string | null;
   confirmLabel: string;
   pending?: boolean;
   onConfirm: () => void;
@@ -27,18 +28,25 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
+  error,
   confirmLabel,
   pending = false,
   onConfirm,
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => !pending && onOpenChange(o)}>
-      <DialogContent mobileSheet>
+      <DialogContent mobileSheet showCloseButton={false} {...(description ? {} : { "aria-describedby": undefined })}>
         <div className="mx-auto w-full max-w-md">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             {description ? <DialogDescription>{description}</DialogDescription> : null}
           </DialogHeader>
+
+          {error ? (
+            <p className="px-4 text-destructive text-sm" role="alert">
+              {error}
+            </p>
+          ) : null}
 
           <DialogFooter className="gap-2">
             <Button

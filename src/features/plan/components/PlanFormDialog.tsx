@@ -66,6 +66,7 @@ function PlanFormBody({
   });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
@@ -101,10 +102,7 @@ function PlanFormBody({
       onClose();
     } catch (err) {
       setDeleting(false);
-      form.setError("root.serverError", {
-        type: "server",
-        message: getErrorMessage(err, "Nie udało się usunąć planu."),
-      });
+      setDeleteError(getErrorMessage(err, "Nie udało się usunąć planu."));
     }
   };
 
@@ -160,7 +158,10 @@ function PlanFormBody({
               variant="outline"
               className="w-full text-destructive hover:text-destructive"
               disabled={isSubmitting || deleting}
-              onClick={() => setConfirmDelete(true)}
+              onClick={() => {
+                setDeleteError(null);
+                setConfirmDelete(true);
+              }}
             >
               {deleting ? <Spinner size="sm" /> : "Usuń plan"}
             </Button>
@@ -174,6 +175,7 @@ function PlanFormBody({
           onOpenChange={setConfirmDelete}
           title={`Usunąć plan „${plan.name}”?`}
           description="Usuwa plan, jego treningi i wpisy w harmonogramie. Zapisane sesje zostają."
+          error={deleteError}
           confirmLabel="Usuń plan"
           pending={deleting}
           onConfirm={handleDelete}

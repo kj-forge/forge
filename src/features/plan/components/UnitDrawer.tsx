@@ -93,6 +93,7 @@ function UnitDrawerBody({
   );
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const totalExercises =
     sessionType === "HYROX"
@@ -186,13 +187,11 @@ function UnitDrawerBody({
     try {
       await deleteUnit({ data: { unitId: unit.id } });
       await router.invalidate();
+      setConfirmDelete(false);
       onClose();
     } catch (err) {
       setDeleting(false);
-      form.setError("root.serverError", {
-        type: "server",
-        message: getErrorMessage(err, "Nie udało się usunąć jednostki."),
-      });
+      setDeleteError(getErrorMessage(err, "Nie udało się usunąć jednostki."));
     }
   };
 
@@ -356,7 +355,10 @@ function UnitDrawerBody({
               variant="outline"
               className="w-full text-destructive hover:text-destructive"
               disabled={isSubmitting || deleting}
-              onClick={() => setConfirmDelete(true)}
+              onClick={() => {
+                setDeleteError(null);
+                setConfirmDelete(true);
+              }}
             >
               {deleting ? <Spinner size="sm" /> : "Usuń trening"}
             </Button>
@@ -368,12 +370,10 @@ function UnitDrawerBody({
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         title="Usunąć trening z planu?"
+        error={deleteError}
         confirmLabel="Usuń trening"
         pending={deleting}
-        onConfirm={() => {
-          setConfirmDelete(false);
-          void handleDelete();
-        }}
+        onConfirm={() => void handleDelete()}
       />
     </Form>
   );
