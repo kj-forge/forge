@@ -14,14 +14,21 @@ import { NotesDrawer } from "@/features/strength/components/NotesDrawer";
 import { StepDrawer } from "@/features/strength/components/StepDrawer";
 import { RestStepRow, SupersetRow } from "@/features/strength/components/StepRows";
 import { SESSION_TYPE_LABEL_PL_ADJ } from "@/features/strength/constants";
+import { currentRound } from "@/features/strength/lib/step-progress";
+import { swapExerciseInStep } from "@/features/strength/server/movements";
 import { createSession, deleteSession, endSession, updateSessionNotes } from "@/features/strength/server/sessions";
 import { addExerciseToStep, addStep } from "@/features/strength/server/steps";
 import { getErrorMessage } from "@/lib/error-message";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
 // What the exercise picker feeds when it confirms: a new single step, a new
-// superset step, or one more exercise for an existing step (morph).
-type PickerMode = { kind: "single" } | { kind: "multi" } | { kind: "morph"; blockId: string };
+// superset step, one more exercise for an existing step (morph), or a
+// replacement for one exercise in a step (swap).
+type PickerMode =
+  | { kind: "single" }
+  | { kind: "multi" }
+  | { kind: "morph"; blockId: string }
+  | { kind: "swap"; blockId: string; blockMovementId: string };
 
 const route = getRouteApi("/_shell/sessions/$sessionId");
 
@@ -188,6 +195,7 @@ export function ActiveSessionView() {
           }}
           onNavigate={setOpenBlockId}
           onAddToStep={(blockId) => setPicker({ kind: "morph", blockId })}
+          onSwapInStep={(blockId, blockMovementId) => setPicker({ kind: "swap", blockId, blockMovementId })}
         />
       )}
 
@@ -197,9 +205,24 @@ export function ActiveSessionView() {
           if (!o) setPicker(null);
         }}
         multi={picker?.kind === "multi"}
-        title={picker?.kind === "morph" ? "Dodaj ćwiczenie do kroku" : undefined}
+        title={
+          picker?.kind === "morph"
+            ? "Dodaj ćwiczenie do kroku"
+            : picker?.kind === "swap"
+              ? "Zamień ćwiczenie"
+              : undefined
+        }
         onPicked={async (exerciseId) => {
-          if (picker?.kind === "morph") {
+          if (picker?.kind === "swap") {
+            const step = steps.find((s) => s.id === picker.blockId);
+            await swapExerciseInStep({
+              data: {
+                blockMovementId: picker.blockMovementId,
+                newExerciseId: exerciseId,
+                fromRound: step ? currentRound(step.movements) : 1,
+              },
+            });
+          } else if (picker?.kind === "morph") {
             await addExerciseToStep({ data: { blockId: picker.blockId, exerciseId } });
           } else {
             await addStep({ data: { sessionId: session.id, exerciseIds: [exerciseId] } });
