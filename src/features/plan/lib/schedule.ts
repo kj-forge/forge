@@ -62,6 +62,11 @@ export interface ScheduleEntry {
   date: string;
   source: "PLAN" | "ADD" | "ADHOC";
   overrideId: string | null;
+  // True only for an ADD whose unit has no plan assignment on this date's
+  // weekday — an actual move. An ADD that materializes a same-weekday
+  // slot-change override (SKIP + ADD pair on the unit's own assigned day)
+  // is not a relocation.
+  relocated: boolean;
   slot: DaySlot;
   unitId: string | null;
   planId: string | null;
@@ -115,17 +120,27 @@ export function resolveWeek(
       if (a.dayOfWeek !== dayOfWeek || skipped.has(`${a.unit.unitId}:${date}`)) continue;
       if (a.activeFrom && date < a.activeFrom) continue;
       if (a.activeTo && date > a.activeTo) continue;
-      dayEntries.push({ date, source: "PLAN", overrideId: null, note: null, slot: a.slot, ...a.unit });
+      dayEntries.push({
+        date,
+        source: "PLAN",
+        overrideId: null,
+        relocated: false,
+        note: null,
+        slot: a.slot,
+        ...a.unit,
+      });
     }
     for (const o of overrides) {
       if (o.date !== date) continue;
       if (o.kind === "ADD" && o.unit) {
-        dayEntries.push({ date, source: "ADD", overrideId: o.id, note: o.note, slot: o.slot, ...o.unit });
+        const relocated = !assignments.some((a) => a.unit.unitId === o.unitId && a.dayOfWeek === dayOfWeek);
+        dayEntries.push({ date, source: "ADD", overrideId: o.id, relocated, note: o.note, slot: o.slot, ...o.unit });
       } else if (o.kind === "ADHOC") {
         dayEntries.push({
           date,
           source: "ADHOC",
           overrideId: o.id,
+          relocated: false,
           slot: o.slot,
           unitId: null,
           planId: null,

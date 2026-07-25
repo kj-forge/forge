@@ -394,7 +394,7 @@ function EntryCard({ entry, overlay = false }: { entry: ScheduleEntry; overlay?:
       </div>
       <p className="mt-0.5 truncate text-muted-foreground text-xs">
         {entry.source === "ADHOC" ? "poza planem" : entry.planName} · {SESSION_TYPE_LABEL_PL[entry.sessionType]}
-        {entry.source === "ADD" && " · przeniesiony"}
+        {entry.source === "ADD" && entry.relocated && " · przeniesiony"}
       </p>
       {label && entry.name !== label && (
         <p className="wrap-break-word mt-1 line-clamp-2 whitespace-pre-line text-xs">{label}</p>

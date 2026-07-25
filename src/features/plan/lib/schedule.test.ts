@@ -205,4 +205,73 @@ describe("resolveWeek — day slots", () => {
     expect(entries.map((e) => e.unitId)).toEqual(["u-morning", "u-evening"]);
     expect(entries[0].slot).toBe("MORNING");
   });
+
+  test("a same-date SKIP+ADD slot change is not relocated", () => {
+    const entries = resolveWeek(
+      dates,
+      [{ dayOfWeek: 0, unit: unit("u1"), activeFrom: null, activeTo: null, slot: "MORNING" }],
+      [
+        {
+          id: "o1",
+          date: "2026-07-20",
+          kind: "SKIP",
+          unitId: "u1",
+          unit: null,
+          sessionType: null,
+          name: null,
+          note: null,
+          slot: "MORNING",
+        },
+        {
+          id: "o2",
+          date: "2026-07-20",
+          kind: "ADD",
+          unitId: "u1",
+          unit: unit("u1"),
+          sessionType: null,
+          name: null,
+          note: null,
+          slot: "EVENING",
+        },
+      ],
+    );
+    expect(entries).toHaveLength(1);
+    expect(entries[0].source).toBe("ADD");
+    expect(entries[0].slot).toBe("EVENING");
+    expect(entries[0].relocated).toBe(false);
+  });
+
+  test("an ADD on a date with no assignment for its weekday is relocated", () => {
+    const entries = resolveWeek(
+      dates,
+      [{ dayOfWeek: 0, unit: unit("u1"), activeFrom: null, activeTo: null, slot: "MORNING" }],
+      [
+        {
+          id: "o1",
+          date: "2026-07-20",
+          kind: "SKIP",
+          unitId: "u1",
+          unit: null,
+          sessionType: null,
+          name: null,
+          note: null,
+          slot: "MORNING",
+        },
+        {
+          id: "o2",
+          date: "2026-07-21",
+          kind: "ADD",
+          unitId: "u1",
+          unit: unit("u1"),
+          sessionType: null,
+          name: null,
+          note: null,
+          slot: "MORNING",
+        },
+      ],
+    );
+    expect(entries).toHaveLength(1);
+    expect(entries[0].source).toBe("ADD");
+    expect(entries[0].relocated).toBe(true);
+  });
 });
