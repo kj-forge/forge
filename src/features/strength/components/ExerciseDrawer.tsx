@@ -220,6 +220,7 @@ function RepsBody({ movement, nav }: { movement: Movement; nav: ReactNode }) {
                       id="reps"
                       customInput={Input}
                       className="text-center font-extrabold text-xl tabular-nums"
+                      inputMode="numeric"
                       value={field.value}
                       valueIsNumericString
                       onValueChange={(values) => field.onChange(values.value)}
@@ -264,6 +265,7 @@ function RepsBody({ movement, nav }: { movement: Movement; nav: ReactNode }) {
                       id="weight"
                       customInput={Input}
                       className="text-center font-extrabold text-primary text-xl tabular-nums"
+                      inputMode="decimal"
                       value={field.value}
                       valueIsNumericString
                       onValueChange={(values) => field.onChange(values.value)}
