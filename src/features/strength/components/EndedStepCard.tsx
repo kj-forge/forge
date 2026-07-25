@@ -5,8 +5,8 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatRoundSet } from "@/features/strength/components/StepDrawer";
 import { SET_KIND_COLOR, SET_KIND_LABEL } from "@/features/strength/constants";
-import { formatSeriesCount, formatSet } from "@/features/strength/lib/format-set";
-import { maxLoggedRound } from "@/features/strength/lib/step-progress";
+import { formatRoundsCount, formatSeriesCount, formatSet } from "@/features/strength/lib/format-set";
+import { loggedRoundNumbers, savedRounds } from "@/features/strength/lib/step-progress";
 import { removeExerciseFromSession } from "@/features/strength/server/movements";
 import { removeStep } from "@/features/strength/server/steps";
 import type { SetKind, Step } from "@/features/strength/types";
@@ -22,7 +22,7 @@ export function EndedStepCard({ step }: { step: Step }) {
   const [error, setError] = useState<string | null>(null);
 
   const isCircuit = step.movements.length > 1;
-  const laps = maxLoggedRound(step.movements);
+  const laps = savedRounds(step.movements);
   const isEmpty = laps === 0;
 
   const handleRemove = async () => {
@@ -40,7 +40,9 @@ export function EndedStepCard({ step }: { step: Step }) {
 
   const title = step.movements.map((m) => m.exerciseNamePl).join(" + ");
   const subtitle = isCircuit
-    ? `obwód · ${laps} ${laps === 1 ? "obwód" : laps < 5 ? "obwody" : "obwodów"}`
+    ? step.targetRounds !== null
+      ? `Rundy ${laps}/${step.targetRounds}`
+      : formatRoundsCount(laps)
     : formatSeriesCount(step.movements[0]?.sets.length ?? 0);
 
   return (
@@ -60,7 +62,7 @@ export function EndedStepCard({ step }: { step: Step }) {
           {!isEmpty && (
             <ul className="mt-2 space-y-0.5 pl-12 text-xs tabular-nums">
               {isCircuit
-                ? Array.from({ length: laps }, (_, i) => i + 1).map((r) => {
+                ? loggedRoundNumbers(step.movements).map((r) => {
                     const roundSets = step.movements.map((m) => m.sets.find((s) => s.setNumber === r));
                     const kind = (roundSets.find(Boolean)?.kind ?? "WORK") as SetKind;
                     return (
