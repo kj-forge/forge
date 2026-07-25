@@ -16,6 +16,7 @@ import {
 import { noteParts } from "@/features/notes/lib/note-title";
 import { createNote, deleteNote } from "@/features/notes/server/notes";
 import { getErrorMessage } from "@/lib/error-message";
+import { BackLink } from "@/shared/components/BackLink";
 import { SearchInput } from "@/shared/components/SearchInput";
 
 const route = getRouteApi("/_shell/notes/");
@@ -65,7 +66,8 @@ export function NotesListView() {
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-3 p-4">
-      <div className="flex items-center justify-between pt-2">
+      <BackLink to="/me" label="Profil" className="pt-2" />
+      <div className="flex items-center justify-between">
         <h1 className="font-bold text-2xl tracking-tight">Notatki</h1>
         <Button size="sm" className="bg-ember shadow-ember" disabled={creating} onClick={handleCreate}>
           {creating ? "Tworzę..." : "+ Nowa"}

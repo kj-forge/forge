@@ -10,6 +10,7 @@ import { ScheduleTab } from "@/features/plan/components/ScheduleTab";
 import { UnitDrawer, type UnitEditing } from "@/features/plan/components/UnitDrawer";
 import { type ScheduleEntry, shiftWeeks } from "@/features/plan/lib/schedule";
 import type { PlanWithUnits } from "@/features/plan/types";
+import { BackLink } from "@/shared/components/BackLink";
 
 const route = getRouteApi("/_shell/plan/");
 
@@ -36,7 +37,8 @@ export function PlanView() {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4">
-      <h1 className="pt-2 font-bold text-2xl tracking-tight">Plan</h1>
+      <BackLink to="/me" label="Profil" className="pt-2" />
+      <h1 className="font-bold text-2xl tracking-tight">Plan</h1>
 
       {/* gap-3 + h-9! align the tab bar with the page rhythm and the h-9
           inputs around it (shadcn defaults: gap-2, h-8 — reads cramped). */}

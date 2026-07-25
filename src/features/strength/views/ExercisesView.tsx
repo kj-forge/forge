@@ -8,6 +8,7 @@ import { ExerciseEditorDrawer } from "@/features/strength/components/ExerciseEdi
 import { EXERCISE_CATEGORY_LABEL } from "@/features/strength/constants";
 import { restoreExercise } from "@/features/strength/server/exercises";
 import type { ManagedExercise } from "@/features/strength/types";
+import { BackLink } from "@/shared/components/BackLink";
 import { Spinner } from "@/shared/components/Spinner";
 
 const route = getRouteApi("/_shell/exercises/");
@@ -35,7 +36,8 @@ export function ExercisesView() {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4">
-      <div className="flex items-center justify-between pt-2">
+      <BackLink to="/me" label="Profil" className="pt-2" />
+      <div className="flex items-center justify-between">
         <h1 className="font-bold text-2xl tracking-tight">Ćwiczenia</h1>
         <Button size="sm" className="bg-ember shadow-ember" onClick={() => setEditor({ open: true, exercise: null })}>
           + Dodaj ćwiczenie
