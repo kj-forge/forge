@@ -15,6 +15,7 @@ import {
   roundMs,
   roxMs,
 } from "@/features/strength/lib/hyrox-timer";
+import { BackLink } from "@/shared/components/BackLink";
 
 function SyncErrorBar({ syncError }: { syncError: string | null }) {
   if (!syncError) return null;
@@ -226,6 +227,12 @@ export function HyroxDoneSummary({
 
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
+      {isEnded && (
+        <header className="flex items-center pt-2">
+          <BackLink to="/sessions" label="Historia" />
+        </header>
+      )}
+
       <div className="space-y-1 text-center">
         <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">Trening Hyrox</p>
         <h1 className="font-extrabold text-3xl tabular-nums">{formatMs(totalMs)}</h1>
