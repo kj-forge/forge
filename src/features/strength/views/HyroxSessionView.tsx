@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
@@ -66,6 +67,7 @@ export function HyroxSessionView() {
   const { session, steps, segments } = route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isEnded = session.endedAt !== null;
   const live = useHyroxLive(session.id, steps, segments, { enabled: !isEnded });
   const [finishOpen, setFinishOpen] = useState(false);
@@ -79,7 +81,8 @@ export function HyroxSessionView() {
 
   const removeSession = async () => {
     await deleteSession({ data: { sessionId: session.id } });
-    navigate({ to: "/" });
+    queryClient.invalidateQueries({ queryKey: ["history"] });
+    navigate({ to: "/sessions" });
   };
 
   if (steps.length === 0) {

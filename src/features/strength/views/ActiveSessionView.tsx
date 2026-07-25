@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { NotebookPen, RotateCcw } from "lucide-react";
@@ -38,6 +39,7 @@ export function ActiveSessionView() {
   const movements = steps.flatMap((s) => s.movements);
   const router = useRouter();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [picker, setPicker] = useState<PickerMode | null>(null);
   const [endOpen, setEndOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -256,7 +258,8 @@ export function ActiveSessionView() {
         isEnded={isEnded}
         onConfirm={async () => {
           await deleteSession({ data: { sessionId: session.id } });
-          navigate({ to: "/" });
+          queryClient.invalidateQueries({ queryKey: ["history"] });
+          navigate({ to: "/sessions" });
         }}
       />
 
