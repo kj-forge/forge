@@ -176,7 +176,6 @@ export function HyroxBlocksEditor({ blocks, onChange, allExercises, onError }: H
               <NumericFormat
                 customInput={Input}
                 className="w-16 text-center tabular-nums"
-                placeholder="—"
                 inputMode="decimal"
                 decimalScale={1}
                 allowNegative={false}

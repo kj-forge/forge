@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { EditRoundDialog } from "@/features/strength/components/EditRoundDialog";
+import { EditCircuitSetsDialog } from "@/features/strength/components/EditCircuitSetsDialog";
 import { ExerciseDrawerBody } from "@/features/strength/components/ExerciseDrawer";
 import { StepNav } from "@/features/strength/components/StepNav";
 import { SET_KIND_COLOR, SET_KIND_LABEL, VISIBLE_SET_KINDS } from "@/features/strength/constants";
@@ -50,28 +50,43 @@ export function StepDrawer({ steps, openId, onOpenChange, onNavigate, onAddToSte
   const next = index >= 0 && index < steps.length - 1 ? steps[index + 1] : null;
   const nav = step ? <StepNav steps={steps} currentId={step.id} onNavigate={onNavigate} /> : null;
 
+  // Lives outside the per-round keyed body: a round-count change (e.g.
+  // deleting the last logged round's sets from inside this very dialog)
+  // remounts RoundBody, and a state hoisted inside it would unmount with it,
+  // yanking the open modal shut mid-edit.
+  const [editStepId, setEditStepId] = useState<string | null>(null);
+  const editStep = steps.find((s) => s.id === editStepId) ?? null;
+
   return (
-    <Dialog open={step !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
-        {step === null ? null : step.kind === "REST" ? (
-          <RestStepBody key={step.id} step={step} nav={nav} next={next} onNavigate={onNavigate} />
-        ) : step.movements.length === 1 ? (
-          <ExerciseDrawerBody key={step.movements[0].id} movement={step.movements[0]} nav={nav} />
-        ) : (
-          // Re-key per round: after a full round lands, the rows remount and
-          // re-seed with carry-over values from the round just saved.
-          <RoundBody
-            key={`${step.id}:${currentRound(step.movements)}`}
-            step={step}
-            nav={nav}
-            next={next}
-            onNavigate={onNavigate}
-            onAddToStep={() => onAddToStep(step.id)}
-            onSwapExercise={(mid) => onSwapInStep(step.id, mid)}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={step !== null} onOpenChange={onOpenChange}>
+        <DialogContent>
+          {step === null ? null : step.kind === "REST" ? (
+            <RestStepBody key={step.id} step={step} nav={nav} next={next} onNavigate={onNavigate} />
+          ) : step.movements.length === 1 ? (
+            <ExerciseDrawerBody key={step.movements[0].id} movement={step.movements[0]} nav={nav} />
+          ) : (
+            // Re-key per round: after a full round lands, the rows remount and
+            // re-seed with carry-over values from the round just saved.
+            <RoundBody
+              key={`${step.id}:${currentRound(step.movements)}`}
+              step={step}
+              nav={nav}
+              next={next}
+              onNavigate={onNavigate}
+              onAddToStep={() => onAddToStep(step.id)}
+              onSwapExercise={(mid) => onSwapInStep(step.id, mid)}
+              onEditSets={() => setEditStepId(step.id)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Hoisted above the keyed RoundBody: a round-count change while this
+          modal is open (e.g. deleting the last logged round's sets from
+          inside it) remounts RoundBody but must not close this dialog. */}
+      {editStep && <EditCircuitSetsDialog step={editStep} open onOpenChange={(o) => !o && setEditStepId(null)} />}
+    </>
   );
 }
 
@@ -136,6 +151,7 @@ function RoundBody({
   onNavigate,
   onAddToStep,
   onSwapExercise,
+  onEditSets,
 }: {
   step: Step;
   nav: React.ReactNode;
@@ -143,6 +159,7 @@ function RoundBody({
   onNavigate: (blockId: string) => void;
   onAddToStep: () => void;
   onSwapExercise: (blockMovementId: string) => void;
+  onEditSets: () => void;
 }) {
   const router = useRouter();
   const round = currentRound(step.movements);
@@ -162,7 +179,6 @@ function RoundBody({
   const [error, setError] = useState<string | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState(step.notes ?? "");
-  const [editingRound, setEditingRound] = useState<number | null>(null);
   const [movementAction, setMovementAction] = useState<Movement | null>(null);
 
   const savedThisRound = new Set(
@@ -330,7 +346,6 @@ function RoundBody({
                   <NumericFormat
                     customInput={Input}
                     className="text-center font-bold tabular-nums"
-                    placeholder="sek."
                     inputMode="numeric"
                     decimalScale={0}
                     allowNegative={false}
@@ -346,7 +361,6 @@ function RoundBody({
                     <NumericFormat
                       customInput={Input}
                       className="text-center font-bold tabular-nums"
-                      placeholder="powt."
                       inputMode="numeric"
                       decimalScale={0}
                       allowNegative={false}
@@ -358,7 +372,6 @@ function RoundBody({
                     <NumericFormat
                       customInput={Input}
                       className="text-center font-bold text-primary tabular-nums"
-                      placeholder="kg"
                       inputMode="decimal"
                       decimalScale={2}
                       allowNegative={false}
@@ -372,7 +385,6 @@ function RoundBody({
                 <NumericFormat
                   customInput={Input}
                   className="w-16 shrink-0 text-center tabular-nums"
-                  placeholder="RPE"
                   inputMode="numeric"
                   decimalScale={0}
                   allowNegative={false}
@@ -394,26 +406,26 @@ function RoundBody({
 
         {loggedRounds.length > 0 && (
           <div className="rounded-lg bg-muted/50 p-3 text-xs">
-            <p className="mb-1 flex items-center gap-1.5 font-medium">
-              <ListChecks className="size-3.5 text-primary" />W tej sesji:
+            <p className="mb-1 flex items-center justify-between gap-1.5 font-medium">
+              <span className="flex items-center gap-1.5">
+                <ListChecks className="size-3.5 text-primary" />W tej sesji:
+              </span>
+              <button
+                type="button"
+                className="inline-flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                onClick={onEditSets}
+                aria-label="Edytuj serie"
+              >
+                <Pencil className="size-3.5" />
+              </button>
             </p>
             <ul className="space-y-0.5">
               {loggedRounds.map((r) => {
                 const roundSets = step.movements.map((m) => m.sets.find((x) => x.setNumber === r));
                 const kind = (roundSets.find(Boolean)?.kind ?? "WORK") as SetKind;
                 return (
-                  <li key={r} className="flex items-center justify-between gap-2">
-                    <span className={`tabular-nums ${SET_KIND_COLOR[kind]}`}>
-                      {r}. {SET_KIND_LABEL[kind]} · {roundSets.map((s) => (s ? formatSet(s) : "—")).join(" · ")}
-                    </span>
-                    <button
-                      type="button"
-                      className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-                      onClick={() => setEditingRound(r)}
-                      aria-label={`Edytuj rundę ${r}`}
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
+                  <li key={r} className={`tabular-nums ${SET_KIND_COLOR[kind]}`}>
+                    {r}. {SET_KIND_LABEL[kind]} · {roundSets.map((s) => (s ? formatSet(s) : "—")).join(" · ")}
                   </li>
                 );
               })}
@@ -537,8 +549,6 @@ function RoundBody({
           )}
         </DialogContent>
       </Dialog>
-
-      <EditRoundDialog step={step} round={editingRound} onClose={() => setEditingRound(null)} />
     </div>
   );
 }

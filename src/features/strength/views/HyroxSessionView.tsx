@@ -3,6 +3,7 @@ import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { DeleteSessionDrawer } from "@/features/strength/components/DeleteSessionDrawer";
 import { EndSessionDrawer } from "@/features/strength/components/EndSessionDrawer";
 import { HyroxIdleScreen, HyroxRestScreen, HyroxStationScreen } from "@/features/strength/components/HyroxLiveScreens";
 import {
@@ -71,6 +72,7 @@ export function HyroxSessionView() {
   const isEnded = session.endedAt !== null;
   const live = useHyroxLive(session.id, steps, segments, { enabled: !isEnded });
   const [finishOpen, setFinishOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -88,8 +90,8 @@ export function HyroxSessionView() {
   if (steps.length === 0) {
     return (
       <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
-        <header className="flex items-center justify-between pt-2">
-          <BackLink to="/sessions" label="Historia" />
+        <header className={`flex items-center ${isEnded ? "justify-between" : "justify-end"} pt-2`}>
+          {isEnded && <BackLink to="/sessions" label="Historia" />}
           <span className="text-muted-foreground text-xs">
             {new Date(session.date).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
           </span>
@@ -105,6 +107,21 @@ export function HyroxSessionView() {
             Trening Hyrox deklarujesz w planie. Wystartuj sesję z planu, żeby dostać bloki i stoper.
           </CardContent>
         </Card>
+
+        <button
+          type="button"
+          className="w-full text-muted-foreground text-xs underline-offset-4 hover:text-destructive hover:underline"
+          onClick={() => setDeleteOpen(true)}
+        >
+          Usuń sesję
+        </button>
+
+        <DeleteSessionDrawer
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          isEnded={isEnded}
+          onConfirm={removeSession}
+        />
       </main>
     );
   }

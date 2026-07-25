@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -8,8 +9,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRootMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { createPlan, updatePlan } from "@/features/plan/server/plan";
+import { createPlan, deletePlan, updatePlan } from "@/features/plan/server/plan";
 import { getErrorMessage } from "@/lib/error-message";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { Spinner } from "@/shared/components/Spinner";
 
 const planFormSchema = z.object({
@@ -62,6 +64,9 @@ function PlanFormBody({
     defaultValues: { name: plan?.name ?? "", description: plan?.description ?? "" },
     mode: "onSubmit",
   });
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
@@ -86,6 +91,20 @@ function PlanFormBody({
       });
     }
   });
+
+  const handleDelete = async () => {
+    if (!plan) return;
+    setDeleting(true);
+    try {
+      await deletePlan({ data: { planId: plan.id } });
+      await router.invalidate();
+      setConfirmDelete(false);
+      onClose();
+    } catch (err) {
+      setDeleting(false);
+      setDeleteError(getErrorMessage(err, "Nie udało się usunąć planu."));
+    }
+  };
 
   const isSubmitting = form.formState.isSubmitting;
 
@@ -129,12 +148,39 @@ function PlanFormBody({
           <FormRootMessage />
         </div>
 
-        <div className="shrink-0 p-4 pt-2">
+        <div className="shrink-0 space-y-2 p-4 pt-2">
           <Button type="submit" className="w-full bg-ember shadow-ember" size="lg" disabled={isSubmitting}>
             {isSubmitting ? <Spinner size="sm" /> : plan ? "Zapisz" : "Utwórz plan"}
           </Button>
+          {plan && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full text-destructive hover:text-destructive"
+              disabled={isSubmitting || deleting}
+              onClick={() => {
+                setDeleteError(null);
+                setConfirmDelete(true);
+              }}
+            >
+              {deleting ? <Spinner size="sm" /> : "Usuń plan"}
+            </Button>
+          )}
         </div>
       </form>
+
+      {plan && (
+        <ConfirmDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          title={`Usunąć plan „${plan.name}”?`}
+          description="Usuwa plan, jego treningi i wpisy w harmonogramie. Zapisane sesje zostają."
+          error={deleteError}
+          confirmLabel="Usuń plan"
+          pending={deleting}
+          onConfirm={handleDelete}
+        />
+      )}
     </Form>
   );
 }
