@@ -19,6 +19,7 @@ import { swapExerciseInStep } from "@/features/strength/server/movements";
 import { createSession, deleteSession, endSession, updateSessionNotes } from "@/features/strength/server/sessions";
 import { addExerciseToStep, addStep } from "@/features/strength/server/steps";
 import { getErrorMessage } from "@/lib/error-message";
+import { BackLink } from "@/shared/components/BackLink";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
 // What the exercise picker feeds when it confirms: a new single step, a new
@@ -69,7 +70,8 @@ export function ActiveSessionView() {
 
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
-      <header className="flex items-center justify-end pt-2">
+      <header className="flex items-center justify-between pt-2">
+        <BackLink to="/sessions" label="Historia" />
         <span className="text-muted-foreground text-xs">
           {new Date(session.date).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
         </span>

@@ -1,5 +1,5 @@
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, SquarePen, Trophy } from "lucide-react";
+import { getRouteApi, useNavigate } from "@tanstack/react-router";
+import { SquarePen, Trophy } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { E1rmSparkline, formatChartDate } from "@/features/strength/components/E1rmSparkline";
 import { ExerciseEditorDrawer } from "@/features/strength/components/ExerciseEditorDrawer";
 import { formatSetsCompactParts } from "@/features/strength/lib/format-sets-compact";
+import { BackLink } from "@/shared/components/BackLink";
 
 const route = getRouteApi("/_shell/stats/$slug");
 
@@ -20,7 +21,7 @@ export function ExerciseStatsView() {
   if (!data) {
     return (
       <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4">
-        <BackLink />
+        <BackLink to="/stats" label="Statystyki" />
         <Card>
           <CardContent className="py-6 text-center text-muted-foreground text-sm">
             Nie znaleziono ćwiczenia.
@@ -37,7 +38,7 @@ export function ExerciseStatsView() {
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-4">
       <div>
-        <BackLink />
+        <BackLink to="/stats" label="Statystyki" />
         <div className="mt-1 flex items-center justify-between gap-3">
           <h1 className="min-w-0 truncate font-bold text-2xl tracking-tight">{exercise.namePl}</h1>
           <button
@@ -142,17 +143,5 @@ export function ExerciseStatsView() {
         )}
       </section>
     </main>
-  );
-}
-
-function BackLink() {
-  return (
-    <Link
-      to="/stats"
-      className="inline-flex items-center gap-0.5 text-muted-foreground text-xs transition-colors hover:text-foreground"
-    >
-      <ChevronLeft className="size-3.5" />
-      Statystyki
-    </Link>
   );
 }

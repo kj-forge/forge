@@ -11,6 +11,7 @@ import {
 } from "@/features/strength/components/HyroxSummaries";
 import { type HyroxLive, useHyroxLive } from "@/features/strength/components/useHyroxLive";
 import { deleteSession, updateSessionNotes } from "@/features/strength/server/sessions";
+import { BackLink } from "@/shared/components/BackLink";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
 const route = getRouteApi("/_shell/sessions/$sessionId");
@@ -84,7 +85,8 @@ export function HyroxSessionView() {
   if (steps.length === 0) {
     return (
       <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
-        <header className="flex items-center justify-end pt-2">
+        <header className="flex items-center justify-between pt-2">
+          <BackLink to="/sessions" label="Historia" />
           <span className="text-muted-foreground text-xs">
             {new Date(session.date).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
           </span>
