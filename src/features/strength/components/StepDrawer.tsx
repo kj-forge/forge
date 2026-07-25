@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { EditRoundDialog } from "@/features/strength/components/EditRoundDialog";
+import { EditCircuitSetsDialog } from "@/features/strength/components/EditCircuitSetsDialog";
 import { ExerciseDrawerBody } from "@/features/strength/components/ExerciseDrawer";
 import { StepNav } from "@/features/strength/components/StepNav";
 import { SET_KIND_COLOR, SET_KIND_LABEL, VISIBLE_SET_KINDS } from "@/features/strength/constants";
@@ -162,7 +162,7 @@ function RoundBody({
   const [error, setError] = useState<string | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState(step.notes ?? "");
-  const [editingRound, setEditingRound] = useState<number | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [movementAction, setMovementAction] = useState<Movement | null>(null);
 
   const savedThisRound = new Set(
@@ -394,26 +394,26 @@ function RoundBody({
 
         {loggedRounds.length > 0 && (
           <div className="rounded-lg bg-muted/50 p-3 text-xs">
-            <p className="mb-1 flex items-center gap-1.5 font-medium">
-              <ListChecks className="size-3.5 text-primary" />W tej sesji:
+            <p className="mb-1 flex items-center justify-between gap-1.5 font-medium">
+              <span className="flex items-center gap-1.5">
+                <ListChecks className="size-3.5 text-primary" />W tej sesji:
+              </span>
+              <button
+                type="button"
+                className="inline-flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                onClick={() => setEditOpen(true)}
+                aria-label="Edytuj serie"
+              >
+                <Pencil className="size-3.5" />
+              </button>
             </p>
             <ul className="space-y-0.5">
               {loggedRounds.map((r) => {
                 const roundSets = step.movements.map((m) => m.sets.find((x) => x.setNumber === r));
                 const kind = (roundSets.find(Boolean)?.kind ?? "WORK") as SetKind;
                 return (
-                  <li key={r} className="flex items-center justify-between gap-2">
-                    <span className={`tabular-nums ${SET_KIND_COLOR[kind]}`}>
-                      {r}. {SET_KIND_LABEL[kind]} · {roundSets.map((s) => (s ? formatSet(s) : "—")).join(" · ")}
-                    </span>
-                    <button
-                      type="button"
-                      className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-                      onClick={() => setEditingRound(r)}
-                      aria-label={`Edytuj rundę ${r}`}
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
+                  <li key={r} className={`tabular-nums ${SET_KIND_COLOR[kind]}`}>
+                    {r}. {SET_KIND_LABEL[kind]} · {roundSets.map((s) => (s ? formatSet(s) : "—")).join(" · ")}
                   </li>
                 );
               })}
@@ -538,7 +538,7 @@ function RoundBody({
         </DialogContent>
       </Dialog>
 
-      <EditRoundDialog step={step} round={editingRound} onClose={() => setEditingRound(null)} />
+      <EditCircuitSetsDialog step={step} open={editOpen} onOpenChange={setEditOpen} />
     </div>
   );
 }
