@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
+import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -8,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRootMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { DAY_SLOT_LABEL, DAY_SLOTS, type DaySlot } from "@/features/plan/constants";
 import { type AdhocFormValues, adhocFormSchema } from "@/features/plan/lib/adhoc-form";
 import { addScheduleEntry } from "@/features/plan/server/plan";
 import type { PlanWithUnits } from "@/features/plan/types";
@@ -62,6 +64,7 @@ function AddToDayBody({
   const [addingUnitId, setAddingUnitId] = useState<string | null>(null);
   const [pickError, setPickError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [slot, setSlot] = useState<DaySlot>("MORNING");
 
   // All plans/units are already client-side (one getPlanScreen payload), so
   // scaling here is a filter, not pagination: search + per-plan grouping.
@@ -85,7 +88,7 @@ function AddToDayBody({
     setAddingUnitId(unitId);
     setPickError(null);
     try {
-      await addScheduleEntry({ data: { date, unitId } });
+      await addScheduleEntry({ data: { date, unitId, slot } });
       await router.invalidate();
       onClose();
     } catch (err) {
@@ -96,14 +99,20 @@ function AddToDayBody({
 
   const form = useForm<AdhocFormValues>({
     resolver: zodResolver(adhocFormSchema),
-    defaultValues: { sessionType: "OTHER", name: "", note: "" },
+    defaultValues: { sessionType: "OTHER", name: "", note: "", slot: "MORNING" },
     mode: "onSubmit",
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
       await addScheduleEntry({
-        data: { date, sessionType: values.sessionType, name: values.name, note: values.note || undefined },
+        data: {
+          date,
+          sessionType: values.sessionType,
+          name: values.name,
+          note: values.note || undefined,
+          slot: values.slot,
+        },
       });
       await router.invalidate();
       onClose();
@@ -129,6 +138,24 @@ function AddToDayBody({
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-2">
         {mode === "pick" ? (
           <>
+            <div>
+              <p className="mb-1.5 font-medium text-muted-foreground text-xs">Pora dnia</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {DAY_SLOTS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 font-semibold text-xs transition-colors ${
+                      slot === s ? "border-transparent bg-ember" : "border-border text-muted-foreground hover:bg-accent"
+                    }`}
+                    onClick={() => setSlot(s)}
+                  >
+                    {s === "MORNING" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+                    {DAY_SLOT_LABEL[s]}
+                  </button>
+                ))}
+              </div>
+            </div>
             {totalUnits > 5 && (
               <SearchInput
                 placeholder="Szukaj: plan, trening lub typ…"
@@ -226,6 +253,35 @@ function AddToDayBody({
                     <FormLabel>Notatka (opcjonalnie)</FormLabel>
                     <FormControl>
                       <Textarea rows={2} placeholder="np. luźno, technika" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="slot"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pora dnia</FormLabel>
+                    <FormControl>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {DAY_SLOTS.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            className={`flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 font-semibold text-xs transition-colors ${
+                              field.value === s
+                                ? "border-transparent bg-ember"
+                                : "border-border text-muted-foreground hover:bg-accent"
+                            }`}
+                            onClick={() => field.onChange(s)}
+                          >
+                            {s === "MORNING" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+                            {DAY_SLOT_LABEL[s]}
+                          </button>
+                        ))}
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

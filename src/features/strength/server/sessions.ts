@@ -225,6 +225,7 @@ export const getSessionDetails = createServerFn({ method: "GET" })
             exerciseNamePl: exercises.namePl,
             exerciseDefaultUnit: exercises.defaultUnit,
             exerciseIsLoadedBodyweight: exercises.isLoadedBodyweight,
+            removedAfterRound: blockMovements.removedAfterRound,
             targetReps: blockMovements.targetReps,
             targetDistanceM: blockMovements.targetDistanceM,
           })

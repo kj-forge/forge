@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
@@ -11,6 +12,7 @@ import {
 } from "@/features/strength/components/HyroxSummaries";
 import { type HyroxLive, useHyroxLive } from "@/features/strength/components/useHyroxLive";
 import { deleteSession, updateSessionNotes } from "@/features/strength/server/sessions";
+import { BackLink } from "@/shared/components/BackLink";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
 const route = getRouteApi("/_shell/sessions/$sessionId");
@@ -65,6 +67,7 @@ export function HyroxSessionView() {
   const { session, steps, segments } = route.useLoaderData();
   const router = useRouter();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isEnded = session.endedAt !== null;
   const live = useHyroxLive(session.id, steps, segments, { enabled: !isEnded });
   const [finishOpen, setFinishOpen] = useState(false);
@@ -78,13 +81,15 @@ export function HyroxSessionView() {
 
   const removeSession = async () => {
     await deleteSession({ data: { sessionId: session.id } });
-    navigate({ to: "/" });
+    queryClient.invalidateQueries({ queryKey: ["history"] });
+    navigate({ to: "/sessions" });
   };
 
   if (steps.length === 0) {
     return (
       <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
-        <header className="flex items-center justify-end pt-2">
+        <header className="flex items-center justify-between pt-2">
+          <BackLink to="/sessions" label="Historia" />
           <span className="text-muted-foreground text-xs">
             {new Date(session.date).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
           </span>

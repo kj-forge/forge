@@ -1,5 +1,5 @@
 import { useRouter } from "@tanstack/react-router";
-import { Check, Flame, ListChecks, NotebookPen, Zap } from "lucide-react";
+import { Flame, ListChecks, NotebookPen, Pencil, Repeat2, Zap } from "lucide-react";
 import { useState } from "react";
 import { NumericFormat } from "react-number-format";
 import { toast } from "sonner";
@@ -16,18 +16,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { EditRoundDialog } from "@/features/strength/components/EditRoundDialog";
 import { ExerciseDrawerBody } from "@/features/strength/components/ExerciseDrawer";
 import { StepNav } from "@/features/strength/components/StepNav";
 import { SET_KIND_COLOR, SET_KIND_LABEL, VISIBLE_SET_KINDS } from "@/features/strength/constants";
 import { fireConfetti } from "@/features/strength/lib/confetti";
 import { formatSet } from "@/features/strength/lib/format-set";
 import { numToInputStr } from "@/features/strength/lib/set-form";
-import { completedRounds, currentRound, maxLoggedRound } from "@/features/strength/lib/step-progress";
-import { removeExerciseFromSession } from "@/features/strength/server/movements";
-import { deleteRound, saveRound, updateStepNotes } from "@/features/strength/server/steps";
+import { currentRound, isActiveInRound, loggedRoundNumbers } from "@/features/strength/lib/step-progress";
+import { removeExerciseFromSession, retireExerciseFromStep } from "@/features/strength/server/movements";
+import { saveRound, updateStepNotes } from "@/features/strength/server/steps";
 import type { Movement, SetKind, Step } from "@/features/strength/types";
 import { getErrorMessage } from "@/lib/error-message";
-import { Spinner } from "@/shared/components/Spinner";
 
 interface StepDrawerProps {
   steps: Step[];
@@ -37,12 +37,14 @@ interface StepDrawerProps {
   onNavigate: (blockId: string) => void;
   // Opens the exercise picker in morph mode for this step.
   onAddToStep: (blockId: string) => void;
+  // Opens the exercise picker in swap mode for this movement.
+  onSwapInStep: (blockId: string, blockMovementId: string) => void;
 }
 
 // One drawer for the whole active session, selected by BLOCK id. The body is
 // chosen by the step's shape: 1 movement → classic exercise logging, 2+ →
 // round view, kind=REST → informational page.
-export function StepDrawer({ steps, openId, onOpenChange, onNavigate, onAddToStep }: StepDrawerProps) {
+export function StepDrawer({ steps, openId, onOpenChange, onNavigate, onAddToStep, onSwapInStep }: StepDrawerProps) {
   const step = steps.find((s) => s.id === openId) ?? null;
   const index = step ? steps.indexOf(step) : -1;
   const next = index >= 0 && index < steps.length - 1 ? steps[index + 1] : null;
@@ -65,6 +67,7 @@ export function StepDrawer({ steps, openId, onOpenChange, onNavigate, onAddToSte
             next={next}
             onNavigate={onNavigate}
             onAddToStep={() => onAddToStep(step.id)}
+            onSwapExercise={(mid) => onSwapInStep(step.id, mid)}
           />
         )}
       </DialogContent>
@@ -126,38 +129,32 @@ function rowToEntry(movementId: string, isTime: boolean, values: RowValues) {
   };
 }
 
-// TIME sets render as seconds; everything else exactly like the classic view
-// ("3× 132.5kg", "10× bw"). Shared with the read-only circuit table.
-export function formatRoundSet(s: Movement["sets"][number]): string {
-  if (s.durationSeconds !== null && s.reps === null) return `${s.durationSeconds}s`;
-  return formatSet(s);
-}
-
 function RoundBody({
   step,
   nav,
   next,
   onNavigate,
   onAddToStep,
+  onSwapExercise,
 }: {
   step: Step;
   nav: React.ReactNode;
   next: Step | null;
   onNavigate: (blockId: string) => void;
   onAddToStep: () => void;
+  onSwapExercise: (blockMovementId: string) => void;
 }) {
   const router = useRouter();
   const round = currentRound(step.movements);
-  const done = completedRounds(step.movements);
-  const lastLogged = maxLoggedRound(step.movements);
+  const activeMovements = step.movements.filter((m) => isActiveInRound(m, round));
 
   const [rows, setRows] = useState<Record<string, RowValues>>(() =>
-    Object.fromEntries(step.movements.map((m) => [m.id, seedRow(m)])),
+    Object.fromEntries(activeMovements.map((m) => [m.id, seedRow(m)])),
   );
   // One kind per lap — stamps every exercise saved in it. Re-suggested on the
   // per-lap remount from the previous lap's kind.
   const [roundKind, setRoundKind] = useState<RoundKind>(() => {
-    const lastLap = maxLoggedRound(step.movements);
+    const lastLap = round - 1;
     const lastKind = step.movements.flatMap((m) => m.sets).find((s) => s.setNumber === lastLap)?.kind ?? null;
     return suggestRoundKind(lastKind);
   });
@@ -165,10 +162,11 @@ function RoundBody({
   const [error, setError] = useState<string | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState(step.notes ?? "");
-  const [deletingRound, setDeletingRound] = useState<number | null>(null);
+  const [editingRound, setEditingRound] = useState<number | null>(null);
+  const [movementAction, setMovementAction] = useState<Movement | null>(null);
 
   const savedThisRound = new Set(
-    step.movements.filter((m) => m.sets.some((s) => s.setNumber === round)).map((m) => m.id),
+    activeMovements.filter((m) => m.sets.some((s) => s.setNumber === round)).map((m) => m.id),
   );
 
   const firePrToasts = (
@@ -190,36 +188,15 @@ function RoundBody({
     }
   };
 
-  const saveOne = async (movement: Movement) => {
-    const isTime = movement.exerciseDefaultUnit === "TIME";
-    const entry = rowToEntry(movement.id, isTime, rows[movement.id]);
-    if (!entry) {
-      setError(isTime ? "Podaj czas w sekundach." : "Podaj liczbę powtórzeń.");
-      return;
-    }
-    setError(null);
-    setSaving(movement.id);
-    try {
-      const results = await saveRound({
-        data: { blockId: step.id, roundNumber: round, kind: roundKind, entries: [entry] },
-      });
-      firePrToasts(results, [entry]);
-      await router.invalidate();
-    } catch (err) {
-      setError(getErrorMessage(err, "Nie udało się zapisać serii."));
-    } finally {
-      setSaving(null);
-    }
-  };
-
   // "Zapisz rundę i dalej": batch-save every unsaved row, then advance — to
   // the next step once the target is met, otherwise to the next round (the
   // data change re-keys this body).
   const saveWholeRound = async () => {
-    const pending = step.movements.filter((m) => !savedThisRound.has(m.id));
+    const pending = activeMovements.filter((m) => !savedThisRound.has(m.id));
     const entries = [];
     for (const m of pending) {
-      const entry = rowToEntry(m.id, m.exerciseDefaultUnit === "TIME", rows[m.id]);
+      const values = rows[m.id] ?? seedRow(m);
+      const entry = rowToEntry(m.id, m.exerciseDefaultUnit === "TIME", values);
       if (!entry) {
         setError(`Uzupełnij wartości: ${m.exerciseNamePl}.`);
         return;
@@ -236,7 +213,7 @@ function RoundBody({
         firePrToasts(results, entries);
         await router.invalidate();
       } catch (err) {
-        setError(getErrorMessage(err, "Nie udało się zapisać obwodu."));
+        setError(getErrorMessage(err, "Nie udało się zapisać rundy."));
         setSaving(null);
         return;
       }
@@ -247,24 +224,16 @@ function RoundBody({
     }
   };
 
-  const handleDeleteRound = async (roundNumber: number) => {
-    setDeletingRound(roundNumber);
-    setError(null);
-    try {
-      await deleteRound({ data: { blockId: step.id, roundNumber } });
-      await router.invalidate();
-    } catch (err) {
-      setError(getErrorMessage(err, "Nie udało się usunąć obwodu."));
-    } finally {
-      setDeletingRound(null);
-    }
-  };
-
-  const removeFromCircuit = async (movement: Movement) => {
+  const removeMovement = async (movement: Movement) => {
     setError(null);
     setSaving(movement.id);
+    setMovementAction(null);
     try {
-      await removeExerciseFromSession({ data: { blockMovementId: movement.id } });
+      if (movement.sets.length === 0) {
+        await removeExerciseFromSession({ data: { blockMovementId: movement.id } });
+      } else {
+        await retireExerciseFromStep({ data: { blockMovementId: movement.id, fromRound: round } });
+      }
       await router.invalidate();
     } catch (err) {
       setError(getErrorMessage(err, "Nie udało się usunąć ćwiczenia z obwodu."));
@@ -285,11 +254,9 @@ function RoundBody({
 
   // Ascending, like the classic "W tej sesji" list — same reading order in
   // both step shapes.
-  const loggedRounds = Array.from({ length: lastLogged }, (_, i) => i + 1).filter((r) =>
-    step.movements.some((m) => m.sets.some((s) => s.setNumber === r)),
-  );
+  const loggedRounds = loggedRoundNumbers(step.movements);
 
-  const title = step.movements.map((m) => m.exerciseNamePl).join(" + ");
+  const title = activeMovements.map((m) => m.exerciseNamePl).join(" + ");
   const targetLabel = step.targetRounds !== null ? ` / ${step.targetRounds}` : "";
   const isLastTargetRound = step.targetRounds !== null && round >= step.targetRounds;
 
@@ -308,20 +275,9 @@ function RoundBody({
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4">
         <div className="flex items-baseline justify-between">
           <p className="font-bold text-base tabular-nums">
-            Obwód {round}
+            Runda {round}
             <span className="font-medium text-muted-foreground text-sm">{targetLabel}</span>
           </p>
-          {step.targetRounds !== null && (
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.max(step.targetRounds, round - 1) }, (_, i) => (
-                <span
-                  // biome-ignore lint/suspicious/noArrayIndexKey: fixed-order dots
-                  key={i}
-                  className={`size-2 rounded-full ${i < done ? "bg-primary" : "bg-muted-foreground/25"}`}
-                />
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Round-level kind — one row of chips stamps the whole round. */}
@@ -340,27 +296,23 @@ function RoundBody({
           ))}
         </div>
 
-        {step.movements.map((m) => {
+        {activeMovements.map((m) => {
           const isTime = m.exerciseDefaultUnit === "TIME";
-          const values = rows[m.id];
+          const values = rows[m.id] ?? seedRow(m);
           const saved = savedThisRound.has(m.id);
           return (
             <div key={m.id} className={`rounded-lg border p-3 ${saved ? "opacity-60" : ""}`}>
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <p className="min-w-0 truncate font-semibold text-sm">{m.exerciseNamePl}</p>
-                {/* Removable only while it has no logged sets — same guard as
-                    the classic list (server re-checks). */}
-                {m.sets.length === 0 && (
-                  <button
-                    type="button"
-                    className="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground text-xs transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                    onClick={() => removeFromCircuit(m)}
-                    disabled={saving !== null}
-                    aria-label={`Usuń z obwodu: ${m.exerciseNamePl}`}
-                  >
-                    ✕
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                  onClick={() => setMovementAction(m)}
+                  disabled={saving !== null}
+                  aria-label={`Edytuj ćwiczenie: ${m.exerciseNamePl}`}
+                >
+                  <Pencil className="size-3.5" />
+                </button>
               </div>
               <div className="mb-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wide">
                 {isTime ? (
@@ -372,7 +324,6 @@ function RoundBody({
                   </>
                 )}
                 <span className="w-16 shrink-0 text-center">RPE 6–10</span>
-                <span className="w-9 shrink-0" />
               </div>
               <div className="flex items-center gap-1.5">
                 {isTime ? (
@@ -436,19 +387,6 @@ function RoundBody({
                   }
                   disabled={saved}
                 />
-                <Button
-                  type="button"
-                  variant={saved ? "ghost" : "outline"}
-                  size="icon"
-                  className={`shrink-0 ${saved ? "text-emerald-600 dark:text-emerald-400" : ""}`}
-                  aria-label={
-                    saved ? `${m.exerciseNamePl} — zapisane w tej rundzie` : `Zapisz serię: ${m.exerciseNamePl}`
-                  }
-                  disabled={saved || saving !== null}
-                  onClick={() => saveOne(m)}
-                >
-                  {saving === m.id ? <Spinner size="sm" /> : <Check className="size-4" />}
-                </Button>
               </div>
             </div>
           );
@@ -466,16 +404,15 @@ function RoundBody({
                 return (
                   <li key={r} className="flex items-center justify-between gap-2">
                     <span className={`tabular-nums ${SET_KIND_COLOR[kind]}`}>
-                      {r}. {SET_KIND_LABEL[kind]} · {roundSets.map((s) => (s ? formatRoundSet(s) : "—")).join(" · ")}
+                      {r}. {SET_KIND_LABEL[kind]} · {roundSets.map((s) => (s ? formatSet(s) : "—")).join(" · ")}
                     </span>
                     <button
                       type="button"
-                      className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground text-xs hover:text-destructive disabled:opacity-50"
-                      onClick={() => handleDeleteRound(r)}
-                      disabled={deletingRound !== null}
-                      aria-label={`Usuń obwód ${r}`}
+                      className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                      onClick={() => setEditingRound(r)}
+                      aria-label={`Edytuj rundę ${r}`}
                     >
-                      {deletingRound === r ? <Spinner size="sm" /> : "✕"}
+                      <Pencil className="size-3.5" />
                     </button>
                   </li>
                 );
@@ -547,7 +484,7 @@ function RoundBody({
           ) : (
             <>
               <Zap className="size-4" />
-              {isLastTargetRound && next ? "Zapisz obwód i dalej →" : "Zapisz obwód"}
+              {isLastTargetRound && next ? "Zapisz rundę i dalej →" : "Zapisz rundę"}
             </>
           )}
         </Button>
@@ -557,6 +494,51 @@ function RoundBody({
           </Button>
         </DialogClose>
       </DialogFooter>
+
+      <Dialog open={movementAction !== null} onOpenChange={(o) => !o && setMovementAction(null)}>
+        <DialogContent mobileSheet>
+          {movementAction && (
+            <div className="mx-auto w-full max-w-md">
+              <DialogHeader>
+                <DialogTitle>{movementAction.exerciseNamePl}</DialogTitle>
+                <DialogDescription>Ćwiczenie w obwodzie · od rundy {round}</DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-2 px-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    const m = movementAction;
+                    setMovementAction(null);
+                    onSwapExercise(m.id);
+                  }}
+                >
+                  <Repeat2 className="size-4" />
+                  Zamień na inne ćwiczenie
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full text-destructive hover:text-destructive"
+                  onClick={() => removeMovement(movementAction)}
+                >
+                  {movementAction.sets.length === 0 ? "Usuń z obwodu" : "Usuń z obwodu (od tej rundy)"}
+                </Button>
+              </div>
+
+              <DialogFooter className="gap-2">
+                <Button type="button" variant="outline" className="w-full" onClick={() => setMovementAction(null)}>
+                  Anuluj
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <EditRoundDialog step={step} round={editingRound} onClose={() => setEditingRound(null)} />
     </div>
   );
 }

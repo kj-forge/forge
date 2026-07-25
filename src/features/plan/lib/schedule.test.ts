@@ -28,6 +28,7 @@ const assignment = (dayOfWeek: number, u: ScheduleUnit = unit(), window: { from?
   unit: u,
   activeFrom: window.from ?? null,
   activeTo: window.to ?? null,
+  slot: "MORNING" as const,
 });
 
 const override = (over: Partial<WeekOverride> & Pick<WeekOverride, "id" | "date" | "kind">): WeekOverride => ({
@@ -36,6 +37,7 @@ const override = (over: Partial<WeekOverride> & Pick<WeekOverride, "id" | "date"
   sessionType: null,
   name: null,
   note: null,
+  slot: "MORNING",
   ...over,
 });
 
@@ -165,5 +167,142 @@ describe("resolveWeek", () => {
     );
     expect(entries).toHaveLength(1);
     expect(entries[0].date).toBe("2026-07-14");
+  });
+});
+
+describe("resolveWeek — day slots", () => {
+  const unit = (unitId: string): ScheduleUnit => ({
+    unitId,
+    planId: "p1",
+    planName: "Plan",
+    name: unitId,
+    sessionType: "STRENGTH",
+    intensity: "MEDIUM",
+    training: "",
+    goal: null,
+    exercises: [],
+  });
+  const dates = weekDates("2026-07-20");
+
+  test("evening plan entry sorts after a morning ADD on the same day", () => {
+    const entries = resolveWeek(
+      dates,
+      [{ dayOfWeek: 0, unit: unit("u-evening"), activeFrom: null, activeTo: null, slot: "EVENING" }],
+      [
+        {
+          id: "o1",
+          date: "2026-07-20",
+          kind: "ADD",
+          unitId: "u-morning",
+          unit: unit("u-morning"),
+          sessionType: null,
+          name: null,
+          note: null,
+          slot: "MORNING",
+        },
+      ],
+    );
+    expect(entries.map((e) => e.unitId)).toEqual(["u-morning", "u-evening"]);
+    expect(entries[0].slot).toBe("MORNING");
+  });
+
+  test("a same-date SKIP+ADD slot change is not relocated", () => {
+    const entries = resolveWeek(
+      dates,
+      [{ dayOfWeek: 0, unit: unit("u1"), activeFrom: null, activeTo: null, slot: "MORNING" }],
+      [
+        {
+          id: "o1",
+          date: "2026-07-20",
+          kind: "SKIP",
+          unitId: "u1",
+          unit: null,
+          sessionType: null,
+          name: null,
+          note: null,
+          slot: "MORNING",
+        },
+        {
+          id: "o2",
+          date: "2026-07-20",
+          kind: "ADD",
+          unitId: "u1",
+          unit: unit("u1"),
+          sessionType: null,
+          name: null,
+          note: null,
+          slot: "EVENING",
+        },
+      ],
+    );
+    expect(entries).toHaveLength(1);
+    expect(entries[0].source).toBe("ADD");
+    expect(entries[0].slot).toBe("EVENING");
+    expect(entries[0].relocated).toBe(false);
+  });
+
+  test("an ADD on a date with no assignment for its weekday is relocated", () => {
+    const entries = resolveWeek(
+      dates,
+      [{ dayOfWeek: 0, unit: unit("u1"), activeFrom: null, activeTo: null, slot: "MORNING" }],
+      [
+        {
+          id: "o1",
+          date: "2026-07-20",
+          kind: "SKIP",
+          unitId: "u1",
+          unit: null,
+          sessionType: null,
+          name: null,
+          note: null,
+          slot: "MORNING",
+        },
+        {
+          id: "o2",
+          date: "2026-07-21",
+          kind: "ADD",
+          unitId: "u1",
+          unit: unit("u1"),
+          sessionType: null,
+          name: null,
+          note: null,
+          slot: "MORNING",
+        },
+      ],
+    );
+    expect(entries).toHaveLength(1);
+    expect(entries[0].source).toBe("ADD");
+    expect(entries[0].relocated).toBe(true);
+  });
+
+  test("an ADD on the unit's weekday but outside the plan's activation window is relocated", () => {
+    const entries = resolveWeek(
+      dates,
+      [
+        {
+          dayOfWeek: 0,
+          unit: unit("u1"),
+          activeFrom: null,
+          activeTo: "2026-07-10",
+          slot: "MORNING",
+        },
+      ],
+      [
+        {
+          id: "o1",
+          date: "2026-07-20",
+          kind: "ADD",
+          unitId: "u1",
+          unit: unit("u1"),
+          sessionType: null,
+          name: null,
+          note: null,
+          slot: "MORNING",
+        },
+      ],
+    );
+    expect(entries).toHaveLength(1);
+    expect(entries[0].source).toBe("ADD");
+    expect(entries[0].relocated).toBe(true);
   });
 });

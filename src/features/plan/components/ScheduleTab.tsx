@@ -3,24 +3,29 @@ import {
   type DragEndEvent,
   DragOverlay,
   type DragStartEvent,
-  PointerSensor,
-  TouchSensor,
+  MouseSensor,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
 import { Link, useRouter } from "@tanstack/react-router";
-import { CheckCircle2, ChevronLeft, ChevronRight, Dumbbell, Plus, Target } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Dumbbell, Moon, Plus, Sun, Target } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { UNIT_INTENSITY_CLASS, UNIT_INTENSITY_LABEL } from "@/features/plan/constants";
+import {
+  DAY_SLOT_LABEL,
+  DAY_SLOTS,
+  type DaySlot,
+  UNIT_INTENSITY_CLASS,
+  UNIT_INTENSITY_LABEL,
+} from "@/features/plan/constants";
 import { unitTrainingLabel } from "@/features/plan/lib/plan-display";
 import { type ScheduleEntry, warsawTodayIso } from "@/features/plan/lib/schedule";
-import { moveScheduleEntry, removeScheduleEntry } from "@/features/plan/server/plan";
+import { moveScheduleEntry, removeScheduleEntry, setScheduleEntrySlot } from "@/features/plan/server/plan";
 import type { WeekSchedule } from "@/features/plan/types";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import { getErrorMessage } from "@/lib/error-message";
@@ -90,12 +95,9 @@ export function ScheduleTab({
     });
   }, [schedule.entries]);
 
-  // Long-press on touch so vertical scroll stays usable; small distance gate
-  // on pointer so taps still open the action sheet.
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
-  );
+  // Drag stays a desktop affordance; on touch the tap → action sheet covers
+  // moving between days and slots.
+  const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 8 } }));
 
   const entriesByDate = new Map<string, ScheduleEntry[]>();
   for (const entry of schedule.entries) {
@@ -124,7 +126,7 @@ export function ScheduleTab({
       await moveScheduleEntry({
         data:
           entry.source === "PLAN"
-            ? { kind: "PLAN", unitId: entry.unitId as string, fromDate: entry.date, toDate }
+            ? { kind: "PLAN", unitId: entry.unitId as string, fromDate: entry.date, toDate, slot: entry.slot }
             : { kind: "OVERRIDE", overrideId: entry.overrideId as string, toDate },
       });
       // Success path leaves the record alone — the reconcile effect drops it
@@ -248,6 +250,22 @@ export function ScheduleTab({
           setAction(null);
           void remove(entry);
         }}
+        onSetSlot={(entry, slot) => {
+          setAction(null);
+          void (async () => {
+            try {
+              await setScheduleEntrySlot({
+                data:
+                  entry.source === "PLAN"
+                    ? { kind: "PLAN", unitId: entry.unitId as string, date: entry.date, slot }
+                    : { kind: "OVERRIDE", overrideId: entry.overrideId as string, slot },
+              });
+              await router.invalidate();
+            } catch (err) {
+              toast.error(getErrorMessage(err, "Nie udało się zmienić pory dnia."));
+            }
+          })();
+        }}
       />
     </div>
   );
@@ -369,10 +387,14 @@ function EntryCard({ entry, overlay = false }: { entry: ScheduleEntry; overlay?:
             {UNIT_INTENSITY_LABEL[entry.intensity]}
           </span>
         )}
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-bold text-[10px] text-muted-foreground uppercase tracking-wide">
+          {entry.slot === "MORNING" ? <Sun className="size-3" /> : <Moon className="size-3" />}
+          {DAY_SLOT_LABEL[entry.slot]}
+        </span>
       </div>
       <p className="mt-0.5 truncate text-muted-foreground text-xs">
         {entry.source === "ADHOC" ? "poza planem" : entry.planName} · {SESSION_TYPE_LABEL_PL[entry.sessionType]}
-        {entry.source === "ADD" && " · przeniesiony"}
+        {entry.source === "ADD" && entry.relocated && " · przeniesiony"}
       </p>
       {label && entry.name !== label && (
         <p className="wrap-break-word mt-1 line-clamp-2 whitespace-pre-line text-xs">{label}</p>
@@ -399,6 +421,7 @@ function EntryActionSheet({
   onEdit,
   onMove,
   onRemove,
+  onSetSlot,
 }: {
   entry: ScheduleEntry | null;
   dates: string[];
@@ -406,6 +429,7 @@ function EntryActionSheet({
   onEdit: (entry: ScheduleEntry) => void;
   onMove: (entry: ScheduleEntry, toDate: string) => void;
   onRemove: (entry: ScheduleEntry) => void;
+  onSetSlot: (entry: ScheduleEntry, slot: DaySlot) => void;
 }) {
   const [confirmRemove, setConfirmRemove] = useState(false);
 
@@ -436,6 +460,28 @@ function EntryActionSheet({
                   Edytuj trening
                 </Button>
               )}
+
+              <div>
+                <p className="mb-1.5 font-medium text-muted-foreground text-xs">Pora dnia</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {DAY_SLOTS.map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      disabled={slot === entry.slot}
+                      className={`flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 font-semibold text-xs transition-colors ${
+                        slot === entry.slot
+                          ? "border-transparent bg-ember"
+                          : "border-border text-muted-foreground hover:bg-accent"
+                      }`}
+                      onClick={() => onSetSlot(entry, slot)}
+                    >
+                      {slot === "MORNING" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+                      {DAY_SLOT_LABEL[slot]}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <div>
                 <p className="mb-1.5 font-medium text-muted-foreground text-xs">

@@ -3,7 +3,8 @@ import { ChevronRight, Coffee, Repeat2 } from "lucide-react";
 import { useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { completedRounds, currentRound, maxLoggedRound } from "@/features/strength/lib/step-progress";
+import { formatRoundsSaved } from "@/features/strength/lib/format-set";
+import { savedRounds } from "@/features/strength/lib/step-progress";
 import { removeStep } from "@/features/strength/server/steps";
 import type { Step } from "@/features/strength/types";
 import { getErrorMessage } from "@/lib/error-message";
@@ -16,8 +17,8 @@ export function SupersetRow({ step, isEnded, onOpen }: { step: Step; isEnded: bo
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
-  const done = completedRounds(step.movements);
-  const touched = maxLoggedRound(step.movements) > 0;
+  const saved = savedRounds(step.movements);
+  const touched = saved > 0;
   const canRemoveInline = !isEnded && !touched;
 
   const handleRemove = async () => {
@@ -32,12 +33,11 @@ export function SupersetRow({ step, isEnded, onOpen }: { step: Step; isEnded: bo
     }
   };
 
-  // Frontier lap (currentRound), not lowest-common — matches the drawer.
   const status =
     step.targetRounds !== null
-      ? `${Math.min(currentRound(step.movements), step.targetRounds)}/${step.targetRounds}${done >= step.targetRounds ? " ✓" : ""}`
+      ? `Rundy ${saved}/${step.targetRounds}${saved >= step.targetRounds ? " ✓" : ""}`
       : touched
-        ? `${done} ${done === 1 ? "obwód zapisany" : done < 5 ? "obwody zapisane" : "obwodów zapisanych"}`
+        ? formatRoundsSaved(saved)
         : "Pusty — tapnij, by zacząć";
 
   return (
@@ -54,19 +54,8 @@ export function SupersetRow({ step, isEnded, onOpen }: { step: Step; isEnded: bo
                   <p className="truncate font-semibold text-sm">
                     {step.movements.map((m) => m.exerciseNamePl).join(" + ")}
                   </p>
-                  <p className="text-muted-foreground text-xs">Obwód {status}</p>
+                  <p className="text-muted-foreground text-xs">{status}</p>
                 </div>
-                {step.targetRounds !== null && (
-                  <span className="flex shrink-0 items-center gap-1">
-                    {Array.from({ length: step.targetRounds }, (_, i) => (
-                      <span
-                        // biome-ignore lint/suspicious/noArrayIndexKey: fixed-order dots
-                        key={i}
-                        className={`size-1.5 rounded-full ${i < done ? "bg-primary" : "bg-muted-foreground/25"}`}
-                      />
-                    ))}
-                  </span>
-                )}
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
               </div>
             </CardContent>
