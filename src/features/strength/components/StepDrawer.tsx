@@ -50,28 +50,43 @@ export function StepDrawer({ steps, openId, onOpenChange, onNavigate, onAddToSte
   const next = index >= 0 && index < steps.length - 1 ? steps[index + 1] : null;
   const nav = step ? <StepNav steps={steps} currentId={step.id} onNavigate={onNavigate} /> : null;
 
+  // Lives outside the per-round keyed body: a round-count change (e.g.
+  // deleting the last logged round's sets from inside this very dialog)
+  // remounts RoundBody, and a state hoisted inside it would unmount with it,
+  // yanking the open modal shut mid-edit.
+  const [editStepId, setEditStepId] = useState<string | null>(null);
+  const editStep = steps.find((s) => s.id === editStepId) ?? null;
+
   return (
-    <Dialog open={step !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
-        {step === null ? null : step.kind === "REST" ? (
-          <RestStepBody key={step.id} step={step} nav={nav} next={next} onNavigate={onNavigate} />
-        ) : step.movements.length === 1 ? (
-          <ExerciseDrawerBody key={step.movements[0].id} movement={step.movements[0]} nav={nav} />
-        ) : (
-          // Re-key per round: after a full round lands, the rows remount and
-          // re-seed with carry-over values from the round just saved.
-          <RoundBody
-            key={`${step.id}:${currentRound(step.movements)}`}
-            step={step}
-            nav={nav}
-            next={next}
-            onNavigate={onNavigate}
-            onAddToStep={() => onAddToStep(step.id)}
-            onSwapExercise={(mid) => onSwapInStep(step.id, mid)}
-          />
-        )}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={step !== null} onOpenChange={onOpenChange}>
+        <DialogContent>
+          {step === null ? null : step.kind === "REST" ? (
+            <RestStepBody key={step.id} step={step} nav={nav} next={next} onNavigate={onNavigate} />
+          ) : step.movements.length === 1 ? (
+            <ExerciseDrawerBody key={step.movements[0].id} movement={step.movements[0]} nav={nav} />
+          ) : (
+            // Re-key per round: after a full round lands, the rows remount and
+            // re-seed with carry-over values from the round just saved.
+            <RoundBody
+              key={`${step.id}:${currentRound(step.movements)}`}
+              step={step}
+              nav={nav}
+              next={next}
+              onNavigate={onNavigate}
+              onAddToStep={() => onAddToStep(step.id)}
+              onSwapExercise={(mid) => onSwapInStep(step.id, mid)}
+              onEditSets={() => setEditStepId(step.id)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Hoisted above the keyed RoundBody: a round-count change while this
+          modal is open (e.g. deleting the last logged round's sets from
+          inside it) remounts RoundBody but must not close this dialog. */}
+      {editStep && <EditCircuitSetsDialog step={editStep} open onOpenChange={(o) => !o && setEditStepId(null)} />}
+    </>
   );
 }
 
@@ -136,6 +151,7 @@ function RoundBody({
   onNavigate,
   onAddToStep,
   onSwapExercise,
+  onEditSets,
 }: {
   step: Step;
   nav: React.ReactNode;
@@ -143,6 +159,7 @@ function RoundBody({
   onNavigate: (blockId: string) => void;
   onAddToStep: () => void;
   onSwapExercise: (blockMovementId: string) => void;
+  onEditSets: () => void;
 }) {
   const router = useRouter();
   const round = currentRound(step.movements);
@@ -162,7 +179,6 @@ function RoundBody({
   const [error, setError] = useState<string | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState(step.notes ?? "");
-  const [editOpen, setEditOpen] = useState(false);
   const [movementAction, setMovementAction] = useState<Movement | null>(null);
 
   const savedThisRound = new Set(
@@ -401,7 +417,7 @@ function RoundBody({
               <button
                 type="button"
                 className="inline-flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                onClick={() => setEditOpen(true)}
+                onClick={onEditSets}
                 aria-label="Edytuj serie"
               >
                 <Pencil className="size-3.5" />
@@ -537,8 +553,6 @@ function RoundBody({
           )}
         </DialogContent>
       </Dialog>
-
-      <EditCircuitSetsDialog step={step} open={editOpen} onOpenChange={setEditOpen} />
     </div>
   );
 }

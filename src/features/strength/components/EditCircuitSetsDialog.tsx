@@ -190,7 +190,12 @@ function EditCircuitSetsBody({ step, close }: { step: Step; close: () => void })
       </div>
 
       <div className="shrink-0 space-y-2 px-4 pb-4">
-        <Button type="button" className="w-full bg-ember shadow-ember" disabled={saving} onClick={handleSave}>
+        <Button
+          type="button"
+          className="w-full bg-ember shadow-ember"
+          disabled={saving || deletingId !== null}
+          onClick={handleSave}
+        >
           {saving ? "Zapisuję..." : "Zapisz zmiany"}
         </Button>
         <Button
