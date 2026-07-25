@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
-import { Flame, ListChecks, Zap } from "lucide-react";
+import { Flame, ListChecks, Pencil, Zap } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { NumericFormat } from "react-number-format";
@@ -11,6 +11,7 @@ import { DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogTitle
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRootMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EditSetsDialog } from "@/features/strength/components/EditSetsDialog";
 import { SET_KIND_COLOR, SET_KIND_LABEL, VISIBLE_SET_KINDS } from "@/features/strength/constants";
 import { fireConfetti } from "@/features/strength/lib/confetti";
 import { formatSet } from "@/features/strength/lib/format-set";
@@ -25,10 +26,9 @@ import {
   stepWeight,
 } from "@/features/strength/lib/set-form";
 import { suggestKind } from "@/features/strength/lib/suggest-kind";
-import { addSet, deleteSet } from "@/features/strength/server/sets";
+import { addSet } from "@/features/strength/server/sets";
 import type { Movement, SetKind } from "@/features/strength/types";
 import { getErrorMessage } from "@/lib/error-message";
-import { Spinner } from "@/shared/components/Spinner";
 
 const LAST_SESSION_DATE_FMT = new Intl.DateTimeFormat("pl-PL", {
   weekday: "short",
@@ -61,10 +61,7 @@ export function ExerciseDrawerBody({ movement, nav }: { movement: Movement; nav:
     mode: "onSubmit",
   });
 
-  // Set deletion is outside the form (per-row destructive action). Keep its
-  // own local state — no try/finally so React Compiler can memoize.
-  const [deletingSetId, setDeletingSetId] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const onSubmit = form.handleSubmit(async (values) => {
     const weightKg = values.weightKg > 0 ? values.weightKg : undefined;
@@ -105,19 +102,6 @@ export function ExerciseDrawerBody({ movement, nav }: { movement: Movement; nav:
       });
     }
   });
-
-  const handleDeleteSet = async (setId: string) => {
-    setDeleteError(null);
-    setDeletingSetId(setId);
-    try {
-      await deleteSet({ data: { setId } });
-      await router.invalidate();
-      setDeletingSetId(null);
-    } catch (err) {
-      setDeleteError(getErrorMessage(err, "Nie udało się usunąć serii."));
-      setDeletingSetId(null);
-    }
-  };
 
   // Switching kind pre-fills that kind's latest set from this session, falling
   // back to the last-session reference; if neither exists, the current inputs
@@ -322,33 +306,29 @@ export function ExerciseDrawerBody({ movement, nav }: { movement: Movement; nav:
                 round view (inputs first, history under them). */}
             {movement.sets.length > 0 && (
               <div className="rounded-lg bg-muted/50 p-3 text-xs">
-                <p className="mb-1 flex items-center gap-1.5 font-medium">
-                  <ListChecks className="size-3.5 text-primary" />W tej sesji:
+                <p className="mb-1 flex items-center justify-between gap-1.5 font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <ListChecks className="size-3.5 text-primary" />W tej sesji:
+                  </span>
+                  <button
+                    type="button"
+                    className="inline-flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    onClick={() => setEditOpen(true)}
+                    aria-label="Edytuj serie"
+                  >
+                    <Pencil className="size-3.5" />
+                  </button>
                 </p>
                 <ul className="space-y-0.5">
                   {movement.sets.map((s, i) => (
-                    <li key={s.id} className="flex items-center justify-between gap-2">
+                    <li key={s.id}>
                       <span className={SET_KIND_COLOR[s.kind as SetKind]}>
                         {i + 1}. {SET_KIND_LABEL[s.kind as SetKind]} · {formatSet(s)}
                         {s.rpe !== null && ` · RPE ${s.rpe}`}
                       </span>
-                      <button
-                        type="button"
-                        className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground text-xs hover:text-destructive disabled:opacity-50"
-                        onClick={() => handleDeleteSet(s.id)}
-                        disabled={deletingSetId === s.id}
-                        aria-label={`Usuń serię ${i + 1}`}
-                      >
-                        {deletingSetId === s.id ? <Spinner size="sm" /> : "✕"}
-                      </button>
                     </li>
                   ))}
                 </ul>
-                {deleteError && (
-                  <p className="mt-2 text-destructive" role="alert">
-                    {deleteError}
-                  </p>
-                )}
               </div>
             )}
 
@@ -374,6 +354,7 @@ export function ExerciseDrawerBody({ movement, nav }: { movement: Movement; nav:
           </DialogClose>
         </DialogFooter>
       </form>
+      <EditSetsDialog movement={movement} open={editOpen} onOpenChange={setEditOpen} />
     </Form>
   );
 }

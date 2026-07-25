@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { EditRoundDialog } from "@/features/strength/components/EditRoundDialog";
 import { ExerciseDrawerBody } from "@/features/strength/components/ExerciseDrawer";
 import { StepNav } from "@/features/strength/components/StepNav";
 import { SET_KIND_COLOR, SET_KIND_LABEL, VISIBLE_SET_KINDS } from "@/features/strength/constants";
@@ -24,10 +25,9 @@ import { formatSet } from "@/features/strength/lib/format-set";
 import { numToInputStr } from "@/features/strength/lib/set-form";
 import { currentRound, isActiveInRound, loggedRoundNumbers } from "@/features/strength/lib/step-progress";
 import { removeExerciseFromSession, retireExerciseFromStep } from "@/features/strength/server/movements";
-import { deleteRound, saveRound, updateStepNotes } from "@/features/strength/server/steps";
+import { saveRound, updateStepNotes } from "@/features/strength/server/steps";
 import type { Movement, SetKind, Step } from "@/features/strength/types";
 import { getErrorMessage } from "@/lib/error-message";
-import { Spinner } from "@/shared/components/Spinner";
 
 interface StepDrawerProps {
   steps: Step[];
@@ -169,7 +169,7 @@ function RoundBody({
   const [error, setError] = useState<string | null>(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState(step.notes ?? "");
-  const [deletingRound, setDeletingRound] = useState<number | null>(null);
+  const [editingRound, setEditingRound] = useState<number | null>(null);
   const [movementAction, setMovementAction] = useState<Movement | null>(null);
 
   const savedThisRound = new Set(
@@ -228,19 +228,6 @@ function RoundBody({
     }
     if (step.targetRounds !== null && round >= step.targetRounds && next) {
       onNavigate(next.id);
-    }
-  };
-
-  const handleDeleteRound = async (roundNumber: number) => {
-    setDeletingRound(roundNumber);
-    setError(null);
-    try {
-      await deleteRound({ data: { blockId: step.id, roundNumber } });
-      await router.invalidate();
-    } catch (err) {
-      setError(getErrorMessage(err, "Nie udało się usunąć rundy."));
-    } finally {
-      setDeletingRound(null);
     }
   };
 
@@ -428,12 +415,11 @@ function RoundBody({
                     </span>
                     <button
                       type="button"
-                      className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground text-xs hover:text-destructive disabled:opacity-50"
-                      onClick={() => handleDeleteRound(r)}
-                      disabled={deletingRound !== null}
-                      aria-label={`Usuń rundę ${r}`}
+                      className="inline-flex size-6 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                      onClick={() => setEditingRound(r)}
+                      aria-label={`Edytuj rundę ${r}`}
                     >
-                      {deletingRound === r ? <Spinner size="sm" /> : "✕"}
+                      <Pencil className="size-3.5" />
                     </button>
                   </li>
                 );
@@ -558,6 +544,8 @@ function RoundBody({
           )}
         </DialogContent>
       </Dialog>
+
+      <EditRoundDialog step={step} round={editingRound} onClose={() => setEditingRound(null)} />
     </div>
   );
 }
