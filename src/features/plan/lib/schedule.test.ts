@@ -274,4 +274,35 @@ describe("resolveWeek — day slots", () => {
     expect(entries[0].source).toBe("ADD");
     expect(entries[0].relocated).toBe(true);
   });
+
+  test("an ADD on the unit's weekday but outside the plan's activation window is relocated", () => {
+    const entries = resolveWeek(
+      dates,
+      [
+        {
+          dayOfWeek: 0,
+          unit: unit("u1"),
+          activeFrom: null,
+          activeTo: "2026-07-10",
+          slot: "MORNING",
+        },
+      ],
+      [
+        {
+          id: "o1",
+          date: "2026-07-20",
+          kind: "ADD",
+          unitId: "u1",
+          unit: unit("u1"),
+          sessionType: null,
+          name: null,
+          note: null,
+          slot: "MORNING",
+        },
+      ],
+    );
+    expect(entries).toHaveLength(1);
+    expect(entries[0].source).toBe("ADD");
+    expect(entries[0].relocated).toBe(true);
+  });
 });
