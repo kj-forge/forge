@@ -171,7 +171,6 @@ function ActivateBody({ plan, onClose }: { plan: PlanWithUnits; onClose: () => v
                         inputMode="numeric"
                         allowNegative={false}
                         decimalScale={0}
-                        placeholder="∞"
                         value={field.value ?? ""}
                         onValueChange={(v) => field.onChange(v.floatValue)}
                         onBlur={field.onBlur}

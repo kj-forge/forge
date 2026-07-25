@@ -164,7 +164,6 @@ function EditSetsBody({ movement, close }: { movement: Movement; close: () => vo
               <NumericFormat
                 customInput={Input}
                 className="w-14 shrink-0 text-center tabular-nums"
-                placeholder="—"
                 inputMode="numeric"
                 decimalScale={0}
                 allowNegative={false}

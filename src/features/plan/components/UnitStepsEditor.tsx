@@ -174,7 +174,6 @@ export function UnitStepsEditor({ steps, onChange, allExercises, onError }: Unit
                 <NumericFormat
                   customInput={Input}
                   className="w-16 text-center tabular-nums"
-                  placeholder="∞"
                   inputMode="numeric"
                   decimalScale={0}
                   allowNegative={false}
