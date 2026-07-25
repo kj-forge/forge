@@ -29,6 +29,7 @@ import { moveScheduleEntry, removeScheduleEntry, setScheduleEntrySlot } from "@/
 import type { WeekSchedule } from "@/features/plan/types";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import { getErrorMessage } from "@/lib/error-message";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 import { Spinner } from "@/shared/components/Spinner";
 import { WEEKDAY_FULL_PL } from "@/shared/lib/weekday";
 
@@ -509,25 +510,28 @@ function EntryActionSheet({
               <Button
                 variant="outline"
                 className="w-full text-destructive hover:text-destructive"
-                onClick={() => {
-                  if (!confirmRemove) {
-                    setConfirmRemove(true);
-                    return;
-                  }
-                  setConfirmRemove(false);
-                  onRemove(entry);
-                }}
+                onClick={() => setConfirmRemove(true)}
               >
-                {confirmRemove
-                  ? "Na pewno?"
-                  : entry.source === "PLAN"
-                    ? "Usuń z tego dnia (tylko ten tydzień)"
-                    : "Usuń z tego dnia"}
+                {entry.source === "PLAN" ? "Usuń z tego dnia (tylko ten tydzień)" : "Usuń z tego dnia"}
               </Button>
             </div>
           </div>
         ) : null}
       </DialogContent>
+
+      {entry && (
+        <ConfirmDialog
+          open={confirmRemove}
+          onOpenChange={setConfirmRemove}
+          title="Usunąć trening z tego dnia?"
+          description={entry.source === "PLAN" ? "Usuwa tylko to wystąpienie (ten tydzień) — plan zostaje." : undefined}
+          confirmLabel={entry.source === "PLAN" ? "Usuń z tego dnia (tylko ten tydzień)" : "Usuń z tego dnia"}
+          onConfirm={() => {
+            setConfirmRemove(false);
+            onRemove(entry);
+          }}
+        />
+      )}
     </Dialog>
   );
 }

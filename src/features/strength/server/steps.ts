@@ -268,23 +268,3 @@ export const saveRound = createServerFn({ method: "POST" })
       entries: data.entries,
     });
   });
-
-// Drop one whole round of a step (all movements' sets at that setNumber).
-export const deleteRound = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) =>
-    parseInput(z.object({ blockId: z.uuid(), roundNumber: z.int().min(1).max(99) }), data),
-  )
-  .handler(async ({ data }) => {
-    const { athleteId } = await getCurrentAthleteOrThrow();
-    await db.delete(sets).where(
-      and(
-        eq(sets.athleteId, athleteId),
-        eq(sets.setNumber, data.roundNumber),
-        sql`${sets.blockMovementId} IN (
-          SELECT ${blockMovements.id} FROM ${blockMovements}
-          JOIN ${sessionBlocks} ON ${blockMovements.blockId} = ${sessionBlocks.id}
-          WHERE ${sessionBlocks.id} = ${data.blockId} AND ${sessionBlocks.athleteId} = ${athleteId}
-        )`,
-      ),
-    );
-  });

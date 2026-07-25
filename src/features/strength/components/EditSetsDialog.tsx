@@ -7,35 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { formatSeriesCount } from "@/features/strength/lib/format-set";
-import { numToInputStr } from "@/features/strength/lib/set-form";
+import { draftDirty, draftToPayload, type RowDraft, toDraft } from "@/features/strength/lib/set-draft";
 import { deleteSet, updateSet } from "@/features/strength/server/sets";
-import type { Movement, SetRow } from "@/features/strength/types";
+import type { Movement } from "@/features/strength/types";
 import { getErrorMessage } from "@/lib/error-message";
 import { Spinner } from "@/shared/components/Spinner";
-
-type RowDraft = { reps: string; weightKg: string; durationSeconds: string; rpe: string };
-
-const toDraft = (s: SetRow): RowDraft => ({
-  reps: numToInputStr(s.reps ?? undefined),
-  weightKg: numToInputStr(s.weightKg ?? undefined),
-  durationSeconds: numToInputStr(s.durationSeconds ?? undefined),
-  rpe: numToInputStr(s.rpe ?? undefined),
-});
-
-const draftDirty = (s: SetRow, d: RowDraft) =>
-  d.reps !== numToInputStr(s.reps ?? undefined) ||
-  d.weightKg !== numToInputStr(s.weightKg ?? undefined) ||
-  d.durationSeconds !== numToInputStr(s.durationSeconds ?? undefined) ||
-  d.rpe !== numToInputStr(s.rpe ?? undefined);
-
-// Payload always carries all four fields (full replace, see updateSet).
-const draftToPayload = (setId: string, d: RowDraft) => ({
-  setId,
-  reps: d.reps === "" ? null : Number(d.reps),
-  weightKg: d.weightKg !== "" && Number(d.weightKg) > 0 ? Number(d.weightKg) : null,
-  durationSeconds: d.durationSeconds === "" ? null : Number(d.durationSeconds),
-  rpe: d.rpe === "" ? null : Number(d.rpe),
-});
 
 // All logged sets of one exercise in editable rows; X deletes immediately
 // (the modal is a deliberate context — no extra confirm), "Zapisz zmiany"
@@ -188,7 +164,6 @@ function EditSetsBody({ movement, close }: { movement: Movement; close: () => vo
               <NumericFormat
                 customInput={Input}
                 className="w-14 shrink-0 text-center tabular-nums"
-                placeholder="—"
                 inputMode="numeric"
                 decimalScale={0}
                 allowNegative={false}
@@ -219,7 +194,12 @@ function EditSetsBody({ movement, close }: { movement: Movement; close: () => vo
       </div>
 
       <div className="shrink-0 space-y-2 px-4 pb-4">
-        <Button type="button" className="w-full bg-ember shadow-ember" disabled={saving} onClick={handleSave}>
+        <Button
+          type="button"
+          className="w-full bg-ember shadow-ember"
+          disabled={saving || deletingId !== null}
+          onClick={handleSave}
+        >
           {saving ? "Zapisuję..." : "Zapisz zmiany"}
         </Button>
         <Button
