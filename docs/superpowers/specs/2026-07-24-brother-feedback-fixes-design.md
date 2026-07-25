@@ -115,6 +115,8 @@ Osiem tematów z feedbacku testera (brat KJ):
 
 ## Poza zakresem
 
+- **Błędne podpowiedzi „Ostatnio" przy naprzemiennym drążku bw / z obciążeniem** (zgłoszone przez KJ w trakcie wykonania, 2026-07-25): `loadLastByKind` bierze najnowszą sesję tego samego typu, więc przy schemacie A/B zawsze podpowiada drugi wariant. Decyzja KJ: **bez kodu** — rozdzielenie na dwa ćwiczenia w katalogu („Podciąganie" bw + „Podciąganie z obciążeniem" z isLoadedBodyweight). Rozważane i odrzucone na teraz: dwie linie „Ostatnio" z tap-to-seed; provenance jednostki (sessions.unit_id).
+
 - Inline ✕ przy **pustych** kartach kroków w sesji (40 px, tylko gdy zero serii) — zostaje bez zmian.
 - Edycja typu serii (kind) po zapisie.
 - Opcja „bez pory” i ręczne strzałki kolejności w harmonogramie; kolejność 3+ treningów w tej samej porze.
