@@ -202,7 +202,8 @@ function RoundBody({
     const pending = activeMovements.filter((m) => !savedThisRound.has(m.id));
     const entries = [];
     for (const m of pending) {
-      const entry = rowToEntry(m.id, m.exerciseDefaultUnit === "TIME", rows[m.id]);
+      const values = rows[m.id] ?? seedRow(m);
+      const entry = rowToEntry(m.id, m.exerciseDefaultUnit === "TIME", values);
       if (!entry) {
         setError(`Uzupełnij wartości: ${m.exerciseNamePl}.`);
         return;
@@ -516,14 +517,15 @@ function RoundBody({
       </DialogFooter>
 
       <Dialog open={movementAction !== null} onOpenChange={(o) => !o && setMovementAction(null)}>
-        <DialogContent>
+        <DialogContent mobileSheet>
           {movementAction && (
-            <div className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden">
-              <DialogHeader className="shrink-0">
+            <div className="mx-auto w-full max-w-md">
+              <DialogHeader>
                 <DialogTitle>{movementAction.exerciseNamePl}</DialogTitle>
                 <DialogDescription>Ćwiczenie w obwodzie · od rundy {round}</DialogDescription>
               </DialogHeader>
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-4">
+
+              <div className="space-y-2 px-4">
                 <Button
                   type="button"
                   variant="outline"
@@ -545,10 +547,13 @@ function RoundBody({
                 >
                   {movementAction.sets.length === 0 ? "Usuń z obwodu" : "Usuń z obwodu (od tej rundy)"}
                 </Button>
+              </div>
+
+              <DialogFooter className="gap-2">
                 <Button type="button" variant="outline" className="w-full" onClick={() => setMovementAction(null)}>
                   Anuluj
                 </Button>
-              </div>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>
