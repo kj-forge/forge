@@ -1,5 +1,5 @@
 import { useRouter } from "@tanstack/react-router";
-import { ChevronRight, Dumbbell } from "lucide-react";
+import { ChevronRight, Dumbbell, Timer } from "lucide-react";
 import { useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,7 +57,11 @@ export function MovementRow({
             <CardContent className="py-3">
               <div className="flex items-center gap-3">
                 <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                  <Dumbbell className="size-5" />
+                  {movement.exerciseDefaultUnit === "TIME" ? (
+                    <Timer className="size-5" />
+                  ) : (
+                    <Dumbbell className="size-5" />
+                  )}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-sm">{movement.exerciseNamePl}</p>

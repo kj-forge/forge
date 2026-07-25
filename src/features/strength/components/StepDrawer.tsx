@@ -129,13 +129,6 @@ function rowToEntry(movementId: string, isTime: boolean, values: RowValues) {
   };
 }
 
-// TIME sets render as seconds; everything else exactly like the classic view
-// ("3× 132.5kg", "10× bw"). Shared with the read-only circuit table.
-export function formatRoundSet(s: Movement["sets"][number]): string {
-  if (s.durationSeconds !== null && s.reps === null) return `${s.durationSeconds}s`;
-  return formatSet(s);
-}
-
 function RoundBody({
   step,
   nav,
@@ -411,7 +404,7 @@ function RoundBody({
                 return (
                   <li key={r} className="flex items-center justify-between gap-2">
                     <span className={`tabular-nums ${SET_KIND_COLOR[kind]}`}>
-                      {r}. {SET_KIND_LABEL[kind]} · {roundSets.map((s) => (s ? formatRoundSet(s) : "—")).join(" · ")}
+                      {r}. {SET_KIND_LABEL[kind]} · {roundSets.map((s) => (s ? formatSet(s) : "—")).join(" · ")}
                     </span>
                     <button
                       type="button"

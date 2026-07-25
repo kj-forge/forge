@@ -1,9 +1,8 @@
 import { useRouter } from "@tanstack/react-router";
-import { Dumbbell, Repeat2 } from "lucide-react";
+import { Dumbbell, Repeat2, Timer } from "lucide-react";
 import { useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { formatRoundSet } from "@/features/strength/components/StepDrawer";
 import { SET_KIND_COLOR, SET_KIND_LABEL } from "@/features/strength/constants";
 import { formatRoundsCount, formatSeriesCount, formatSet } from "@/features/strength/lib/format-set";
 import { loggedRoundNumbers, savedRounds } from "@/features/strength/lib/step-progress";
@@ -51,7 +50,13 @@ export function EndedStepCard({ step }: { step: Step }) {
         <CardContent className="py-3">
           <div className="flex items-center gap-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-              {isCircuit ? <Repeat2 className="size-5" /> : <Dumbbell className="size-5" />}
+              {isCircuit ? (
+                <Repeat2 className="size-5" />
+              ) : step.movements[0].exerciseDefaultUnit === "TIME" ? (
+                <Timer className="size-5" />
+              ) : (
+                <Dumbbell className="size-5" />
+              )}
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold text-sm">{title}</p>
@@ -67,7 +72,7 @@ export function EndedStepCard({ step }: { step: Step }) {
                     const kind = (roundSets.find(Boolean)?.kind ?? "WORK") as SetKind;
                     return (
                       <li key={r} className={SET_KIND_COLOR[kind]}>
-                        {r}. {SET_KIND_LABEL[kind]} · {roundSets.map((s) => (s ? formatRoundSet(s) : "—")).join(" · ")}
+                        {r}. {SET_KIND_LABEL[kind]} · {roundSets.map((s) => (s ? formatSet(s) : "—")).join(" · ")}
                       </li>
                     );
                   })

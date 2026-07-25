@@ -23,7 +23,11 @@ import {
   type SetFormValues,
   setFormSchema,
   stepReps,
+  stepSeconds,
   stepWeight,
+  type TimeSetFormInput,
+  type TimeSetFormValues,
+  timeSetFormSchema,
 } from "@/features/strength/lib/set-form";
 import { suggestKind } from "@/features/strength/lib/suggest-kind";
 import { addSet } from "@/features/strength/server/sets";
@@ -37,11 +41,21 @@ const LAST_SESSION_DATE_FMT = new Intl.DateTimeFormat("pl-PL", {
   timeZone: "UTC",
 });
 
-// The classic single-exercise logging body (kind chips, ± steppers, seeds,
-// PR toast). Owned by StepDrawer, which mounts it keyed by movement id so
-// switching steps remounts and re-seeds the form. `nav` is the step
-// navigation slot.
+// Single-exercise logging body. Owned by StepDrawer, which mounts it keyed by
+// movement id so switching steps remounts and re-seeds the form. `nav` is the
+// step navigation slot. TIME exercises (e.g. Plank) get a seconds stepper
+// instead of reps/weight; everything else uses the classic reps/weight body.
 export function ExerciseDrawerBody({ movement, nav }: { movement: Movement; nav: ReactNode }) {
+  return movement.exerciseDefaultUnit === "TIME" ? (
+    <TimeBody movement={movement} nav={nav} />
+  ) : (
+    <RepsBody movement={movement} nav={nav} />
+  );
+}
+
+// The classic single-exercise logging body (kind chips, ± steppers, seeds,
+// PR toast).
+function RepsBody({ movement, nav }: { movement: Movement; nav: ReactNode }) {
   const router = useRouter();
 
   const initialKind = suggestKind(movement);
@@ -355,6 +369,207 @@ export function ExerciseDrawerBody({ movement, nav }: { movement: Movement; nav:
         </DialogFooter>
       </form>
       <EditSetsDialog movement={movement} open={editOpen} onOpenChange={setEditOpen} />
+    </Form>
+  );
+}
+
+// TIME-unit body (e.g. Plank): kind chips + seconds stepper ±5 + RPE chips,
+// no reps/weight fields.
+function TimeBody({ movement, nav }: { movement: Movement; nav: ReactNode }) {
+  const router = useRouter();
+  const initialKind = suggestKind(movement);
+  const seed = seedSetFields(movement.sets, movement.lastByKind, initialKind);
+
+  const form = useForm<TimeSetFormInput, unknown, TimeSetFormValues>({
+    resolver: zodResolver(timeSetFormSchema),
+    defaultValues: { kind: initialKind, durationSeconds: numToInputStr(seed?.durationSeconds), rpe: null },
+    mode: "onSubmit",
+  });
+  const [editOpen, setEditOpen] = useState(false);
+
+  const onSubmit = form.handleSubmit(async (values) => {
+    try {
+      await addSet({
+        data: {
+          blockMovementId: movement.id,
+          durationSeconds: values.durationSeconds,
+          rpe: values.rpe ?? undefined,
+          kind: values.kind,
+        },
+      });
+      await router.invalidate();
+      form.reset({ kind: values.kind, durationSeconds: numToInputStr(values.durationSeconds), rpe: null });
+    } catch (err) {
+      form.setError("root.serverError", {
+        type: "server",
+        message: getErrorMessage(err, "Nie udało się zapisać serii."),
+      });
+    }
+  });
+
+  const isSubmitting = form.formState.isSubmitting;
+  const currentKind = useWatch({ control: form.control, name: "kind" });
+
+  return (
+    <Form {...form}>
+      <form className="mx-auto flex w-full max-w-md flex-1 flex-col overflow-hidden" onSubmit={onSubmit} noValidate>
+        <DialogHeader className="shrink-0">
+          <DialogTitle>{movement.exerciseNamePl}</DialogTitle>
+          <DialogDescription className="sr-only">Logowanie serii: {movement.exerciseNamePl}</DialogDescription>
+        </DialogHeader>
+
+        <div className="shrink-0 px-4 pt-1 pb-2">{nav}</div>
+
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4">
+          <div className="space-y-3">
+            <FormField
+              control={form.control}
+              name="kind"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Typ serii</FormLabel>
+                  <FormControl>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {VISIBLE_SET_KINDS.map((k) => (
+                        <button
+                          key={k}
+                          type="button"
+                          className={`rounded-md border px-2 py-1.5 font-semibold text-xs transition-colors ${
+                            field.value === k
+                              ? "border-transparent bg-ember"
+                              : "border-border text-muted-foreground hover:bg-accent"
+                          }`}
+                          onClick={() => field.onChange(k)}
+                        >
+                          {SET_KIND_LABEL[k]}
+                        </button>
+                      ))}
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Controller
+              control={form.control}
+              name="durationSeconds"
+              render={({ field, fieldState }) => (
+                <div className="space-y-1.5">
+                  <Label htmlFor="duration">Czas (sekundy)</Label>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      onClick={() => field.onChange(stepSeconds(field.value, -5))}
+                    >
+                      −5
+                    </Button>
+                    <NumericFormat
+                      id="duration"
+                      customInput={Input}
+                      className="text-center font-extrabold text-xl tabular-nums"
+                      inputMode="numeric"
+                      value={field.value}
+                      valueIsNumericString
+                      onValueChange={(values) => field.onChange(values.value)}
+                      decimalScale={0}
+                      allowNegative={false}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      onClick={() => field.onChange(stepSeconds(field.value, 5))}
+                    >
+                      +5
+                    </Button>
+                  </div>
+                  {fieldState.error && (
+                    <p className="text-destructive text-xs" role="alert">
+                      {fieldState.error.message}
+                    </p>
+                  )}
+                </div>
+              )}
+            />
+
+            <Controller
+              control={form.control}
+              name="rpe"
+              render={({ field }) => (
+                <div className="space-y-1.5">
+                  <Label>RPE (opcjonalne)</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[6, 7, 8, 9, 10].map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        className={`rounded-md border px-3 py-1 font-semibold text-sm transition-colors ${
+                          field.value === v
+                            ? "border-primary text-primary"
+                            : "border-border text-muted-foreground hover:bg-accent"
+                        }`}
+                        onClick={() => field.onChange(field.value === v ? null : v)}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            />
+
+            {movement.sets.length > 0 && (
+              <div className="rounded-lg bg-muted/50 p-3 text-xs">
+                <p className="mb-1 flex items-center justify-between gap-1.5 font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <ListChecks className="size-3.5 text-primary" />W tej sesji:
+                  </span>
+                  <button
+                    type="button"
+                    className="inline-flex size-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    onClick={() => setEditOpen(true)}
+                    aria-label="Edytuj serie"
+                  >
+                    <Pencil className="size-3.5" />
+                  </button>
+                </p>
+                <ul className="space-y-0.5">
+                  {movement.sets.map((s, i) => (
+                    <li key={s.id} className={SET_KIND_COLOR[s.kind as SetKind]}>
+                      {i + 1}. {SET_KIND_LABEL[s.kind as SetKind]} · {formatSet(s)}
+                      {s.rpe !== null && ` · RPE ${s.rpe}`}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <FormRootMessage />
+          </div>
+        </div>
+
+        <DialogFooter className="shrink-0 gap-2">
+          <Button type="submit" className="w-full bg-ember shadow-ember" size="lg" disabled={isSubmitting}>
+            {isSubmitting ? (
+              "Zapisuję..."
+            ) : (
+              <>
+                <Zap className="size-4" />
+                Zapisz serię ({SET_KIND_LABEL[currentKind]})
+              </>
+            )}
+          </Button>
+          <DialogClose asChild>
+            <Button type="button" variant="outline" className="w-full">
+              Zamknij
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+        <EditSetsDialog movement={movement} open={editOpen} onOpenChange={setEditOpen} />
+      </form>
     </Form>
   );
 }
