@@ -144,6 +144,7 @@ export async function loadWeekSchedule(athleteId: string, weekStart: string) {
       goal: trainingPlanUnits.goal,
       activeFrom: trainingPlans.startDate,
       activeTo: trainingPlans.endDate,
+      slot: trainingPlanUnitDays.slot,
     })
     .from(trainingPlanUnitDays)
     .innerJoin(trainingPlanUnits, eq(trainingPlanUnitDays.unitId, trainingPlanUnits.id))
@@ -162,6 +163,7 @@ export async function loadWeekSchedule(athleteId: string, weekStart: string) {
       overrideSessionType: scheduleOverrides.sessionType,
       overrideName: scheduleOverrides.name,
       note: scheduleOverrides.note,
+      slot: scheduleOverrides.slot,
       unitId: trainingPlanUnits.id,
       planId: trainingPlans.id,
       planName: trainingPlans.name,
@@ -214,6 +216,7 @@ export async function loadWeekSchedule(athleteId: string, weekStart: string) {
     unit: toUnit(r),
     activeFrom: r.activeFrom,
     activeTo: r.activeTo,
+    slot: r.slot,
   }));
 
   const overrides: WeekOverride[] = overrideRows.map((r) => ({
@@ -239,6 +242,7 @@ export async function loadWeekSchedule(athleteId: string, weekStart: string) {
     sessionType: r.overrideSessionType,
     name: r.overrideName,
     note: r.note,
+    slot: r.slot,
   }));
 
   // Done markers: FINISHED sessions only — an in-progress session isn't a

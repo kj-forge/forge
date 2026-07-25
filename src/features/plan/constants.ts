@@ -40,3 +40,9 @@ export const PLAN_STATUS_CLASS: Record<PlanStatus, string> = {
   PAUSED: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
   COMPLETED: "bg-blue-400/15 text-blue-600 dark:text-blue-400",
 };
+
+export const DAY_SLOTS = ["MORNING", "EVENING"] as const;
+
+export type DaySlot = (typeof DAY_SLOTS)[number];
+
+export const DAY_SLOT_LABEL: Record<DaySlot, string> = { MORNING: "Rano", EVENING: "Wieczór" };
