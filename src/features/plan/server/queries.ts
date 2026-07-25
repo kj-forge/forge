@@ -23,6 +23,14 @@ import {
   weekStartIso,
 } from "../lib/schedule";
 
+type UnitStepExercise = {
+  exerciseId: string;
+  namePl: string;
+  defaultUnit: "REPS" | "TIME" | "DISTANCE" | "CALORIES";
+  targetReps: number | null;
+  targetDistanceM: number | null;
+};
+
 // Ordered step rows (+ joined exercises) of the given units, in one pass.
 // Steps drive both the flattened schedule display and session materialization.
 async function loadStepsByUnit(athleteId: string, unitIds: string[]) {
@@ -33,8 +41,9 @@ async function loadStepsByUnit(athleteId: string, unitIds: string[]) {
       kind: "STRAIGHT_SETS" | "REST";
       targetRounds: number | null;
       durationSeconds: number | null;
+      restSeconds: number | null;
       note: string | null;
-      exercises: ScheduleExercise[];
+      exercises: UnitStepExercise[];
     }[]
   >();
   if (unitIds.length === 0) return byUnit;
@@ -46,6 +55,7 @@ async function loadStepsByUnit(athleteId: string, unitIds: string[]) {
       kind: trainingPlanUnitSteps.kind,
       targetRounds: trainingPlanUnitSteps.targetRounds,
       durationSeconds: trainingPlanUnitSteps.durationSeconds,
+      restSeconds: trainingPlanUnitSteps.restSeconds,
       note: trainingPlanUnitSteps.note,
     })
     .from(trainingPlanUnitSteps)
@@ -58,6 +68,9 @@ async function loadStepsByUnit(athleteId: string, unitIds: string[]) {
       stepId: trainingPlanUnitStepExercises.stepId,
       exerciseId: trainingPlanUnitStepExercises.exerciseId,
       namePl: exercises.namePl,
+      defaultUnit: exercises.defaultUnit,
+      targetReps: trainingPlanUnitStepExercises.targetReps,
+      targetDistanceM: trainingPlanUnitStepExercises.targetDistanceM,
     })
     .from(trainingPlanUnitStepExercises)
     .innerJoin(exercises, eq(trainingPlanUnitStepExercises.exerciseId, exercises.id))
@@ -68,10 +81,16 @@ async function loadStepsByUnit(athleteId: string, unitIds: string[]) {
       ),
     )
     .orderBy(asc(trainingPlanUnitStepExercises.stepId), asc(trainingPlanUnitStepExercises.orderIndex));
-  const exByStep = new Map<string, ScheduleExercise[]>();
+  const exByStep = new Map<string, UnitStepExercise[]>();
   for (const row of exRows) {
     const arr = exByStep.get(row.stepId) ?? [];
-    arr.push({ exerciseId: row.exerciseId, namePl: row.namePl });
+    arr.push({
+      exerciseId: row.exerciseId,
+      namePl: row.namePl,
+      defaultUnit: row.defaultUnit,
+      targetReps: row.targetReps,
+      targetDistanceM: row.targetDistanceM,
+    });
     exByStep.set(row.stepId, arr);
   }
 
@@ -82,6 +101,7 @@ async function loadStepsByUnit(athleteId: string, unitIds: string[]) {
       kind: step.kind === "REST" ? "REST" : "STRAIGHT_SETS",
       targetRounds: step.targetRounds,
       durationSeconds: step.durationSeconds,
+      restSeconds: step.restSeconds,
       note: step.note,
       exercises: exByStep.get(step.id) ?? [],
     });
@@ -98,7 +118,7 @@ async function loadExercisesByUnit(athleteId: string, unitIds: string[]) {
   for (const [unitId, unitSteps] of steps) {
     byUnit.set(
       unitId,
-      unitSteps.flatMap((s) => s.exercises),
+      unitSteps.flatMap((s) => s.exercises.map((e) => ({ exerciseId: e.exerciseId, namePl: e.namePl }))),
     );
   }
   return byUnit;
@@ -124,6 +144,7 @@ export async function loadWeekSchedule(athleteId: string, weekStart: string) {
       goal: trainingPlanUnits.goal,
       activeFrom: trainingPlans.startDate,
       activeTo: trainingPlans.endDate,
+      slot: trainingPlanUnitDays.slot,
     })
     .from(trainingPlanUnitDays)
     .innerJoin(trainingPlanUnits, eq(trainingPlanUnitDays.unitId, trainingPlanUnits.id))
@@ -142,6 +163,7 @@ export async function loadWeekSchedule(athleteId: string, weekStart: string) {
       overrideSessionType: scheduleOverrides.sessionType,
       overrideName: scheduleOverrides.name,
       note: scheduleOverrides.note,
+      slot: scheduleOverrides.slot,
       unitId: trainingPlanUnits.id,
       planId: trainingPlans.id,
       planName: trainingPlans.name,
@@ -194,6 +216,7 @@ export async function loadWeekSchedule(athleteId: string, weekStart: string) {
     unit: toUnit(r),
     activeFrom: r.activeFrom,
     activeTo: r.activeTo,
+    slot: r.slot,
   }));
 
   const overrides: WeekOverride[] = overrideRows.map((r) => ({
@@ -219,6 +242,7 @@ export async function loadWeekSchedule(athleteId: string, weekStart: string) {
     sessionType: r.overrideSessionType,
     name: r.overrideName,
     note: r.note,
+    slot: r.slot,
   }));
 
   // Done markers: FINISHED sessions only — an in-progress session isn't a
@@ -309,22 +333,23 @@ export async function loadPlans(athleteId: string) {
   }));
 }
 
-// STRENGTH units of ACTIVE plans that can seed a session (≥1 exercise), with
-// a "today" flag from the RESOLVED schedule — a unit dragged onto today
-// counts as today's.
+// STRENGTH and HYROX units of ACTIVE plans that can seed a session (≥1
+// exercise), with a "today" flag from the RESOLVED schedule — a unit dragged
+// onto today counts as today's.
 export async function loadStartableUnits(athleteId: string) {
   const unitRows = await db
     .select({
       id: trainingPlanUnits.id,
       name: trainingPlanUnits.name,
       planName: trainingPlans.name,
+      sessionType: trainingPlanUnits.sessionType,
     })
     .from(trainingPlanUnits)
     .innerJoin(trainingPlans, eq(trainingPlanUnits.planId, trainingPlans.id))
     .where(
       and(
         eq(trainingPlanUnits.athleteId, athleteId),
-        eq(trainingPlanUnits.sessionType, "STRENGTH"),
+        inArray(trainingPlanUnits.sessionType, ["STRENGTH", "HYROX"]),
         eq(trainingPlans.status, "ACTIVE"),
       ),
     )
@@ -353,7 +378,12 @@ export async function loadUnitSteps(athleteId: string, unitId: string) {
     kind: s.kind,
     targetRounds: s.targetRounds,
     durationSeconds: s.durationSeconds,
+    restSeconds: s.restSeconds,
     note: s.note,
-    exerciseIds: s.exercises.map((e) => e.exerciseId),
+    exercises: s.exercises.map((e) => ({
+      exerciseId: e.exerciseId,
+      targetReps: e.targetReps,
+      targetDistanceM: e.targetDistanceM,
+    })),
   }));
 }

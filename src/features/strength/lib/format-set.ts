@@ -6,12 +6,33 @@ export function formatWeight(weightKg: number | null): string {
   return weightKg !== null ? `${weightKg}kg` : "bw";
 }
 
-// Compact set summary: reps × weight (bw shown for bodyweight, "–" for unknown).
-// Used by drawer summaries, the movement row's inline preview, and the session
-// card's top-set line — hence the narrow Pick rather than a full SetRow.
-export function formatSet(s: Pick<SetRow, "reps" | "weightKg">): string {
+// Compact set summary. Duration-only sets ("Plank 30s") render as seconds;
+// everything else reps × weight (bw for bodyweight).
+export function formatSet(s: Pick<SetRow, "reps" | "weightKg"> & { durationSeconds?: number | null }): string {
+  if (s.durationSeconds != null && s.reps == null) return `${s.durationSeconds}s`;
   const reps = s.reps ?? "–";
   return `${reps}× ${formatWeight(s.weightKg)}`;
+}
+
+// Polish plural: 2-4 → "rundy" except teens, else "rund".
+function roundsForm(n: number): "runda" | "rundy" | "rund" {
+  if (n === 1) return "runda";
+  const lastTwo = n % 100;
+  const last = n % 10;
+  return last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? "rundy" : "rund";
+}
+
+export function formatRoundsCount(n: number): string {
+  return `${n} ${roundsForm(n)}`;
+}
+
+export function formatRoundsSaved(n: number): string {
+  const adj = {
+    runda: "zapisana",
+    rundy: "zapisane",
+    rund: "zapisanych",
+  }[roundsForm(n)];
+  return `${n} ${roundsForm(n)} ${adj}`;
 }
 
 // "1 seria" / "2 serie" / "5 serii" — Polish plural: 2-4 take "serie" except

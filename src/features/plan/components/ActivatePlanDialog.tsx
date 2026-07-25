@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@tanstack/react-router";
 import dayjs from "dayjs";
-import { CalendarIcon, X } from "lucide-react";
+import { CalendarIcon, Moon, Sun, X } from "lucide-react";
 import { useState } from "react";
 import { pl } from "react-day-picker/locale";
 import { useForm, useWatch } from "react-hook-form";
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormRootMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DAY_SLOT_LABEL, DAY_SLOTS, type DaySlot } from "@/features/plan/constants";
 import { type ActivateFormValues, activateFormSchema, activationEndDate } from "@/features/plan/lib/activate-form";
 import { warsawTodayIso } from "@/features/plan/lib/schedule";
 import { activatePlan } from "@/features/plan/server/plan";
@@ -64,6 +65,9 @@ function ActivateBody({ plan, onClose }: { plan: PlanWithUnits; onClose: () => v
   const [days, setDays] = useState<Record<string, number[]>>(() =>
     Object.fromEntries(plan.units.map((u) => [u.id, u.days])),
   );
+  const [slots, setSlots] = useState<Record<string, DaySlot>>(() =>
+    Object.fromEntries(plan.units.map((u) => [u.id, "MORNING" as DaySlot])),
+  );
   const [assignError, setAssignError] = useState<string | null>(null);
 
   const toggleDay = (unitId: string, day: number) => {
@@ -80,7 +84,11 @@ function ActivateBody({ plan, onClose }: { plan: PlanWithUnits; onClose: () => v
   const weeks = useWatch({ control: form.control, name: "weeks" });
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const assignments = plan.units.map((u) => ({ unitId: u.id, days: days[u.id] ?? [] }));
+    const assignments = plan.units.map((u) => ({
+      unitId: u.id,
+      days: days[u.id] ?? [],
+      slot: slots[u.id] ?? "MORNING",
+    }));
     if (!assignments.some((a) => a.days.length > 0)) {
       setAssignError("Przypisz przynajmniej jeden trening do dnia tygodnia.");
       return;
@@ -219,6 +227,23 @@ function ActivateBody({ plan, onClose }: { plan: PlanWithUnits; onClose: () => v
                       </button>
                     );
                   })}
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {DAY_SLOTS.map((slot) => (
+                    <button
+                      key={slot}
+                      type="button"
+                      className={`flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 font-semibold text-xs transition-colors ${
+                        slots[unit.id] === slot
+                          ? "border-transparent bg-ember"
+                          : "border-border text-muted-foreground hover:bg-accent"
+                      }`}
+                      onClick={() => setSlots((prev) => ({ ...prev, [unit.id]: slot }))}
+                    >
+                      {slot === "MORNING" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+                      {DAY_SLOT_LABEL[slot]}
+                    </button>
+                  ))}
                 </div>
               </div>
             ))}

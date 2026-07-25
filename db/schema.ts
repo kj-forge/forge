@@ -100,6 +100,10 @@ export const progressionKind = pgEnum("progression_kind", [
 // Volume calculations exclude WARMUP.
 export const setKind = pgEnum("set_kind", ["WARMUP", "TOP_SET", "WORK", "BACK_OFF", "FAILURE", "DROP_SET"]);
 
+export const daySlot = pgEnum("day_slot", ["MORNING", "EVENING"]);
+
+export const segmentKind = pgEnum("segment_kind", ["STATION", "ROX_ZONE", "REST"]);
+
 export const hyroxStationSlug = pgEnum("hyrox_station_slug", [
   "SKI_ERG",
   "SLED_PUSH",
@@ -528,10 +532,14 @@ export const blockMovements = pgTable(
     exerciseId: uuid()
       .notNull()
       .references(() => exercises.id, { onDelete: "restrict" }),
+    // Hyrox stations: declared target (reps or meters, by exercise unit).
+    targetReps: integer(),
     targetDurationSeconds: integer(),
     targetDistanceM: integer(),
     targetCalories: integer(),
     rpeCap: smallint(),
+    // Mid-circuit swap: last round this exercise was part of; NULL = active.
+    removedAfterRound: integer(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -539,11 +547,6 @@ export const blockMovements = pgTable(
     index("block_movements_exercise_idx").on(t.exerciseId),
     // Powers "this athlete's progression on this exercise" queries.
     index("block_movements_athlete_exercise_idx").on(t.athleteId, t.exerciseId, t.createdAt.desc()),
-    // One row per exercise per block — server-side guard against the double-add
-    // race (slow network / double-tap). addExerciseToSession relies on this via
-    // INSERT … ON CONFLICT. Existing duplicates are removed in the same
-    // migration before the index is created.
-    uniqueIndex("block_movements_block_exercise_uq").on(t.blockId, t.exerciseId),
   ],
 );
 
@@ -574,6 +577,38 @@ export const sets = pgTable(
   (t) => [
     index("sets_movement_idx").on(t.blockMovementId, t.setNumber),
     index("sets_athlete_created_idx").on(t.athleteId, t.createdAt.desc()),
+  ],
+);
+
+// Live Hyrox timeline (ADR-0023): one row per coach-tapped segment. REST after
+// round N carries roundNumber = N (the rest closes the round it follows).
+// blockMovementId is required iff kind = STATION — enforced in zod, not CHECK.
+export const sessionSegments = pgTable(
+  "session_segments",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    // Denormalized from sessions.athleteId per ADR-0010.
+    athleteId: uuid()
+      .notNull()
+      .references(() => athletes.id, { onDelete: "cascade" }),
+    sessionId: uuid()
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    blockId: uuid()
+      .notNull()
+      .references(() => sessionBlocks.id, { onDelete: "cascade" }),
+    roundNumber: integer().notNull(),
+    orderIndex: integer().notNull(),
+    kind: segmentKind().notNull(),
+    blockMovementId: uuid().references(() => blockMovements.id, { onDelete: "cascade" }),
+    // Milliseconds — the live display shows tenths without loss.
+    durationMs: integer().notNull(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("session_segments_session_idx").on(t.sessionId, t.blockId, t.orderIndex),
+    // Retry-safe writes: saveHyroxSegments inserts with ON CONFLICT DO NOTHING.
+    uniqueIndex("session_segments_block_round_order_uq").on(t.blockId, t.roundNumber, t.orderIndex),
   ],
 );
 
@@ -989,6 +1024,8 @@ export const trainingPlanUnitSteps = pgTable(
     targetRounds: integer(),
     // REST steps: planned break length.
     durationSeconds: integer(),
+    // Hyrox blocks: declared rest between rounds.
+    restSeconds: integer(),
     note: text(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
@@ -996,8 +1033,9 @@ export const trainingPlanUnitSteps = pgTable(
 );
 
 // The ordered exercises of one step — round order within the superset.
-// Mirrors block_movements (orderIndex, exercise FK restrict). Uniqueness is
-// per step, not per unit: the same exercise may appear in two steps.
+// Mirrors block_movements (orderIndex, exercise FK restrict).
+// A Hyrox sequence may repeat an exercise (e.g. Bieg twice per round), so
+// there is no per-step uniqueness.
 export const trainingPlanUnitStepExercises = pgTable(
   "training_plan_unit_step_exercises",
   {
@@ -1012,10 +1050,12 @@ export const trainingPlanUnitStepExercises = pgTable(
     exerciseId: uuid()
       .notNull()
       .references(() => exercises.id, { onDelete: "restrict" }),
+    // Hyrox stations: declared target (reps or meters, by exercise unit).
+    targetReps: integer(),
+    targetDistanceM: integer(),
   },
   (t) => [
     index("training_plan_unit_step_exercises_step_idx").on(t.stepId, t.orderIndex),
-    uniqueIndex("training_plan_unit_step_exercises_step_exercise_uq").on(t.stepId, t.exerciseId),
     index("training_plan_unit_step_exercises_athlete_exercise_idx").on(t.athleteId, t.exerciseId),
   ],
 );
@@ -1034,6 +1074,7 @@ export const trainingPlanUnitDays = pgTable(
       .notNull()
       .references(() => trainingPlanUnits.id, { onDelete: "cascade" }),
     dayOfWeek: integer().notNull(),
+    slot: daySlot().notNull().default("MORNING"),
   },
   (t) => [
     uniqueIndex("training_plan_unit_days_unit_day_uq").on(t.unitId, t.dayOfWeek),
@@ -1054,6 +1095,7 @@ export const scheduleOverrides = pgTable(
       .references(() => athletes.id, { onDelete: "cascade" }),
     date: date().notNull(),
     kind: scheduleOverrideKind().notNull(),
+    slot: daySlot().notNull().default("MORNING"),
     unitId: uuid().references(() => trainingPlanUnits.id, { onDelete: "cascade" }),
     sessionType: sessionType(),
     name: text(),

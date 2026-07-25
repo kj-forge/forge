@@ -1,7 +1,7 @@
-import { getRouteApi, Link } from "@tanstack/react-router";
-import { ChevronLeft } from "lucide-react";
+import { getRouteApi } from "@tanstack/react-router";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BackLink } from "@/shared/components/BackLink";
 
 const route = getRouteApi("/_shell/me/konto");
 
@@ -10,13 +10,7 @@ export function MeView() {
 
   return (
     <main className="mx-auto flex max-w-md flex-col gap-4 p-4">
-      <Link
-        to="/me"
-        className="inline-flex items-center gap-0.5 pt-2 text-muted-foreground text-xs transition-colors hover:text-foreground"
-      >
-        <ChevronLeft className="size-3.5" />
-        Profil
-      </Link>
+      <BackLink to="/me" label="Profil" className="pt-2" />
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Dane konta</CardTitle>

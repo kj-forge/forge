@@ -113,6 +113,27 @@
       "when": 1784478831113,
       "tag": "0015_calm_green_goblin",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1784747376189,
+      "tag": "0016_panoramic_hobgoblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1784788165778,
+      "tag": "0017_curious_dragon_lord",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784913122475,
+      "tag": "0018_polite_eddie_brock",
+      "breakpoints": true
     }
   ]
 }

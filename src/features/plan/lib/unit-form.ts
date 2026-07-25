@@ -16,9 +16,9 @@ export const unitFormSchema = z.object({
 
 export type UnitFormValues = z.infer<typeof unitFormSchema>;
 
-// A unit needs written training UNLESS it's a STRENGTH unit that already
-// carries an exercise list (the ordered list is the content). Pure so the
-// drawer and the server enforce the same rule.
+// A unit needs written training UNLESS it's a STRENGTH/HYROX unit that
+// already carries an exercise list (the ordered list is the content). Pure so
+// the drawer and the server enforce the same rule.
 export function unitTrainingRequired(sessionType: string, exerciseCount: number): boolean {
-  return !(sessionType === "STRENGTH" && exerciseCount > 0);
+  return !((sessionType === "STRENGTH" || sessionType === "HYROX") && exerciseCount > 0);
 }

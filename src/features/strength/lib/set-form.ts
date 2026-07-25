@@ -44,3 +44,24 @@ export function stepWeight(value: string, delta: number): string {
   const base = parseNum(value) ?? 0;
   return String(Math.max(0, Math.round((base + delta) * 10) / 10));
 }
+
+// TIME exercises (defaultUnit === "TIME"): one duration field instead of
+// reps/weight; same string-input reasoning as setFormSchema.
+export const timeSetFormSchema = z.object({
+  kind: z.enum(SET_KINDS),
+  durationSeconds: z
+    .string()
+    .trim()
+    .min(1, "Podaj czas w sekundach.")
+    .transform(Number)
+    .pipe(z.number().int("Liczba całkowita").min(1, "Min 1 s").max(36000, "Max 36000 s")),
+  rpe: z.number().int().min(6).max(10).nullable(),
+});
+
+export type TimeSetFormInput = z.input<typeof timeSetFormSchema>;
+export type TimeSetFormValues = z.output<typeof timeSetFormSchema>;
+
+export function stepSeconds(value: string, delta: number): string {
+  const base = parseNum(value) ?? 0;
+  return String(Math.max(1, Math.round(base + delta)));
+}

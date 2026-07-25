@@ -14,7 +14,7 @@ import {
   trainingPlanUnitSteps,
   trainingPlanUnits,
 } from "../../../../db/schema";
-import { UNIT_INTENSITIES } from "../constants";
+import { DAY_SLOTS, type DaySlot, UNIT_INTENSITIES } from "../constants";
 import { warsawTodayIso, weekdayOfIso, weekStartIso } from "../lib/schedule";
 import { unitTrainingRequired } from "../lib/unit-form";
 import { loadPlans, loadStartableUnits, loadWeekSchedule } from "./queries";
@@ -83,6 +83,12 @@ export const deletePlan = createServerFn({ method: "POST" })
 // ---------------------------------------------------------------------------
 // Unit CRUD
 
+const stepExerciseInput = z.object({
+  exerciseId: z.uuid(),
+  targetReps: z.number().int().min(1).max(1000).optional(),
+  targetDistanceM: z.number().int().min(1).max(50000).optional(),
+});
+
 // A unit step: a workout step (1..n exercises, optional round target) or a
 // REST break. Kind values are the blockKind subset units may hold.
 const unitStepInput = z
@@ -90,10 +96,11 @@ const unitStepInput = z
     kind: z.enum(["STRAIGHT_SETS", "REST"]),
     targetRounds: z.number().int().min(1).max(30).optional(),
     durationSeconds: z.number().int().min(5).max(3600).optional(),
+    restSeconds: z.number().int().min(5).max(3600).optional(),
     note: z.string().trim().max(500).optional(),
-    exerciseIds: z.array(z.uuid()).max(12).default([]),
+    exercises: z.array(stepExerciseInput).max(12).default([]),
   })
-  .refine((s) => (s.kind === "REST" ? s.exerciseIds.length === 0 : s.exerciseIds.length > 0), {
+  .refine((s) => (s.kind === "REST" ? s.exercises.length === 0 : s.exercises.length > 0), {
     message: "Krok treningowy musi mieć ćwiczenia, a przerwa nie może ich mieć.",
   });
 
@@ -106,14 +113,16 @@ const upsertUnitInput = z
     intensity: z.enum(UNIT_INTENSITIES),
     training: z.string().trim().max(2000),
     goal: z.string().trim().max(500).optional(),
-    // Ordered steps; only persisted for STRENGTH units.
+    // Ordered steps; persisted for STRENGTH and HYROX units.
     steps: z.array(unitStepInput).max(20).default([]),
   })
   .refine(
     (v) =>
       !unitTrainingRequired(
         v.sessionType,
-        v.sessionType === "STRENGTH" ? v.steps.reduce((n, s) => n + s.exerciseIds.length, 0) : 0,
+        v.sessionType === "STRENGTH" || v.sessionType === "HYROX"
+          ? v.steps.reduce((n, s) => n + s.exercises.length, 0)
+          : 0,
       ) || v.training.length > 0,
     { path: ["training"], message: "Trening jest wymagany, chyba że jednostka ma ćwiczenia siłowe." },
   );
@@ -190,16 +199,19 @@ async function runUpsertUnit(args: RunUpsertUnitArgs): Promise<{ id: string }> {
             kind: step.kind,
             targetRounds: step.targetRounds ?? null,
             durationSeconds: step.durationSeconds ?? null,
+            restSeconds: step.restSeconds ?? null,
             note: step.note || null,
           })
           .returning({ id: trainingPlanUnitSteps.id });
-        if (step.exerciseIds.length > 0) {
+        if (step.exercises.length > 0) {
           await tx.insert(trainingPlanUnitStepExercises).values(
-            step.exerciseIds.map((exerciseId, i) => ({
+            step.exercises.map((ex, i) => ({
               athleteId: args.athleteId,
               stepId: created.id,
               orderIndex: i,
-              exerciseId,
+              exerciseId: ex.exerciseId,
+              targetReps: ex.targetReps ?? null,
+              targetDistanceM: ex.targetDistanceM ?? null,
             })),
           );
         }
@@ -224,7 +236,7 @@ export const upsertUnit = createServerFn({ method: "POST" })
       intensity: data.intensity,
       training: data.training,
       goal: data.goal ? data.goal : null,
-      steps: data.sessionType === "STRENGTH" ? data.steps : [],
+      steps: data.sessionType === "STRENGTH" || data.sessionType === "HYROX" ? data.steps : [],
     });
   });
 
@@ -245,7 +257,15 @@ const activatePlanInput = z
     planId: z.uuid(),
     startDate: z.iso.date(),
     endDate: z.iso.date().optional(),
-    assignments: z.array(z.object({ unitId: z.uuid(), days: z.array(z.number().int().min(0).max(6)).max(7) })).min(1),
+    assignments: z
+      .array(
+        z.object({
+          unitId: z.uuid(),
+          days: z.array(z.number().int().min(0).max(6)).max(7),
+          slot: z.enum(DAY_SLOTS).default("MORNING"),
+        }),
+      )
+      .min(1),
   })
   .refine((v) => v.assignments.some((a) => a.days.length > 0), {
     path: ["assignments"],
@@ -261,7 +281,7 @@ interface RunActivateArgs {
   planId: string;
   startDate: string;
   endDate: string | null;
-  assignments: { unitId: string; days: number[] }[];
+  assignments: { unitId: string; days: number[]; slot: DaySlot }[];
 }
 
 // Serves first activation and re-activation alike: sets the window and
@@ -302,7 +322,12 @@ async function runActivatePlan(args: RunActivateArgs): Promise<void> {
         ),
       );
       const rows = args.assignments.flatMap((a) =>
-        [...new Set(a.days)].map((dayOfWeek) => ({ athleteId: args.athleteId, unitId: a.unitId, dayOfWeek })),
+        [...new Set(a.days)].map((dayOfWeek) => ({
+          athleteId: args.athleteId,
+          unitId: a.unitId,
+          dayOfWeek,
+          slot: a.slot,
+        })),
       );
       if (rows.length > 0) await tx.insert(trainingPlanUnitDays).values(rows);
     });
@@ -353,13 +378,25 @@ const isoDate = z.iso.date();
 
 const moveScheduleEntryInput = z.discriminatedUnion("kind", [
   // A recurring plan entry dragged off its weekday: SKIP + ADD pair.
-  z.object({ kind: z.literal("PLAN"), unitId: z.uuid(), fromDate: isoDate, toDate: isoDate }),
+  z.object({
+    kind: z.literal("PLAN"),
+    unitId: z.uuid(),
+    fromDate: isoDate,
+    toDate: isoDate,
+    slot: z.enum(DAY_SLOTS).default("MORNING"),
+  }),
   // An existing ADD/ADHOC row dragged again: just re-date it (with pair
   // collapse when it lands back on its skipped origin).
   z.object({ kind: z.literal("OVERRIDE"), overrideId: z.uuid(), toDate: isoDate }),
 ]);
 
-async function runMovePlanEntry(athleteId: string, unitId: string, fromDate: string, toDate: string): Promise<void> {
+async function runMovePlanEntry(
+  athleteId: string,
+  unitId: string,
+  fromDate: string,
+  toDate: string,
+  slot: DaySlot,
+): Promise<void> {
   const { db: tx_db, end } = await createPool();
   try {
     await tx_db.transaction(async (tx) => {
@@ -372,7 +409,10 @@ async function runMovePlanEntry(athleteId: string, unitId: string, fromDate: str
         .insert(scheduleOverrides)
         .values({ athleteId, date: fromDate, kind: "SKIP", unitId })
         .onConflictDoNothing();
-      await tx.insert(scheduleOverrides).values({ athleteId, date: toDate, kind: "ADD", unitId }).onConflictDoNothing();
+      await tx
+        .insert(scheduleOverrides)
+        .values({ athleteId, date: toDate, kind: "ADD", unitId, slot })
+        .onConflictDoNothing();
     });
   } finally {
     await end();
@@ -446,19 +486,20 @@ export const moveScheduleEntry = createServerFn({ method: "POST" })
     const { athleteId } = await getCurrentAthleteOrThrow();
     if (data.kind === "PLAN") {
       if (data.fromDate === data.toDate) return;
-      await runMovePlanEntry(athleteId, data.unitId, data.fromDate, data.toDate);
+      await runMovePlanEntry(athleteId, data.unitId, data.fromDate, data.toDate, data.slot);
     } else {
       await runMoveOverride(athleteId, data.overrideId, data.toDate);
     }
   });
 
 const addScheduleEntryInput = z.union([
-  z.object({ date: isoDate, unitId: z.uuid() }),
+  z.object({ date: isoDate, unitId: z.uuid(), slot: z.enum(DAY_SLOTS).default("MORNING") }),
   z.object({
     date: isoDate,
     sessionType: z.enum(PICKABLE_SESSION_TYPES),
     name: z.string().trim().min(1, "Nazwa jest wymagana.").max(120),
     note: z.string().trim().max(500).optional(),
+    slot: z.enum(DAY_SLOTS).default("MORNING"),
   }),
 ]);
 
@@ -474,7 +515,7 @@ export const addScheduleEntry = createServerFn({ method: "POST" })
       if (!unit) throw new Error("Nie znaleziono jednostki treningowej.");
       await db
         .insert(scheduleOverrides)
-        .values({ athleteId, date: data.date, kind: "ADD", unitId: data.unitId })
+        .values({ athleteId, date: data.date, kind: "ADD", unitId: data.unitId, slot: data.slot })
         .onConflictDoNothing();
     } else {
       await db.insert(scheduleOverrides).values({
@@ -484,6 +525,7 @@ export const addScheduleEntry = createServerFn({ method: "POST" })
         sessionType: data.sessionType,
         name: data.name,
         note: data.note || null,
+        slot: data.slot,
       });
     }
   });
@@ -513,5 +555,61 @@ export const removeScheduleEntry = createServerFn({ method: "POST" })
         .insert(scheduleOverrides)
         .values({ athleteId, date: data.date, kind: "SKIP", unitId: data.unitId })
         .onConflictDoNothing();
+    }
+  });
+
+const setSlotInput = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("PLAN"), unitId: z.uuid(), date: isoDate, slot: z.enum(DAY_SLOTS) }),
+  z.object({ kind: z.literal("OVERRIDE"), overrideId: z.uuid(), slot: z.enum(DAY_SLOTS) }),
+]);
+
+// Slot change on a recurring plan entry materializes it as a same-date
+// SKIP+ADD override pair (same mechanism as cross-day moves).
+export const setScheduleEntrySlot = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => parseInput(setSlotInput, data))
+  .handler(async ({ data }) => {
+    const { athleteId } = await getCurrentAthleteOrThrow();
+    if (data.kind === "OVERRIDE") {
+      const [row] = await db
+        .update(scheduleOverrides)
+        .set({ slot: data.slot })
+        .where(and(eq(scheduleOverrides.id, data.overrideId), eq(scheduleOverrides.athleteId, athleteId)))
+        .returning({ id: scheduleOverrides.id });
+      if (!row) throw new Error("Nie znaleziono wpisu harmonogramu.");
+      return;
+    }
+    const { db: tx_db, end } = await createPool();
+    try {
+      await tx_db.transaction(async (tx) => {
+        const [unit] = await tx
+          .select({ id: trainingPlanUnits.id })
+          .from(trainingPlanUnits)
+          .where(and(eq(trainingPlanUnits.id, data.unitId), eq(trainingPlanUnits.athleteId, athleteId)));
+        if (!unit) throw new Error("Nie znaleziono jednostki treningowej.");
+        await tx
+          .insert(scheduleOverrides)
+          .values({ athleteId, date: data.date, kind: "SKIP", unitId: data.unitId })
+          .onConflictDoNothing();
+        const [existingAdd] = await tx
+          .select({ id: scheduleOverrides.id })
+          .from(scheduleOverrides)
+          .where(
+            and(
+              eq(scheduleOverrides.athleteId, athleteId),
+              eq(scheduleOverrides.unitId, data.unitId),
+              eq(scheduleOverrides.date, data.date),
+              eq(scheduleOverrides.kind, "ADD"),
+            ),
+          );
+        if (existingAdd) {
+          await tx.update(scheduleOverrides).set({ slot: data.slot }).where(eq(scheduleOverrides.id, existingAdd.id));
+        } else {
+          await tx
+            .insert(scheduleOverrides)
+            .values({ athleteId, date: data.date, kind: "ADD", unitId: data.unitId, slot: data.slot });
+        }
+      });
+    } finally {
+      await end();
     }
   });

@@ -3,7 +3,7 @@ import timezone from "dayjs/plugin/timezone";
 import utc from "dayjs/plugin/utc";
 
 import type { SessionType } from "@/features/strength/types";
-import type { UnitIntensity } from "../constants";
+import type { DaySlot, UnitIntensity } from "../constants";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -62,6 +62,13 @@ export interface ScheduleEntry {
   date: string;
   source: "PLAN" | "ADD" | "ADHOC";
   overrideId: string | null;
+  // True only for an ADD whose unit has no active plan assignment on this
+  // date — either no assignment for the weekday, or one outside the plan's
+  // activation window (activeFrom/activeTo) — an actual move. An ADD that
+  // materializes a same-weekday slot-change override (SKIP + ADD pair on
+  // the unit's own assigned day, within its window) is not a relocation.
+  relocated: boolean;
+  slot: DaySlot;
   unitId: string | null;
   planId: string | null;
   planName: string | null;
@@ -81,6 +88,7 @@ export interface WeekAssignment {
   // lexicographically, so plain string comparison is safe.
   activeFrom: string | null;
   activeTo: string | null;
+  slot: DaySlot;
 }
 
 export interface WeekOverride {
@@ -94,6 +102,7 @@ export interface WeekOverride {
   sessionType: SessionType | null;
   name: string | null;
   note: string | null;
+  slot: DaySlot;
 }
 
 // Pure merge of the weekly pattern with per-date exceptions, day by day:
@@ -107,21 +116,39 @@ export function resolveWeek(
   const skipped = new Set(overrides.filter((o) => o.kind === "SKIP" && o.unitId).map((o) => `${o.unitId}:${o.date}`));
   const entries: ScheduleEntry[] = [];
   dates.forEach((date, dayOfWeek) => {
+    const dayEntries: ScheduleEntry[] = [];
     for (const a of assignments) {
       if (a.dayOfWeek !== dayOfWeek || skipped.has(`${a.unit.unitId}:${date}`)) continue;
       if (a.activeFrom && date < a.activeFrom) continue;
       if (a.activeTo && date > a.activeTo) continue;
-      entries.push({ date, source: "PLAN", overrideId: null, note: null, ...a.unit });
+      dayEntries.push({
+        date,
+        source: "PLAN",
+        overrideId: null,
+        relocated: false,
+        note: null,
+        slot: a.slot,
+        ...a.unit,
+      });
     }
     for (const o of overrides) {
       if (o.date !== date) continue;
       if (o.kind === "ADD" && o.unit) {
-        entries.push({ date, source: "ADD", overrideId: o.id, note: o.note, ...o.unit });
+        const relocated = !assignments.some(
+          (a) =>
+            a.unit.unitId === o.unitId &&
+            a.dayOfWeek === dayOfWeek &&
+            (!a.activeFrom || date >= a.activeFrom) &&
+            (!a.activeTo || date <= a.activeTo),
+        );
+        dayEntries.push({ date, source: "ADD", overrideId: o.id, relocated, note: o.note, slot: o.slot, ...o.unit });
       } else if (o.kind === "ADHOC") {
-        entries.push({
+        dayEntries.push({
           date,
           source: "ADHOC",
           overrideId: o.id,
+          relocated: false,
+          slot: o.slot,
           unitId: null,
           planId: null,
           planName: null,
@@ -135,6 +162,8 @@ export function resolveWeek(
         });
       }
     }
+    dayEntries.sort((a, b) => (a.slot === "MORNING" ? 0 : 1) - (b.slot === "MORNING" ? 0 : 1));
+    entries.push(...dayEntries);
   });
   return entries;
 }

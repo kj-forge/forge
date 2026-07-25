@@ -1,9 +1,9 @@
-import { getRouteApi, Link } from "@tanstack/react-router";
-import { ChevronLeft } from "lucide-react";
+import { getRouteApi } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import { Textarea } from "@/components/ui/textarea";
 import { updateNote } from "@/features/notes/server/notes";
+import { BackLink } from "@/shared/components/BackLink";
 
 const route = getRouteApi("/_shell/notes/$noteId");
 
@@ -17,7 +17,7 @@ export function NoteEditorView() {
   if (!note) {
     return (
       <main className="flex w-full flex-col gap-3 p-4">
-        <BackLink />
+        <BackLink to="/notes" label="Notatki" />
         <p className="py-6 text-center text-muted-foreground text-sm">Nie znaleziono notatki.</p>
       </main>
     );
@@ -92,7 +92,7 @@ function NoteEditorBody({ note }: { note: { id: string; body: string } }) {
     // the list rows — the editor is for writing.
     <main className="flex min-h-full w-full flex-col gap-3 p-4">
       <div className="flex items-center justify-between pt-2">
-        <BackLink onNavigate={flush} />
+        <BackLink to="/notes" label="Notatki" onNavigate={flush} />
         <SaveIndicator status={status} onRetry={() => save(bodyRef.current)} />
       </div>
 
@@ -152,18 +152,5 @@ function SaveIndicator({ status, onRetry }: { status: SaveStatus; onRetry: () =>
     >
       {status === "saving" ? "Zapisywanie..." : "Zapisano"}
     </span>
-  );
-}
-
-function BackLink({ onNavigate }: { onNavigate?: () => void }) {
-  return (
-    <Link
-      to="/notes"
-      onClick={onNavigate}
-      className="inline-flex items-center gap-0.5 text-muted-foreground text-xs transition-colors hover:text-foreground"
-    >
-      <ChevronLeft className="size-3.5" />
-      Notatki
-    </Link>
   );
 }

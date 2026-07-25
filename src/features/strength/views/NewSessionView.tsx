@@ -23,14 +23,14 @@ export function NewSessionView() {
   const [creating, setCreating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Only strength sessions seed from a plan unit. Any unit of any active
-  // plan is startable — a missed Tuesday runs on Wednesday without touching
-  // the plan; today's unit is just the default pick.
-  const [unitId, setUnitId] = useState<string | null>(
-    () => (units.find((u) => u.todayAssigned) ?? units[0])?.id ?? null,
-  );
-  const planStrength = type === "STRENGTH" && units.length > 0;
-  const picked = units.find((u) => u.id === unitId) ?? units[0];
+  // STRENGTH and HYROX sessions seed from a plan unit; the picker shows only
+  // units matching the selected type chip. Any unit of any active plan is
+  // startable — a missed Tuesday runs on Wednesday without touching the
+  // plan; today's unit is just the default pick.
+  const typeUnits = units.filter((u) => u.sessionType === type);
+  const [unitId, setUnitId] = useState<string | null>(null);
+  const fromPlan = (type === "STRENGTH" || type === "HYROX") && typeUnits.length > 0;
+  const picked = typeUnits.find((u) => u.id === unitId) ?? typeUnits.find((u) => u.todayAssigned) ?? typeUnits[0];
 
   const start = async (fromPlan: boolean) => {
     setError(null);
@@ -59,8 +59,10 @@ export function NewSessionView() {
       <div className="space-y-1 pt-2">
         <h1 className="font-bold text-2xl tracking-tight">{adj ? `Nowa sesja ${adj}` : "Nowa sesja"}</h1>
         <p className="text-muted-foreground text-sm">
-          {planStrength
-            ? "Zacznij z planu (dowolny trening siłowy) albo od zera."
+          {fromPlan
+            ? type === "HYROX"
+              ? "Zacznij z planu (trening Hyrox) albo od zera."
+              : "Zacznij z planu (dowolny trening siłowy) albo od zera."
             : "Zacznij od zera — sam dodajesz ćwiczenia."}
         </p>
       </div>
@@ -81,7 +83,7 @@ export function NewSessionView() {
         ))}
       </div>
 
-      {planStrength && picked && (
+      {fromPlan && picked && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -94,11 +96,11 @@ export function NewSessionView() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {/* A missed unit can run today — pick any strength unit from any
-                active plan; the plan itself stays untouched. */}
-            {units.length > 1 && (
+            {/* A missed unit can run today — pick any unit of this type from
+                any active plan; the plan itself stays untouched. */}
+            {typeUnits.length > 1 && (
               <div className="flex flex-wrap gap-1.5">
-                {units.map((u) => (
+                {typeUnits.map((u) => (
                   <button
                     key={u.id}
                     type="button"
@@ -130,8 +132,8 @@ export function NewSessionView() {
         </CardHeader>
         <CardContent>
           <Button
-            variant={planStrength ? "outline" : "default"}
-            className={planStrength ? "w-full" : "w-full bg-ember shadow-ember"}
+            variant={fromPlan ? "outline" : "default"}
+            className={fromPlan ? "w-full" : "w-full bg-ember shadow-ember"}
             onClick={() => start(false)}
             disabled={creating !== null}
           >
