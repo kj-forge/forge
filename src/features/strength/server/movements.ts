@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
+import { createPool } from "../../../../db/pool";
 import { blockMovements, sessionBlocks, sets } from "../../../../db/schema";
 
 const removeExerciseInput = z.object({ blockMovementId: z.uuid() });
@@ -90,49 +91,56 @@ export const swapExerciseInStep = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => parseInput(swapInput, data))
   .handler(async ({ data }) => {
     const { athleteId } = await getCurrentAthleteOrThrow();
-    const [movement] = await db
-      .select({
-        id: blockMovements.id,
-        blockId: blockMovements.blockId,
-        orderIndex: blockMovements.orderIndex,
-      })
-      .from(blockMovements)
-      .where(and(eq(blockMovements.id, data.blockMovementId), eq(blockMovements.athleteId, athleteId)));
-    if (!movement) throw new Error("Nie znaleziono ćwiczenia w tej sesji.");
+    const { db: tx_db, end } = await createPool();
+    try {
+      return await tx_db.transaction(async (tx) => {
+        const [movement] = await tx
+          .select({
+            id: blockMovements.id,
+            blockId: blockMovements.blockId,
+            orderIndex: blockMovements.orderIndex,
+          })
+          .from(blockMovements)
+          .where(and(eq(blockMovements.id, data.blockMovementId), eq(blockMovements.athleteId, athleteId)));
+        if (!movement) throw new Error("Nie znaleziono ćwiczenia w tej sesji.");
 
-    const [duplicate] = await db
-      .select({ id: blockMovements.id })
-      .from(blockMovements)
-      .where(
-        and(
-          eq(blockMovements.blockId, movement.blockId),
-          eq(blockMovements.exerciseId, data.newExerciseId),
-          isNull(blockMovements.removedAfterRound),
-        ),
-      );
-    if (duplicate) throw new Error("To ćwiczenie jest już w tym obwodzie.");
+        const [duplicate] = await tx
+          .select({ id: blockMovements.id })
+          .from(blockMovements)
+          .where(
+            and(
+              eq(blockMovements.blockId, movement.blockId),
+              eq(blockMovements.exerciseId, data.newExerciseId),
+              isNull(blockMovements.removedAfterRound),
+            ),
+          );
+        if (duplicate) throw new Error("To ćwiczenie jest już w tym obwodzie.");
 
-    const [{ setCount }] = await db
-      .select({ setCount: sql<number>`COUNT(*)::int` })
-      .from(sets)
-      .where(eq(sets.blockMovementId, movement.id));
-    if (setCount === 0) {
-      await db.delete(blockMovements).where(eq(blockMovements.id, movement.id));
-    } else {
-      await db
-        .update(blockMovements)
-        .set({ removedAfterRound: data.fromRound - 1 })
-        .where(eq(blockMovements.id, movement.id));
+        const [{ setCount }] = await tx
+          .select({ setCount: sql<number>`COUNT(*)::int` })
+          .from(sets)
+          .where(eq(sets.blockMovementId, movement.id));
+        if (setCount === 0) {
+          await tx.delete(blockMovements).where(eq(blockMovements.id, movement.id));
+        } else {
+          await tx
+            .update(blockMovements)
+            .set({ removedAfterRound: data.fromRound - 1 })
+            .where(eq(blockMovements.id, movement.id));
+        }
+
+        const [row] = await tx
+          .insert(blockMovements)
+          .values({
+            athleteId,
+            blockId: movement.blockId,
+            orderIndex: movement.orderIndex,
+            exerciseId: data.newExerciseId,
+          })
+          .returning({ id: blockMovements.id });
+        return { blockMovementId: row.id };
+      });
+    } finally {
+      await end();
     }
-
-    const [row] = await db
-      .insert(blockMovements)
-      .values({
-        athleteId,
-        blockId: movement.blockId,
-        orderIndex: movement.orderIndex,
-        exerciseId: data.newExerciseId,
-      })
-      .returning({ id: blockMovements.id });
-    return { blockMovementId: row.id };
   });
