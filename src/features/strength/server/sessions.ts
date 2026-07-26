@@ -8,7 +8,7 @@ import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
 import { createPool } from "../../../../db/pool";
 import { blockMovements, exercises, sessionBlocks, sessionSegments, sessions, sets } from "../../../../db/schema";
-import { attachExercises, loadRecentSessions } from "./queries";
+import { attachExercises, loadRecentSessions, withDurationMin } from "./queries";
 
 // Dashboard feed: most recent sessions including the in-progress one (the badge
 // marks it). The view sorts active to the top and trims the count.
@@ -67,8 +67,10 @@ export const listCompletedSessions = createServerFn({ method: "GET" })
           ).map((r) => r.type)
         : undefined;
 
+    const withExercises = await attachExercises(athleteId, page);
+
     return {
-      sessions: await attachExercises(athleteId, page),
+      sessions: await withDurationMin(athleteId, withExercises),
       nextOffset: rows.length > HISTORY_PAGE_SIZE ? data.offset + HISTORY_PAGE_SIZE : null,
       types,
     };

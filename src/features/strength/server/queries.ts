@@ -2,12 +2,13 @@
 // dashboard). NEVER import this file from views/routes — it touches
 // db/client at call time and must stay out of the client bundle
 // (see the tree-shaking note in sessions.ts).
-import { and, desc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
 import { db } from "../../../../db/client";
 import {
   blockMovements,
   exercises,
   sessionBlocks,
+  sessionSegments,
   sessions,
   sets,
   trainingPlanUnitStepExercises,
@@ -15,6 +16,7 @@ import {
 import { epleyE1RM } from "../lib/e1rm";
 import { hasWorkingSets } from "../lib/format-sets-compact";
 import { bestE1RM } from "../lib/pr";
+import { sessionDurationMin } from "../lib/session-duration";
 
 export type SessionTopExercise = { name: string; weightKg: number | null; reps: number | null; setCount: number };
 
@@ -91,6 +93,71 @@ export async function attachExercises<T extends { id: string }>(athleteId: strin
   }));
 }
 
+export type DurationInputs = { firstSetAt: Date | null; segmentsMs: number };
+
+// min(sets.createdAt) and sum(segments.durationMs) per session, one query
+// each — feeds sessionDurationMin (lib/session-duration.ts) for both list
+// paths. sets has no direct sessionId, so it joins up through blockMovements
+// → sessionBlocks; sessionSegments carries its own sessionId directly.
+export async function attachDurationInputs(
+  athleteId: string,
+  sessionIds: string[],
+): Promise<Map<string, DurationInputs>> {
+  const map = new Map<string, DurationInputs>();
+  if (sessionIds.length === 0) return map;
+  for (const id of sessionIds) map.set(id, { firstSetAt: null, segmentsMs: 0 });
+
+  const firstSets = await db
+    .select({
+      sessionId: sessionBlocks.sessionId,
+      firstSetAt: sql<Date>`MIN(${sets.createdAt})`.mapWith((v) => new Date(v)),
+    })
+    .from(sets)
+    .innerJoin(blockMovements, eq(sets.blockMovementId, blockMovements.id))
+    .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
+    .where(and(eq(sets.athleteId, athleteId), inArray(sessionBlocks.sessionId, sessionIds)))
+    .groupBy(sessionBlocks.sessionId);
+  for (const r of firstSets) {
+    const entry = map.get(r.sessionId);
+    if (entry) entry.firstSetAt = r.firstSetAt;
+  }
+
+  const segs = await db
+    .select({
+      sessionId: sessionSegments.sessionId,
+      segmentsMs: sql<number>`COALESCE(SUM(${sessionSegments.durationMs}), 0)::int`,
+    })
+    .from(sessionSegments)
+    .where(and(eq(sessionSegments.athleteId, athleteId), inArray(sessionSegments.sessionId, sessionIds)))
+    .groupBy(sessionSegments.sessionId);
+  for (const r of segs) {
+    const entry = map.get(r.sessionId);
+    if (entry) entry.segmentsMs = r.segmentsMs;
+  }
+
+  return map;
+}
+
+// Shared by both list paths: batches attachDurationInputs, then folds each
+// session's inputs through sessionDurationMin.
+export async function withDurationMin<
+  T extends { id: string; type: string; startedAt: Date | null; endedAt: Date | null },
+>(athleteId: string, sessionRows: T[]): Promise<(T & { durationMin: number | null })[]> {
+  const durationInputs = await attachDurationInputs(
+    athleteId,
+    sessionRows.map((s) => s.id),
+  );
+  return sessionRows.map((s) => ({
+    ...s,
+    durationMin: sessionDurationMin({
+      type: s.type,
+      startedAt: s.startedAt,
+      endedAt: s.endedAt,
+      ...(durationInputs.get(s.id) ?? { firstSetAt: null, segmentsMs: 0 }),
+    }),
+  }));
+}
+
 // Dashboard feed: most recent sessions including the in-progress one.
 export async function loadRecentSessions(athleteId: string, limit = 10) {
   const sessionRows = await db
@@ -99,7 +166,8 @@ export async function loadRecentSessions(athleteId: string, limit = 10) {
     .where(eq(sessions.athleteId, athleteId))
     .orderBy(desc(sessions.date), desc(sessions.startedAt))
     .limit(limit);
-  return attachExercises(athleteId, sessionRows);
+  const withExercises = await attachExercises(athleteId, sessionRows);
+  return withDurationMin(athleteId, withExercises);
 }
 
 export type E1rmPoint = { date: string; e1rm: number };
