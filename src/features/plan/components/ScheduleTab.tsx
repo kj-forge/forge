@@ -382,11 +382,13 @@ function EntryCard({ entry, overlay = false }: { entry: ScheduleEntry; overlay?:
           <span className="min-w-0 truncate font-medium text-sm">{entry.name}</span>
         </span>
         <span className="flex shrink-0 items-center gap-1">
-          {entry.slot === "MORNING" ? (
-            <Sun className="size-3 text-muted-foreground" />
-          ) : (
-            <Moon className="size-3 text-muted-foreground" />
-          )}
+          <span aria-label={DAY_SLOT_LABEL[entry.slot]} role="img">
+            {entry.slot === "MORNING" ? (
+              <Sun className="size-3 text-muted-foreground" />
+            ) : (
+              <Moon className="size-3 text-muted-foreground" />
+            )}
+          </span>
           {entry.intensity && (
             <span
               className={`rounded-full px-2 py-0.5 font-bold text-[10px] uppercase tracking-wide ${UNIT_INTENSITY_CLASS[entry.intensity]}`}

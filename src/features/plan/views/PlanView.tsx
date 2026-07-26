@@ -41,7 +41,7 @@ export function PlanView() {
       <div className="flex min-h-9 items-center justify-between gap-2 pt-2">
         <h1 className="font-bold text-2xl tracking-tight">Plan</h1>
         <Button
-          className={`bg-ember shadow-ember transition-[opacity,transform] duration-200 motion-reduce:transition-none ${
+          className={`bg-ember shadow-ember transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none ${
             tab === "plany" ? "translate-x-0 opacity-100" : "pointer-events-none translate-x-2 opacity-0"
           }`}
           size="sm"
