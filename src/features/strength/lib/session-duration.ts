@@ -8,10 +8,10 @@ export function sessionDurationMin(s: {
   firstSetAt: Date | null;
   segmentsMs: number;
 }): number | null {
+  if (s.endedAt === null) return null;
   if (s.type === "HYROX" && s.segmentsMs > 0) {
     return Math.max(1, Math.round(s.segmentsMs / 60_000));
   }
-  if (s.endedAt === null) return null;
   const start = s.firstSetAt ?? s.startedAt;
   if (start === null) return null;
   const min = Math.round((s.endedAt.getTime() - start.getTime()) / 60_000);

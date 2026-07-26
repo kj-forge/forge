@@ -159,7 +159,7 @@ function PlanAccordionItem({
                 ? `${plan.units.length} ${plan.units.length === 1 ? "trening" : plan.units.length < 5 ? "treningi" : "treningów"}`
                 : "bez treningów"}
               {plan.status !== "DRAFT" && range ? ` · ${range}` : ""}
-              {progress ? ` · tydzień ${progress.week}/${progress.totalWeeks}` : ""}
+              {plan.status === "ACTIVE" && progress ? ` · tydzień ${progress.week}/${progress.totalWeeks}` : ""}
             </span>
           </span>
           <span
@@ -184,7 +184,9 @@ function PlanAccordionItem({
             ))}
           </div>
           {trainingDays.size > 0 && (
-            <span className="text-muted-foreground text-xs">{trainingDays.size} dni / tydzień</span>
+            <span className="text-muted-foreground text-xs">
+              {trainingDays.size === 1 ? "1 dzień" : `${trainingDays.size} dni`} / tydzień
+            </span>
           )}
         </div>
 

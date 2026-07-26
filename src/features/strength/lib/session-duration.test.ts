@@ -70,4 +70,16 @@ describe("sessionDurationMin", () => {
       }),
     ).toBe(null);
   });
+
+  test("hyrox: live session (not ended) never shows a duration, even with segments", () => {
+    expect(
+      sessionDurationMin({
+        type: "HYROX",
+        startedAt: T("2026-07-25T10:00:00Z"),
+        endedAt: null,
+        firstSetAt: null,
+        segmentsMs: 42 * 60_000,
+      }),
+    ).toBe(null);
+  });
 });

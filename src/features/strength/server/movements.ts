@@ -89,7 +89,9 @@ const updateTargetInput = z
     targetReps: z.int().min(1).max(100000).nullable(),
     targetDistanceM: z.int().min(1).max(100000).nullable(),
   })
-  .refine((d) => d.targetReps === null || d.targetDistanceM === null, { message: "Stacja ma jeden target." });
+  .refine((d) => d.targetReps === null || d.targetDistanceM === null, {
+    message: "Stacja może mieć tylko jeden cel.",
+  });
 
 // Hyrox pre-start target edit. Every completed STATION segment mirrors a row
 // into `sets` (see saveHyroxSegments), so "the block has any sets" is an

@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
-import { formatSeriesCount, formatWeight } from "@/features/strength/lib/format-set";
+import { formatRoundsCount, formatSeriesCount, formatWeight } from "@/features/strength/lib/format-set";
 import type { SessionType } from "@/features/strength/types";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
@@ -23,6 +23,7 @@ interface SessionListItemProps {
     title?: string | null;
     endedAt: Date | null;
     durationMin?: number | null;
+    roundsCount?: number;
     exercises?: SessionExercise[];
   };
   // none: just type + metrics. top-sets: per-exercise heaviest-set list
@@ -44,7 +45,12 @@ export function SessionListItem({ session, detail = "none" }: SessionListItemPro
   const extraCount = hasTitle ? exercises.length : Math.max(0, exercises.length - 1);
 
   const totalSets = exercises.reduce((sum, e) => sum + e.setCount, 0);
-  const countLabel = totalSets > 0 ? formatSeriesCount(totalSets) : "";
+  const countLabel =
+    session.type === "HYROX" && (session.roundsCount ?? 0) > 0
+      ? formatRoundsCount(session.roundsCount ?? 0)
+      : totalSets > 0
+        ? formatSeriesCount(totalSets)
+        : "";
 
   const date = new Date(session.date);
   const weekdayShort = date.toLocaleDateString("pl-PL", { weekday: "short" }).replace(/\.$/, "");

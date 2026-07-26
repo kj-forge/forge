@@ -93,19 +93,21 @@ export async function attachExercises<T extends { id: string }>(athleteId: strin
   }));
 }
 
-export type DurationInputs = { firstSetAt: Date | null; segmentsMs: number };
+export type DurationInputs = { firstSetAt: Date | null; segmentsMs: number; roundsCount: number };
 
 // min(sets.createdAt) and sum(segments.durationMs) per session, one query
 // each — feeds sessionDurationMin (lib/session-duration.ts) for both list
 // paths. sets has no direct sessionId, so it joins up through blockMovements
 // → sessionBlocks; sessionSegments carries its own sessionId directly.
+// roundsCount is HYROX-only: distinct (block, round) pairs among STATION
+// segments — a round is "however many station reps happened," not set count.
 export async function attachDurationInputs(
   athleteId: string,
   sessionIds: string[],
 ): Promise<Map<string, DurationInputs>> {
   const map = new Map<string, DurationInputs>();
   if (sessionIds.length === 0) return map;
-  for (const id of sessionIds) map.set(id, { firstSetAt: null, segmentsMs: 0 });
+  for (const id of sessionIds) map.set(id, { firstSetAt: null, segmentsMs: 0, roundsCount: 0 });
 
   const firstSets = await db
     .select({
@@ -126,13 +128,18 @@ export async function attachDurationInputs(
     .select({
       sessionId: sessionSegments.sessionId,
       segmentsMs: sql<number>`COALESCE(SUM(${sessionSegments.durationMs}), 0)::int`,
+      // STATION segments only — REST/ROX_ZONE rows don't represent a round.
+      roundsCount: sql<number>`COUNT(DISTINCT (${sessionSegments.blockId}, ${sessionSegments.roundNumber})) FILTER (WHERE ${sessionSegments.kind} = 'STATION')::int`,
     })
     .from(sessionSegments)
     .where(and(eq(sessionSegments.athleteId, athleteId), inArray(sessionSegments.sessionId, sessionIds)))
     .groupBy(sessionSegments.sessionId);
   for (const r of segs) {
     const entry = map.get(r.sessionId);
-    if (entry) entry.segmentsMs = r.segmentsMs;
+    if (entry) {
+      entry.segmentsMs = r.segmentsMs;
+      entry.roundsCount = r.roundsCount;
+    }
   }
 
   return map;
@@ -142,20 +149,25 @@ export async function attachDurationInputs(
 // session's inputs through sessionDurationMin.
 export async function withDurationMin<
   T extends { id: string; type: string; startedAt: Date | null; endedAt: Date | null },
->(athleteId: string, sessionRows: T[]): Promise<(T & { durationMin: number | null })[]> {
+>(athleteId: string, sessionRows: T[]): Promise<(T & { durationMin: number | null; roundsCount: number })[]> {
   const durationInputs = await attachDurationInputs(
     athleteId,
     sessionRows.map((s) => s.id),
   );
-  return sessionRows.map((s) => ({
-    ...s,
-    durationMin: sessionDurationMin({
-      type: s.type,
-      startedAt: s.startedAt,
-      endedAt: s.endedAt,
-      ...(durationInputs.get(s.id) ?? { firstSetAt: null, segmentsMs: 0 }),
-    }),
-  }));
+  return sessionRows.map((s) => {
+    const inputs = durationInputs.get(s.id) ?? { firstSetAt: null, segmentsMs: 0, roundsCount: 0 };
+    return {
+      ...s,
+      durationMin: sessionDurationMin({
+        type: s.type,
+        startedAt: s.startedAt,
+        endedAt: s.endedAt,
+        firstSetAt: inputs.firstSetAt,
+        segmentsMs: inputs.segmentsMs,
+      }),
+      roundsCount: inputs.roundsCount,
+    };
+  });
 }
 
 // Dashboard feed: most recent sessions including the in-progress one.
