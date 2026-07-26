@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
+import { getRouteApi, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { NotebookPen, RotateCcw } from "lucide-react";
 import { useState } from "react";
@@ -15,6 +15,7 @@ import { NotesDrawer } from "@/features/strength/components/NotesDrawer";
 import { StepDrawer } from "@/features/strength/components/StepDrawer";
 import { RestStepRow, SupersetRow } from "@/features/strength/components/StepRows";
 import { SESSION_TYPE_LABEL_PL_ADJ } from "@/features/strength/constants";
+import { readSessionOrigin, SESSION_ORIGIN_TARGET } from "@/features/strength/lib/session-origin";
 import { currentRound } from "@/features/strength/lib/step-progress";
 import { swapExerciseInStep } from "@/features/strength/server/movements";
 import { createSession, deleteSession, endSession, updateSessionNotes } from "@/features/strength/server/sessions";
@@ -40,6 +41,11 @@ export function ActiveSessionView() {
   const router = useRouter();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  // Read once at mount: origin belongs to the history entry (survives
+  // router.invalidate()), but pinning it in state guards against any
+  // re-render losing it regardless.
+  const [origin] = useState(() => readSessionOrigin(location.state));
   const [picker, setPicker] = useState<PickerMode | null>(null);
   const [endOpen, setEndOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -73,7 +79,7 @@ export function ActiveSessionView() {
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
       <header className={`flex items-center ${isEnded ? "justify-between" : "justify-end"} pt-2`}>
-        {isEnded && <BackLink to="/sessions" label="Historia" />}
+        {isEnded && <BackLink to={SESSION_ORIGIN_TARGET[origin].to} label={SESSION_ORIGIN_TARGET[origin].label} />}
         <span className="text-muted-foreground text-xs">
           {new Date(session.date).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
         </span>
@@ -259,7 +265,7 @@ export function ActiveSessionView() {
         onConfirm={async () => {
           await deleteSession({ data: { sessionId: session.id } });
           queryClient.invalidateQueries({ queryKey: ["history"] });
-          navigate({ to: "/sessions" });
+          navigate({ to: SESSION_ORIGIN_TARGET[origin].to });
         }}
       />
 

@@ -85,7 +85,7 @@ export function DashboardView() {
           ) : (
             <ul className="space-y-2">
               {visibleSessions.map((s) => (
-                <SessionListItem key={s.id} session={s} detail="top-sets" />
+                <SessionListItem key={s.id} session={s} detail="top-sets" origin="dziennik" />
               ))}
             </ul>
           )}
