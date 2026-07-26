@@ -1,6 +1,8 @@
 import { getRouteApi } from "@tanstack/react-router";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivatePlanDialog } from "@/features/plan/components/ActivatePlanDialog";
 import { AddToDaySheet } from "@/features/plan/components/AddToDaySheet";
@@ -36,7 +38,21 @@ export function PlanView() {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-3 p-4">
-      <h1 className="pt-2 font-bold text-2xl tracking-tight">Plan</h1>
+      <div className="flex min-h-9 items-center justify-between gap-2 pt-2">
+        <h1 className="font-bold text-2xl tracking-tight">Plan</h1>
+        <Button
+          className={`bg-ember shadow-ember transition-[opacity,transform] duration-200 motion-reduce:transition-none ${
+            tab === "plany" ? "translate-x-0 opacity-100" : "pointer-events-none translate-x-2 opacity-0"
+          }`}
+          size="sm"
+          aria-hidden={tab !== "plany"}
+          tabIndex={tab === "plany" ? undefined : -1}
+          onClick={() => setPlanForm({ plan: null })}
+        >
+          <Plus className="size-4" />
+          Nowy plan
+        </Button>
+      </div>
 
       {/* gap-3 + h-9! align the tab bar with the page rhythm and the h-9
           inputs around it (shadcn defaults: gap-2, h-8 — reads cramped). */}

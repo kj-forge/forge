@@ -66,21 +66,11 @@ export function PlansTab({ plans, onNewPlan, onEditPlan, onActivate, onEditUnit 
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex gap-1.5">
-        {/* SearchInput forwards className to its inner <input>, not its wrapping
-            div, so flex-1 has to live on this wrapper to actually grow here. */}
-        <div className="min-w-0 flex-1">
-          <SearchInput
-            placeholder="Szukaj: plan, trening lub typ…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-        <Button className="shrink-0 bg-ember shadow-ember" onClick={onNewPlan}>
-          <Plus className="size-4" />
-          Nowy
-        </Button>
-      </div>
+      <SearchInput
+        placeholder="Szukaj: plan, trening lub typ…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
 
       {visible.length === 0 ? (
         <p className="py-4 text-center text-muted-foreground text-sm">Brak planów pasujących do „{query.trim()}”.</p>
