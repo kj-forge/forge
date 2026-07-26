@@ -131,7 +131,13 @@ export function useHyroxLive(
   const [state, setState] = useState<HyroxTimerState>(() => {
     const raw = typeof window === "undefined" ? null : localStorage.getItem(liveStateKey(sessionId));
     const fromStorage = parseLiveState(sessionId, raw);
-    if (fromStorage) return fromStorage;
+    // Invariant: blockIndex must stay < plan.length — every live screen indexes
+    // plan[state.blockIndex] directly. A plan shrink (block dropped) after the
+    // state was persisted can leave a stale storage entry pointing past the end
+    // of the now-shorter plan; fall through to the next source instead of
+    // crashing on every reload. (rehydrateFromSegments is already bounds-safe:
+    // it only considers segments whose blockId still exists in plan.)
+    if (fromStorage && (plan.length === 0 || fromStorage.blockIndex < plan.length)) return fromStorage;
     if (persisted.length > 0) return rehydrateFromSegments(plan, persisted);
     return initialTimerState();
   });
