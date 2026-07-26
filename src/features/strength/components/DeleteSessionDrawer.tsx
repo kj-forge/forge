@@ -1,16 +1,8 @@
+import { TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/error-message";
+import { ConfirmDialog } from "@/shared/components/ConfirmDialog";
 
 interface DeleteSessionDrawerProps {
   open: boolean;
@@ -35,38 +27,20 @@ export function DeleteSessionDrawer({ open, onOpenChange, isEnded, onConfirm }: 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent mobileSheet>
-        <div className="mx-auto w-full max-w-md">
-          <DialogHeader>
-            <DialogTitle>⚠️ Usunąć sesję?</DialogTitle>
-            <DialogDescription>
-              {isEnded
-                ? "Sesja zostanie nieodwracalnie usunięta wraz ze wszystkimi seriami."
-                : "Sesja jest w trakcie. Usunięcie skasuje całość — nie da się tego cofnąć."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="px-4">
-            {error && (
-              <p className="text-destructive text-sm" role="alert">
-                {error}
-              </p>
-            )}
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="destructive" className="w-full" disabled={deleting} onClick={handleConfirm}>
-              {deleting ? "Usuwam..." : "Tak, usuń"}
-            </Button>
-            <DialogClose asChild>
-              <Button variant="outline" className="w-full">
-                Anuluj
-              </Button>
-            </DialogClose>
-          </DialogFooter>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Usunąć sesję?"
+      titleIcon={<TriangleAlert className="size-5 text-destructive" />}
+      description={
+        isEnded
+          ? "Sesja zostanie nieodwracalnie usunięta wraz ze wszystkimi seriami."
+          : "Sesja jest w trakcie. Usunięcie skasuje całość — nie da się tego cofnąć."
+      }
+      error={error}
+      confirmLabel="Tak, usuń"
+      pending={deleting}
+      onConfirm={() => void handleConfirm()}
+    />
   );
 }

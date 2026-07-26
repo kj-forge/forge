@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +16,7 @@ interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  titleIcon?: ReactNode;
   description?: string;
   error?: string | null;
   confirmLabel: string;
@@ -27,6 +30,7 @@ export function ConfirmDialog({
   open,
   onOpenChange,
   title,
+  titleIcon,
   description,
   error,
   confirmLabel,
@@ -38,7 +42,10 @@ export function ConfirmDialog({
       <DialogContent mobileSheet showCloseButton={false} {...(description ? {} : { "aria-describedby": undefined })}>
         <div className="mx-auto w-full max-w-md">
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
+            <DialogTitle className="flex items-center justify-center gap-2 md:justify-start">
+              {titleIcon}
+              {title}
+            </DialogTitle>
             {description ? <DialogDescription>{description}</DialogDescription> : null}
           </DialogHeader>
 
