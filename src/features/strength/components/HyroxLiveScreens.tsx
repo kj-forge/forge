@@ -112,18 +112,36 @@ function stationNextUpLabel(block: HyroxBlockPlan, stationIndex: number, round: 
   return `przerwa ${restLabel} · runda ${round + 1}`;
 }
 
-export function HyroxIdleScreen({ live }: { live: HyroxLive }) {
+export function HyroxIdleScreen({ live, onEditBlock }: { live: HyroxLive; onEditBlock: () => void }) {
   const { state, plan } = live;
   const block = plan[state.blockIndex];
   const letter = blockLetter(state.blockIndex);
   const rounds = effectiveRounds(state, plan, state.blockIndex);
   const restLabel = formatRestSeconds(block.restSeconds);
+  // Client-authoritative (rehydrateFromSegments loads persisted segments into
+  // `state.segments` at mount, so this also covers the rare mid-round resume
+  // that reopens `idle` for a block that already has history) — avoids
+  // threading the loader's raw `segments` array into this presentational screen.
+  const hasSegments = state.segments.some((s) => s.blockIndex === state.blockIndex);
 
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
-      <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
-        Sesja Hyrox · Blok {letter}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
+          Sesja Hyrox · Blok {letter}
+        </p>
+        {!hasSegments && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-auto shrink-0 px-2 py-1 text-xs"
+            onClick={onEditBlock}
+          >
+            Edytuj blok
+          </Button>
+        )}
+      </div>
 
       {state.round > 1 && (
         <span className="inline-flex w-fit items-center rounded-full bg-primary/15 px-2.5 py-1 font-semibold text-primary text-xs">
