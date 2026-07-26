@@ -1,6 +1,9 @@
 // Origin rides TanStack Router history state — it belongs to the history
-// entry, so it survives router.invalidate() but not a hard refresh (that
-// starts a fresh history entry with no state). Every consumer falls back to
+// entry, so it survives both router.invalidate() and a hard refresh (browsers
+// persist history.state across reload). SSR, however, never sees it — the
+// server has no history entry to read — so the first client render must
+// still assume the fallback (Historia) to hydrate cleanly; consumers promote
+// to the real value in a post-mount effect. Every consumer falls back to
 // Historia when it's missing.
 export type SessionOrigin = "dziennik" | "historia";
 

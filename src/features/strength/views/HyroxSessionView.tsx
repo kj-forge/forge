@@ -79,10 +79,15 @@ export function HyroxSessionView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const location = useLocation();
-  // Read once at mount: origin belongs to the history entry (survives
-  // router.invalidate()), but pinning it in state guards against any
-  // re-render losing it regardless.
-  const [origin] = useState(() => readSessionOrigin(location.state));
+  // SSR never sees history.state, so the initial (and hydration) render must
+  // assume the fallback; promote to the real origin once, after mount, from
+  // the state snapshot present at that point. Empty deps: this is a one-shot
+  // promotion, not a subscription — later location changes must not re-read it.
+  const [origin, setOrigin] = useState<SessionOrigin>("historia");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once promotion by design — must not re-read origin on later location changes.
+  useEffect(() => {
+    setOrigin(readSessionOrigin(location.state));
+  }, []);
   const isEnded = session.endedAt !== null;
   const live = useHyroxLive(session.id, steps, segments, { enabled: !isEnded });
   const [finishOpen, setFinishOpen] = useState(false);

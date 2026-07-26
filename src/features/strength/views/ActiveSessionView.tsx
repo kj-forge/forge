@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { NotebookPen, RotateCcw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +15,7 @@ import { NotesDrawer } from "@/features/strength/components/NotesDrawer";
 import { StepDrawer } from "@/features/strength/components/StepDrawer";
 import { RestStepRow, SupersetRow } from "@/features/strength/components/StepRows";
 import { SESSION_TYPE_LABEL_PL_ADJ } from "@/features/strength/constants";
-import { readSessionOrigin, SESSION_ORIGIN_TARGET } from "@/features/strength/lib/session-origin";
+import { readSessionOrigin, SESSION_ORIGIN_TARGET, type SessionOrigin } from "@/features/strength/lib/session-origin";
 import { currentRound } from "@/features/strength/lib/step-progress";
 import { swapExerciseInStep } from "@/features/strength/server/movements";
 import { createSession, deleteSession, endSession, updateSessionNotes } from "@/features/strength/server/sessions";
@@ -42,10 +42,15 @@ export function ActiveSessionView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const location = useLocation();
-  // Read once at mount: origin belongs to the history entry (survives
-  // router.invalidate()), but pinning it in state guards against any
-  // re-render losing it regardless.
-  const [origin] = useState(() => readSessionOrigin(location.state));
+  // SSR never sees history.state, so the initial (and hydration) render must
+  // assume the fallback; promote to the real origin once, after mount, from
+  // the state snapshot present at that point. Empty deps: this is a one-shot
+  // promotion, not a subscription — later location changes must not re-read it.
+  const [origin, setOrigin] = useState<SessionOrigin>("historia");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once promotion by design — must not re-read origin on later location changes.
+  useEffect(() => {
+    setOrigin(readSessionOrigin(location.state));
+  }, []);
   const [picker, setPicker] = useState<PickerMode | null>(null);
   const [endOpen, setEndOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -69,7 +74,11 @@ export function ActiveSessionView() {
       const result = await createSession({
         data: { type: session.type, date: dayjs().format("YYYY-MM-DD"), fromTemplateSessionId: session.id },
       });
-      navigate({ to: "/sessions/$sessionId", params: { sessionId: result.sessionId } });
+      navigate({
+        to: "/sessions/$sessionId",
+        params: { sessionId: result.sessionId },
+        state: { sessionOrigin: origin },
+      });
     } catch (err) {
       setCopyError(getErrorMessage(err, "Nie udało się utworzyć sesji."));
       setCopying(false);
