@@ -1,11 +1,17 @@
 import { useRouter } from "@tanstack/react-router";
-import { CalendarDays, Dumbbell, Pause, Play, Plus } from "lucide-react";
+import { CalendarDays, Dumbbell, Pause, Play, Plus, Timer } from "lucide-react";
 import { useState } from "react";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { PLAN_STATUS_CLASS, PLAN_STATUS_LABEL } from "@/features/plan/constants";
+import {
+  PLAN_STATUS_CLASS,
+  PLAN_STATUS_LABEL,
+  UNIT_INTENSITY_CLASS,
+  UNIT_INTENSITY_LABEL,
+} from "@/features/plan/constants";
+import { planWeekProgress } from "@/features/plan/lib/plan-progress";
 import { warsawTodayIso } from "@/features/plan/lib/schedule";
 import { completePlan, pausePlan } from "@/features/plan/server/plan";
 import type { PlanWithUnits } from "@/features/plan/types";
@@ -60,11 +66,21 @@ export function PlansTab({ plans, onNewPlan, onEditPlan, onActivate, onEditUnit 
 
   return (
     <div className="flex flex-col gap-3">
-      <SearchInput
-        placeholder="Szukaj: plan, trening lub typ…"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
+      <div className="flex gap-1.5">
+        {/* SearchInput forwards className to its inner <input>, not its wrapping
+            div, so flex-1 has to live on this wrapper to actually grow here. */}
+        <div className="min-w-0 flex-1">
+          <SearchInput
+            placeholder="Szukaj: plan, trening lub typ…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <Button className="shrink-0 bg-ember shadow-ember" onClick={onNewPlan}>
+          <Plus className="size-4" />
+          Nowy
+        </Button>
+      </div>
 
       {visible.length === 0 ? (
         <p className="py-4 text-center text-muted-foreground text-sm">Brak planów pasujących do „{query.trim()}”.</p>
@@ -88,11 +104,6 @@ export function PlansTab({ plans, onNewPlan, onEditPlan, onActivate, onEditUnit 
           ))}
         </Accordion>
       )}
-
-      <Button variant="outline" className="w-full" onClick={onNewPlan}>
-        <Plus className="size-4" />
-        Nowy plan
-      </Button>
     </div>
   );
 }
@@ -131,9 +142,14 @@ function PlanAccordionItem({
     `${RANGE_FMT.format(new Date(`${plan.startDate}T00:00:00`))} – ${
       plan.endDate ? RANGE_FMT.format(new Date(`${plan.endDate}T00:00:00`)) : "∞"
     }`;
+  const progress = planWeekProgress(plan.startDate, plan.endDate, warsawTodayIso());
+  const trainingDays = new Set(plan.units.flatMap((u) => u.days));
 
   return (
-    <AccordionItem value={plan.id} className="rounded-xl border bg-card px-4">
+    <AccordionItem
+      value={plan.id}
+      className={`rounded-xl border bg-card px-4 ${plan.status === "ACTIVE" ? "border-l-[3px] border-l-primary" : ""} ${plan.status === "DRAFT" ? "opacity-80" : ""}`}
+    >
       <AccordionTrigger className="hover:no-underline">
         <span className="flex min-w-0 flex-1 items-center justify-between gap-2 pr-2">
           <span className="min-w-0">
@@ -143,6 +159,7 @@ function PlanAccordionItem({
                 ? `${plan.units.length} ${plan.units.length === 1 ? "trening" : plan.units.length < 5 ? "treningi" : "treningów"}`
                 : "bez treningów"}
               {plan.status !== "DRAFT" && range ? ` · ${range}` : ""}
+              {progress ? ` · tydzień ${progress.week}/${progress.totalWeeks}` : ""}
             </span>
           </span>
           <span
@@ -153,6 +170,24 @@ function PlanAccordionItem({
         </span>
       </AccordionTrigger>
       <AccordionContent>
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            {WEEKDAY_LABELS_PL.map((d, i) => (
+              <span
+                key={d}
+                className={`grid size-4 place-items-center rounded font-extrabold text-[9px] ${
+                  trainingDays.has(i) ? "bg-ember text-white" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {d.slice(0, 1).toUpperCase()}
+              </span>
+            ))}
+          </div>
+          {trainingDays.size > 0 && (
+            <span className="text-muted-foreground text-xs">{trainingDays.size} dni / tydzień</span>
+          )}
+        </div>
+
         {plan.description && <p className="mb-2 text-muted-foreground text-xs">{plan.description}</p>}
 
         {plan.units.length > 0 ? (
@@ -165,10 +200,21 @@ function PlanAccordionItem({
                   onClick={() => onEditUnit({ planId: plan.id, planName: plan.name, unit })}
                 >
                   <span className="flex min-w-0 items-center gap-1.5">
-                    {unit.sessionType === "STRENGTH" && <Dumbbell className="size-3 shrink-0 text-primary" />}
+                    {unit.sessionType === "STRENGTH" ? (
+                      <Dumbbell className="size-3 shrink-0 text-primary" />
+                    ) : unit.sessionType === "HYROX" ? (
+                      <Timer className="size-3 shrink-0 text-primary" />
+                    ) : (
+                      <CalendarDays className="size-3 shrink-0 text-primary" />
+                    )}
                     <span className="truncate">{unit.name}</span>
                     <span className="shrink-0 text-muted-foreground text-xs">
                       {SESSION_TYPE_LABEL_PL[unit.sessionType]}
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full px-1.5 py-0.5 font-semibold text-[10px] ${UNIT_INTENSITY_CLASS[unit.intensity]}`}
+                    >
+                      {UNIT_INTENSITY_LABEL[unit.intensity]}
                     </span>
                   </span>
                   {unit.days.length > 0 && (
