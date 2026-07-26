@@ -147,6 +147,9 @@ export function useHyroxLive(
   const failCountRef = useRef(0);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const prevRestRemainingRef = useRef<number | null>(null);
+  // Seeded from the current phase (not a fixed literal) so rehydrating mid-rest
+  // or mid-blockDone doesn't read as a fresh transition on mount.
+  const prevPhaseRef = useRef(state.phase);
   const sounds = useMemo(() => createHyroxSounds(), []);
 
   function dispatch(event: HyroxTimerEvent) {
@@ -328,6 +331,19 @@ export function useHyroxLive(
     }
     prevRestRemainingRef.current = remaining;
   }, [state, nowMs, plan, sounds, enabled]);
+
+  // Round-end gong: fires on entering `rest` or `blockDone` — a different edge
+  // from the effect above, which fires on the countdown *leaving* rest (the
+  // 0-crossing), not on phase changing. No double-fire between the two.
+  useEffect(() => {
+    if (!enabled) return;
+    const prev = prevPhaseRef.current;
+    if ((prev !== "rest" && state.phase === "rest") || (prev !== "blockDone" && state.phase === "blockDone")) {
+      sounds.roundGong();
+      navigator.vibrate?.([200, 100, 200]);
+    }
+    prevPhaseRef.current = state.phase;
+  }, [state.phase, sounds, enabled]);
 
   async function finish(notes?: string): Promise<void> {
     const current = stateRef.current;
