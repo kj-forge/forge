@@ -263,15 +263,6 @@ const EXERCISES: ExerciseDef[] = [
     progressionKind: "ENDURANCE_STRENGTH",
   },
   {
-    slug: "chin-up",
-    namePl: "Podciąganie nachwytem (chin-up)",
-    nameEn: "Chin-Up",
-    aliases: ["chin up", "chin-up", "drążek nachwytem"],
-    category: "BODYWEIGHT",
-    muscleGroups: ["biceps", "lats"],
-    progressionKind: "ENDURANCE_STRENGTH",
-  },
-  {
     slug: "dip",
     namePl: "Pompki na poręczach",
     nameEn: "Dip",

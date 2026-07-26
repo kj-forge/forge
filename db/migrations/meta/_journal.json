@@ -134,6 +134,13 @@
       "when": 1784913122475,
       "tag": "0018_polite_eddie_brock",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1785095455243,
+      "tag": "0019_retire-chin-up",
+      "breakpoints": true
     }
   ]
 }
