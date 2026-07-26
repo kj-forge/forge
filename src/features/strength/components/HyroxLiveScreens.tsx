@@ -144,8 +144,6 @@ export function HyroxIdleScreen({ live }: { live: HyroxLive }) {
         ))}
       </ul>
 
-      <p className="text-muted-foreground text-sm italic">„Telefon trzyma trener. Ekran nie zgaśnie.”</p>
-
       <div className="sticky bottom-0 -mx-4 mt-auto space-y-2 border-t bg-background px-4 pt-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)-1.75rem))]">
         <SyncErrorBar syncError={live.syncError} />
         <Button type="button" className="w-full bg-ember py-5 font-extrabold text-lg shadow-ember" onClick={live.tap}>
@@ -169,6 +167,8 @@ export function HyroxStationScreen({ live }: { live: HyroxLive }) {
   const rounds = effectiveRounds(state, plan, state.blockIndex);
   const station = block.stations[state.stationIndex];
   const nextStation = isRox ? block.stations[state.stationIndex + 1] : null;
+  const isLastStation = state.stationIndex === block.stations.length - 1;
+  const isFinalRound = state.round >= rounds;
 
   const running = formatMsTenths(runningMs(state, nowMs));
   const round = formatMs(roundMs(state, nowMs, state.blockIndex, state.round));
@@ -192,16 +192,9 @@ export function HyroxStationScreen({ live }: { live: HyroxLive }) {
         </p>
       )}
 
-      <div className="space-y-1">
-        <h1 className="font-extrabold text-3xl">{isRox ? "Rox zone" : station.label}</h1>
-        {isRox
-          ? nextStation && (
-              <p className="text-muted-foreground text-sm">
-                → {nextStation.label}
-                {nextStation.target ? ` · ${nextStation.target}` : ""}
-              </p>
-            )
-          : station.target && <p className="text-muted-foreground text-sm">{station.target}</p>}
+      <div className="min-w-0 space-y-1">
+        <h1 className="truncate font-extrabold text-3xl">{isRox ? "Rox zone" : station.label}</h1>
+        {!isRox && station.target && <p className="text-muted-foreground text-sm">{station.target}</p>}
       </div>
 
       <StationDots count={block.stations.length} currentIndex={currentDotIndex} />
@@ -221,13 +214,21 @@ export function HyroxStationScreen({ live }: { live: HyroxLive }) {
       <div className="sticky bottom-0 -mx-4 mt-auto space-y-2 border-t bg-background px-4 pt-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)-1.75rem))]">
         <SyncErrorBar syncError={live.syncError} />
         <Button type="button" className="w-full bg-ember py-5 font-extrabold text-lg shadow-ember" onClick={live.tap}>
-          {isRox ? `Start: ${nextStation?.label}` : "Koniec stacji"}
+          <span className="min-w-0 truncate">
+            {isRox
+              ? `Start: ${nextStation?.label}`
+              : isLastStation
+                ? isFinalRound
+                  ? "Zakończ blok"
+                  : "Zakończ rundę"
+                : "Koniec stacji"}
+          </span>
         </Button>
-        {!isRox && (
-          <p className="text-center text-muted-foreground text-xs">
-            następnie: {stationNextUpLabel(block, state.stationIndex, state.round, rounds)}
-          </p>
-        )}
+        <p className="truncate px-2 text-center text-muted-foreground text-xs">
+          {isRox
+            ? `następnie: ${nextStation?.label}${nextStation?.target ? ` · ${nextStation.target}` : ""}`
+            : `następnie: ${stationNextUpLabel(block, state.stationIndex, state.round, rounds)}`}
+        </p>
       </div>
     </main>
   );
@@ -284,7 +285,7 @@ export function HyroxRestScreen({ live }: { live: HyroxLive }) {
         <Button type="button" className="w-full bg-ember py-5 font-extrabold text-lg shadow-ember" onClick={live.tap}>
           Start rundy {nextRound}
         </Button>
-        <p className="text-center text-muted-foreground text-xs">{firstStation.label}</p>
+        <p className="truncate px-2 text-center text-muted-foreground text-xs">następnie: {firstStation.label}</p>
       </div>
     </main>
   );
