@@ -1,8 +1,10 @@
 import { Link } from "@tanstack/react-router";
 
+import { ChevronRight } from "lucide-react";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
-import { formatSeriesCount, formatWeight } from "@/features/strength/lib/format-set";
+import { formatRoundsCount, formatSeriesCount, formatWeight } from "@/features/strength/lib/format-set";
 import type { SessionType } from "@/features/strength/types";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
@@ -20,46 +22,64 @@ interface SessionListItemProps {
     type: string;
     title?: string | null;
     endedAt: Date | null;
+    durationMin?: number | null;
+    roundsCount?: number;
     exercises?: SessionExercise[];
   };
-  dateFormat?: "short" | "long";
-  // none: just type + date. names: one-line exercise list. top-sets: per-exercise
-  // heaviest-set list (capped). Dashboard uses top-sets, history uses names.
-  detail?: "none" | "names" | "top-sets";
+  // none: just type + metrics. top-sets: per-exercise heaviest-set list
+  // (capped), used by both dashboard and history now.
+  detail?: "none" | "top-sets";
 }
 
 const TOP_SETS_SHOWN = 3;
 
-export function SessionListItem({ session, dateFormat = "long", detail = "none" }: SessionListItemProps) {
+export function SessionListItem({ session, detail = "none" }: SessionListItemProps) {
   const label = SESSION_TYPE_LABEL_PL[session.type as SessionType] ?? session.type;
   const exercises = session.exercises ?? [];
-  // The card headline is the day's main lift — first exercise in session order
-  // (an explicit session title, once nameable, wins). Type falls to the subline.
-  const headline = session.title ?? exercises[0]?.name;
+  const isLive = session.endedAt === null;
+
+  // Headline is an explicit session title if set, else the day's first
+  // exercise; extraCount is how many more exercises hide behind the "+N".
+  const hasTitle = session.title != null && session.title !== "";
+  const headline = hasTitle ? session.title : exercises[0]?.name;
+  const extraCount = hasTitle ? exercises.length : Math.max(0, exercises.length - 1);
+
+  const totalSets = exercises.reduce((sum, e) => sum + e.setCount, 0);
+  const countLabel =
+    session.type === "HYROX" && (session.roundsCount ?? 0) > 0
+      ? formatRoundsCount(session.roundsCount ?? 0)
+      : totalSets > 0
+        ? formatSeriesCount(totalSets)
+        : "";
+
+  const date = new Date(session.date);
+  const weekdayShort = date.toLocaleDateString("pl-PL", { weekday: "short" }).replace(/\.$/, "");
+  const dayOfMonth = date.getDate();
 
   return (
     <li>
       <Link to="/sessions/$sessionId" params={{ sessionId: session.id }} className="block">
-        <Card className="transition-colors hover:bg-accent/50">
+        <Card className={`transition-colors hover:bg-accent/50 ${isLive ? "ring-primary/50" : ""}`}>
           <CardContent className="py-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex items-center gap-3">
+              <div className="w-9 shrink-0 text-center">
+                <p className="font-extrabold text-[10px] text-muted-foreground uppercase">{weekdayShort}</p>
+                <p className="font-extrabold text-lg tabular-nums leading-tight">{dayOfMonth}</p>
+              </div>
+              <div className="w-px self-stretch bg-border" />
+              <div className="min-w-0 flex-1 space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <p className="truncate font-semibold text-base leading-tight">{headline ?? label}</p>
-                  <StatusBadge endedAt={session.endedAt} />
+                  <p className="truncate font-semibold text-sm leading-tight">
+                    {headline ?? label}
+                    {extraCount > 0 && <span className="text-muted-foreground"> +{extraCount}</span>}
+                  </p>
+                  {isLive && <StatusBadge endedAt={null} />}
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  {headline ? `${label} · ` : ""}
-                  {new Date(session.date).toLocaleDateString("pl-PL", {
-                    weekday: dateFormat,
-                    day: "numeric",
-                    month: "long",
-                  })}
+                  {label}
+                  {countLabel ? ` · ${countLabel}` : ""}
+                  {session.durationMin != null ? ` · ${session.durationMin} min` : ""}
                 </p>
-
-                {detail === "names" && exercises.length > 0 && (
-                  <p className="truncate text-muted-foreground text-xs">{exercises.map((e) => e.name).join(" · ")}</p>
-                )}
 
                 {detail === "top-sets" && exercises.length > 0 && (
                   <ul className="space-y-0.5 pt-1">
@@ -84,7 +104,7 @@ export function SessionListItem({ session, dateFormat = "long", detail = "none" 
                   </ul>
                 )}
               </div>
-              <span className="shrink-0 text-muted-foreground text-xs">→</span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>

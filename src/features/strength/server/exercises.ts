@@ -23,6 +23,7 @@ export const searchExercises = createServerFn({ method: "GET" })
         nameEn: exercises.nameEn,
         category: exercises.category,
         defaultUnit: exercises.defaultUnit,
+        isLoadedBodyweight: exercises.isLoadedBodyweight,
       })
       .from(exercises)
       .where(

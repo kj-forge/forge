@@ -83,8 +83,13 @@ describe("NAV_ITEMS", () => {
 });
 
 describe("TAB_BAR_ITEMS", () => {
-  test("five tabs with cele instead of profil", () => {
-    expect(TAB_BAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/goals"]);
+  test("five tabs with plan instead of cele", () => {
+    expect(TAB_BAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/plan"]);
+  });
+
+  test("plan is a tab item, goals is not", () => {
+    expect(TAB_BAR_ITEMS.some((i) => i.to === "/plan")).toBe(true);
+    expect(TAB_BAR_ITEMS.some((i) => i.to === "/goals")).toBe(false);
   });
 });
 
@@ -98,18 +103,24 @@ describe("MANAGE_SECTIONS", () => {
   test("biblioteka + konto, in hub order", () => {
     expect(MANAGE_SECTIONS.map((s) => s.label)).toEqual(["Biblioteka", "Konto"]);
     expect(MANAGE_SECTIONS.flatMap((s) => s.items.map((i) => i.to))).toEqual([
-      "/plan",
       "/exercises",
       "/notes",
+      "/goals",
       "/me/konto",
     ]);
   });
 
-  test("main-sidebar destinations (notes, plan) opt their hub entries out of Zarządzanie", () => {
-    for (const to of ["/notes", "/plan"] as const) {
+  test("main-sidebar destinations (notes, goals) opt their hub entries out of Zarządzanie", () => {
+    for (const to of ["/notes", "/goals"] as const) {
       const item = MANAGE_SECTIONS.flatMap((s) => s.items).find((i) => i.to === to);
       expect(item?.sidebar).toBe(false);
       expect(NAV_ITEMS.some((i) => i.to === to && i.inSidebar && !i.inTabBar)).toBe(true);
     }
+  });
+
+  test("goals is a manage-hub item, plan is not", () => {
+    const manageTos = MANAGE_SECTIONS.flatMap((s) => s.items.map((i) => i.to));
+    expect(manageTos).toContain("/goals");
+    expect(manageTos).not.toContain("/plan");
   });
 });

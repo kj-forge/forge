@@ -10,7 +10,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { EXERCISE_CATEGORY_LABEL } from "@/features/strength/constants";
+import {
+  EXERCISE_CATEGORY_LABEL,
+  EXERCISE_UNIT_LABEL,
+  EXERCISE_UNITS,
+  type ExerciseUnit,
+} from "@/features/strength/constants";
 import { createExercise, searchExercises } from "@/features/strength/server/exercises";
 import { getErrorMessage } from "@/lib/error-message";
 import { Spinner } from "@/shared/components/Spinner";
@@ -86,6 +91,9 @@ function ExercisePickerForm({
   const [error, setError] = useState<string | null>(null);
   // Multi mode: selection survives searches (name kept for the chips row).
   const [selected, setSelected] = useState<{ id: string; namePl: string }[]>([]);
+  // Unit for the empty-state create row — resets on every query change so it
+  // never carries over from a previously typed (different) candidate name.
+  const [createUnit, setCreateUnit] = useState<ExerciseUnit>("REPS");
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Monotonic counter: each search reserves a seq; after the await we apply the
@@ -99,6 +107,9 @@ function ExercisePickerForm({
   const handleSearch = (q: string) => {
     setQuery(q);
     setError(null);
+    // A new query is a new candidate name — don't carry over the unit chosen
+    // for whatever was typed before.
+    setCreateUnit("REPS");
     clearTimeout(debounceRef.current ?? undefined);
     if (q.trim().length < 2) {
       setResults([]);
@@ -178,7 +189,7 @@ function ExercisePickerForm({
         data: {
           namePl,
           category: "ACCESSORY",
-          defaultUnit: "REPS",
+          defaultUnit: createUnit,
           isMainLift: false,
           isPrTracked: true,
           isLoadedBodyweight: false,
@@ -255,7 +266,11 @@ function ExercisePickerForm({
               >
                 <div>
                   <p className="font-medium">{ex.namePl}</p>
-                  <p className="text-muted-foreground text-xs">{EXERCISE_CATEGORY_LABEL[ex.category]}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {ex.isLoadedBodyweight
+                      ? `${EXERCISE_CATEGORY_LABEL[ex.category]} · + obciążenie`
+                      : EXERCISE_CATEGORY_LABEL[ex.category]}
+                  </p>
                 </div>
                 {pickingId === ex.id && <Spinner size="sm" className="text-muted-foreground" />}
                 {selectionIndex >= 0 && (
@@ -268,10 +283,10 @@ function ExercisePickerForm({
         {/* Create only as the empty-state action — next to real matches it
             reads like "Dip isn't here yet" when it usually is. */}
         {!searching && query.trim().length >= 2 && results.length === 0 && (
-          <li>
+          <li className="rounded-md border border-dashed p-2">
             <button
               type="button"
-              className="flex w-full items-center justify-between rounded-md border border-dashed p-2 text-left text-sm transition-colors hover:bg-accent disabled:opacity-50"
+              className="flex w-full items-center justify-between rounded-md text-left text-sm transition-colors hover:bg-accent disabled:opacity-50"
               onClick={handleCreate}
               disabled={pickingId !== null}
             >
@@ -281,6 +296,23 @@ function ExercisePickerForm({
               </div>
               {pickingId === "__create__" && <Spinner size="sm" className="text-muted-foreground" />}
             </button>
+            <div className="mt-2 grid grid-cols-4 gap-1">
+              {EXERCISE_UNITS.map((unit) => (
+                <button
+                  key={unit}
+                  type="button"
+                  className={`rounded-md border px-1.5 py-1 text-center font-semibold text-xs transition-colors ${
+                    createUnit === unit
+                      ? "border-transparent bg-ember"
+                      : "border-border text-muted-foreground hover:bg-accent"
+                  }`}
+                  onClick={() => setCreateUnit(unit)}
+                  disabled={pickingId !== null}
+                >
+                  {EXERCISE_UNIT_LABEL[unit]}
+                </button>
+              ))}
+            </div>
           </li>
         )}
       </ul>

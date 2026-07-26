@@ -83,6 +83,49 @@ export const retireExerciseFromStep = createServerFn({ method: "POST" })
     return { id: movement.id };
   });
 
+const updateTargetInput = z
+  .object({
+    blockMovementId: z.uuid(),
+    targetReps: z.int().min(1).max(100000).nullable(),
+    targetDistanceM: z.int().min(1).max(100000).nullable(),
+  })
+  .refine((d) => d.targetReps === null || d.targetDistanceM === null, {
+    message: "Stacja może mieć tylko jeden cel.",
+  });
+
+// Hyrox pre-start target edit. Every completed STATION segment mirrors a row
+// into `sets` (see saveHyroxSegments), so "the block has any sets" is an
+// exact proxy for "the block has started" — enforced atomically in the same
+// UPDATE, mirroring removeExerciseFromSession's NOT EXISTS guard.
+export const updateStationTarget = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => parseInput(updateTargetInput, data))
+  .handler(async ({ data }) => {
+    const { athleteId } = await getCurrentAthleteOrThrow();
+    const [movement] = await db
+      .select({ id: blockMovements.id, blockId: blockMovements.blockId })
+      .from(blockMovements)
+      .where(and(eq(blockMovements.id, data.blockMovementId), eq(blockMovements.athleteId, athleteId)));
+    if (!movement) throw new Error("Nie znaleziono ćwiczenia w tej sesji.");
+
+    const [row] = await db
+      .update(blockMovements)
+      .set({ targetReps: data.targetReps, targetDistanceM: data.targetDistanceM })
+      .where(
+        and(
+          eq(blockMovements.id, data.blockMovementId),
+          eq(blockMovements.athleteId, athleteId),
+          sql`NOT EXISTS (
+            SELECT 1 FROM ${sets}
+            INNER JOIN block_movements bm ON ${sets.blockMovementId} = bm.id
+            WHERE bm.block_id = ${movement.blockId}
+          )`,
+        ),
+      )
+      .returning({ id: blockMovements.id });
+    if (!row) throw new Error("Nie można edytować bloku po wystartowaniu.");
+    return { id: row.id };
+  });
+
 const swapInput = z.object({ blockMovementId: z.uuid(), newExerciseId: z.uuid(), fromRound: z.int().min(1).max(99) });
 
 // Swap = retire (or hard-delete when set-less) + add the replacement at the
