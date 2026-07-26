@@ -53,7 +53,7 @@ export function SessionListItem({ session, detail = "none" }: SessionListItemPro
   return (
     <li>
       <Link to="/sessions/$sessionId" params={{ sessionId: session.id }} className="block">
-        <Card className={`transition-colors hover:bg-accent/50 ${isLive ? "border-primary/50" : ""}`}>
+        <Card className={`transition-colors hover:bg-accent/50 ${isLive ? "ring-primary/50" : ""}`}>
           <CardContent className="py-3">
             <div className="flex items-center gap-3">
               <div className="w-9 shrink-0 text-center">
