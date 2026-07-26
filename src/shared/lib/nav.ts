@@ -31,14 +31,14 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/sessions/new", label: "Nowa", icon: Plus, exact: true, inTabBar: true, inSidebar: false },
   // Non-exact: /stats/$slug details keep the Statystyki link active.
   { to: "/stats", label: "Statystyki", icon: ChartNoAxesColumn, exact: false, inTabBar: true, inSidebar: true },
-  { to: "/plan", label: "Plan", icon: CalendarDays, exact: true, inTabBar: false, inSidebar: true },
-  { to: "/goals", label: "Cele", icon: Target, exact: true, inTabBar: true, inSidebar: true },
+  { to: "/plan", label: "Plan", icon: CalendarDays, exact: true, inTabBar: true, inSidebar: true },
+  { to: "/goals", label: "Cele", icon: Target, exact: true, inTabBar: false, inSidebar: true },
   // Non-exact: the /notes/$noteId editor keeps the sidebar link active.
   { to: "/notes", label: "Notatki", icon: NotebookPen, exact: false, inTabBar: false, inSidebar: true },
 ];
 
 export interface ManageItem {
-  to: "/exercises" | "/me/konto" | "/notes" | "/plan";
+  to: "/exercises" | "/me/konto" | "/notes" | "/goals";
   label: string;
   icon: LucideIcon;
   // False = hub-only entry: it already sits in the main sidebar group via
@@ -58,9 +58,9 @@ export const MANAGE_SECTIONS: ManageSection[] = [
   {
     label: "Biblioteka",
     items: [
-      { to: "/plan", label: "Plany treningowe", icon: CalendarDays, sidebar: false },
       { to: "/exercises", label: "Ćwiczenia", icon: Dumbbell },
       { to: "/notes", label: "Notatki", icon: NotebookPen, sidebar: false },
+      { to: "/goals", label: "Cele", icon: Target, sidebar: false },
     ],
   },
   { label: "Konto", items: [{ to: "/me/konto", label: "Dane konta", icon: Settings }] },

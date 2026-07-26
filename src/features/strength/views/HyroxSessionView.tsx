@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { DeleteSessionDrawer } from "@/features/strength/components/DeleteSessionDrawer";
+import { EditHyroxBlockSheet } from "@/features/strength/components/EditHyroxBlockSheet";
 import { EndSessionDrawer } from "@/features/strength/components/EndSessionDrawer";
+import { ExercisePickerDrawer } from "@/features/strength/components/ExercisePickerDrawer";
 import { HyroxIdleScreen, HyroxRestScreen, HyroxStationScreen } from "@/features/strength/components/HyroxLiveScreens";
 import {
   HyroxBlockDoneScreen,
@@ -13,6 +15,7 @@ import {
 } from "@/features/strength/components/HyroxSummaries";
 import { type HyroxLive, useHyroxLive } from "@/features/strength/components/useHyroxLive";
 import { deleteSession, updateSessionNotes } from "@/features/strength/server/sessions";
+import { addExerciseToStep } from "@/features/strength/server/steps";
 import { BackLink } from "@/shared/components/BackLink";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
@@ -27,16 +30,18 @@ function HyroxLiveScreen({
   onRequestFinish,
   onSaveNotes,
   onDeleteSession,
+  onEditBlock,
 }: {
   live: HyroxLive;
   notes: string | null;
   onRequestFinish: () => void;
   onSaveNotes: (notes: string) => Promise<void>;
   onDeleteSession: () => Promise<void>;
+  onEditBlock: () => void;
 }) {
   switch (live.state.phase) {
     case "idle":
-      return <HyroxIdleScreen live={live} />;
+      return <HyroxIdleScreen live={live} onEditBlock={onEditBlock} />;
     case "station":
     case "rox":
       return <HyroxStationScreen live={live} />;
@@ -75,6 +80,13 @@ export function HyroxSessionView() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  // ID only, never the Step object itself — re-derived from loader `steps` on
+  // every render so an add/remove inside the sheet (router.invalidate()) is
+  // reflected without the sheet ever holding a stale snapshot.
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
+  const editingStep = steps.find((s) => s.id === editingBlockId) ?? null;
+  const [stationPickerOpen, setStationPickerOpen] = useState(false);
 
   const saveNotes = async (notes: string) => {
     await updateSessionNotes({ data: { sessionId: session.id, notes } });
@@ -168,6 +180,26 @@ export function HyroxSessionView() {
         onRequestFinish={() => setFinishOpen(true)}
         onSaveNotes={saveNotes}
         onDeleteSession={removeSession}
+        onEditBlock={() => {
+          const block = live.plan[live.state.blockIndex];
+          if (block) setEditingBlockId(block.blockId);
+        }}
+      />
+      <EditHyroxBlockSheet
+        step={editingStep}
+        onClose={() => setEditingBlockId(null)}
+        onPickExercise={() => setStationPickerOpen(true)}
+      />
+      <ExercisePickerDrawer
+        open={stationPickerOpen}
+        onOpenChange={setStationPickerOpen}
+        title="Dodaj stację"
+        onPicked={async (exerciseId) => {
+          if (!editingBlockId) return;
+          await addExerciseToStep({ data: { blockId: editingBlockId, exerciseId } });
+          await router.invalidate();
+          setStationPickerOpen(false);
+        }}
       />
       <EndSessionDrawer
         open={finishOpen}

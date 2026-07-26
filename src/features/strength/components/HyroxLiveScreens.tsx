@@ -112,18 +112,36 @@ function stationNextUpLabel(block: HyroxBlockPlan, stationIndex: number, round: 
   return `przerwa ${restLabel} · runda ${round + 1}`;
 }
 
-export function HyroxIdleScreen({ live }: { live: HyroxLive }) {
+export function HyroxIdleScreen({ live, onEditBlock }: { live: HyroxLive; onEditBlock: () => void }) {
   const { state, plan } = live;
   const block = plan[state.blockIndex];
   const letter = blockLetter(state.blockIndex);
   const rounds = effectiveRounds(state, plan, state.blockIndex);
   const restLabel = formatRestSeconds(block.restSeconds);
+  // Client-authoritative (rehydrateFromSegments loads persisted segments into
+  // `state.segments` at mount, so this also covers the rare mid-round resume
+  // that reopens `idle` for a block that already has history) — avoids
+  // threading the loader's raw `segments` array into this presentational screen.
+  const hasSegments = state.segments.some((s) => s.blockIndex === state.blockIndex);
 
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
-      <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
-        Sesja Hyrox · Blok {letter}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-bold text-[10px] text-muted-foreground uppercase tracking-widest">
+          Sesja Hyrox · Blok {letter}
+        </p>
+        {!hasSegments && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-auto shrink-0 px-2 py-1 text-xs"
+            onClick={onEditBlock}
+          >
+            Edytuj blok
+          </Button>
+        )}
+      </div>
 
       {state.round > 1 && (
         <span className="inline-flex w-fit items-center rounded-full bg-primary/15 px-2.5 py-1 font-semibold text-primary text-xs">
@@ -143,8 +161,6 @@ export function HyroxIdleScreen({ live }: { live: HyroxLive }) {
           </li>
         ))}
       </ul>
-
-      <p className="text-muted-foreground text-sm italic">„Telefon trzyma trener. Ekran nie zgaśnie.”</p>
 
       <div className="sticky bottom-0 -mx-4 mt-auto space-y-2 border-t bg-background px-4 pt-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)-1.75rem))]">
         <SyncErrorBar syncError={live.syncError} />
@@ -169,6 +185,8 @@ export function HyroxStationScreen({ live }: { live: HyroxLive }) {
   const rounds = effectiveRounds(state, plan, state.blockIndex);
   const station = block.stations[state.stationIndex];
   const nextStation = isRox ? block.stations[state.stationIndex + 1] : null;
+  const isLastStation = state.stationIndex === block.stations.length - 1;
+  const isFinalRound = state.round >= rounds;
 
   const running = formatMsTenths(runningMs(state, nowMs));
   const round = formatMs(roundMs(state, nowMs, state.blockIndex, state.round));
@@ -192,16 +210,9 @@ export function HyroxStationScreen({ live }: { live: HyroxLive }) {
         </p>
       )}
 
-      <div className="space-y-1">
-        <h1 className="font-extrabold text-3xl">{isRox ? "Rox zone" : station.label}</h1>
-        {isRox
-          ? nextStation && (
-              <p className="text-muted-foreground text-sm">
-                → {nextStation.label}
-                {nextStation.target ? ` · ${nextStation.target}` : ""}
-              </p>
-            )
-          : station.target && <p className="text-muted-foreground text-sm">{station.target}</p>}
+      <div className="min-w-0 space-y-1">
+        <h1 className="truncate font-extrabold text-3xl">{isRox ? "Rox zone" : station.label}</h1>
+        {!isRox && station.target && <p className="text-muted-foreground text-sm">{station.target}</p>}
       </div>
 
       <StationDots count={block.stations.length} currentIndex={currentDotIndex} />
@@ -221,13 +232,21 @@ export function HyroxStationScreen({ live }: { live: HyroxLive }) {
       <div className="sticky bottom-0 -mx-4 mt-auto space-y-2 border-t bg-background px-4 pt-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)-1.75rem))]">
         <SyncErrorBar syncError={live.syncError} />
         <Button type="button" className="w-full bg-ember py-5 font-extrabold text-lg shadow-ember" onClick={live.tap}>
-          {isRox ? `Start: ${nextStation?.label}` : "Koniec stacji"}
+          <span className="min-w-0 truncate">
+            {isRox
+              ? `Start: ${nextStation?.label}`
+              : isLastStation
+                ? isFinalRound
+                  ? "Zakończ blok"
+                  : "Zakończ rundę"
+                : "Koniec stacji"}
+          </span>
         </Button>
-        {!isRox && (
-          <p className="text-center text-muted-foreground text-xs">
-            następnie: {stationNextUpLabel(block, state.stationIndex, state.round, rounds)}
-          </p>
-        )}
+        <p className="truncate px-2 text-center text-muted-foreground text-xs">
+          {isRox
+            ? `następnie: ${nextStation?.label}${nextStation?.target ? ` · ${nextStation.target}` : ""}`
+            : `następnie: ${stationNextUpLabel(block, state.stationIndex, state.round, rounds)}`}
+        </p>
       </div>
     </main>
   );
@@ -284,7 +303,7 @@ export function HyroxRestScreen({ live }: { live: HyroxLive }) {
         <Button type="button" className="w-full bg-ember py-5 font-extrabold text-lg shadow-ember" onClick={live.tap}>
           Start rundy {nextRound}
         </Button>
-        <p className="text-center text-muted-foreground text-xs">{firstStation.label}</p>
+        <p className="truncate px-2 text-center text-muted-foreground text-xs">następnie: {firstStation.label}</p>
       </div>
     </main>
   );

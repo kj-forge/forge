@@ -119,6 +119,7 @@ function EditCircuitSetsBody({ step, close }: { step: Step; close: () => void })
                   <NumericFormat
                     customInput={Input}
                     className="text-center font-bold tabular-nums"
+                    placeholder="sek."
                     inputMode="numeric"
                     decimalScale={0}
                     allowNegative={false}
@@ -133,6 +134,7 @@ function EditCircuitSetsBody({ step, close }: { step: Step; close: () => void })
                     <NumericFormat
                       customInput={Input}
                       className="text-center font-bold tabular-nums"
+                      placeholder="powt."
                       inputMode="numeric"
                       decimalScale={0}
                       allowNegative={false}
@@ -145,6 +147,7 @@ function EditCircuitSetsBody({ step, close }: { step: Step; close: () => void })
                     <NumericFormat
                       customInput={Input}
                       className="text-center font-bold text-primary tabular-nums"
+                      placeholder="kg"
                       inputMode="decimal"
                       decimalScale={2}
                       allowNegative={false}
@@ -159,6 +162,7 @@ function EditCircuitSetsBody({ step, close }: { step: Step; close: () => void })
                 <NumericFormat
                   customInput={Input}
                   className="w-14 shrink-0 text-center tabular-nums"
+                  placeholder="RPE"
                   inputMode="numeric"
                   decimalScale={0}
                   allowNegative={false}

@@ -131,7 +131,13 @@ export function useHyroxLive(
   const [state, setState] = useState<HyroxTimerState>(() => {
     const raw = typeof window === "undefined" ? null : localStorage.getItem(liveStateKey(sessionId));
     const fromStorage = parseLiveState(sessionId, raw);
-    if (fromStorage) return fromStorage;
+    // Invariant: blockIndex must stay < plan.length — every live screen indexes
+    // plan[state.blockIndex] directly. A plan shrink (block dropped) after the
+    // state was persisted can leave a stale storage entry pointing past the end
+    // of the now-shorter plan; fall through to the next source instead of
+    // crashing on every reload. (rehydrateFromSegments is already bounds-safe:
+    // it only considers segments whose blockId still exists in plan.)
+    if (fromStorage && (plan.length === 0 || fromStorage.blockIndex < plan.length)) return fromStorage;
     if (persisted.length > 0) return rehydrateFromSegments(plan, persisted);
     return initialTimerState();
   });
@@ -147,6 +153,9 @@ export function useHyroxLive(
   const failCountRef = useRef(0);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const prevRestRemainingRef = useRef<number | null>(null);
+  // Seeded from the current phase (not a fixed literal) so rehydrating mid-rest
+  // or mid-blockDone doesn't read as a fresh transition on mount.
+  const prevPhaseRef = useRef(state.phase);
   const sounds = useMemo(() => createHyroxSounds(), []);
 
   function dispatch(event: HyroxTimerEvent) {
@@ -328,6 +337,19 @@ export function useHyroxLive(
     }
     prevRestRemainingRef.current = remaining;
   }, [state, nowMs, plan, sounds, enabled]);
+
+  // Round-end gong: fires on entering `rest` or `blockDone` — a different edge
+  // from the effect above, which fires on the countdown *leaving* rest (the
+  // 0-crossing), not on phase changing. No double-fire between the two.
+  useEffect(() => {
+    if (!enabled) return;
+    const prev = prevPhaseRef.current;
+    if ((prev !== "rest" && state.phase === "rest") || (prev !== "blockDone" && state.phase === "blockDone")) {
+      sounds.roundGong();
+      navigator.vibrate?.([200, 100, 200]);
+    }
+    prevPhaseRef.current = state.phase;
+  }, [state.phase, sounds, enabled]);
 
   async function finish(notes?: string): Promise<void> {
     const current = stateRef.current;
