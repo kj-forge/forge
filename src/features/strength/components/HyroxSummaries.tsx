@@ -15,6 +15,7 @@ import {
   roundMs,
   roxMs,
 } from "@/features/strength/lib/hyrox-timer";
+import { SESSION_ORIGIN_TARGET, type SessionOrigin } from "@/features/strength/lib/session-origin";
 import { BackLink } from "@/shared/components/BackLink";
 
 function SyncErrorBar({ syncError }: { syncError: string | null }) {
@@ -197,6 +198,9 @@ export interface HyroxDoneSummaryProps {
   segments: PersistedSegment[];
   notes: string | null;
   isEnded: boolean;
+  // Where the session was opened from — drives the ended-only BackLink's
+  // target/label. See session-origin.ts.
+  origin: SessionOrigin;
   onSaveNotes: (notes: string) => Promise<void>;
   onDeleteSession: () => Promise<void>;
   // Present only for the live, pre-finish "done" phase — absent for the
@@ -214,6 +218,7 @@ export function HyroxDoneSummary({
   segments,
   notes,
   isEnded,
+  origin,
   onSaveNotes,
   onDeleteSession,
   onRequestFinish,
@@ -229,7 +234,7 @@ export function HyroxDoneSummary({
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
       {isEnded && (
         <header className="flex items-center pt-2">
-          <BackLink to="/sessions" label="Historia" />
+          <BackLink to={SESSION_ORIGIN_TARGET[origin].to} label={SESSION_ORIGIN_TARGET[origin].label} />
         </header>
       )}
 

@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { SESSION_TYPE_LABEL_PL } from "@/features/strength/constants";
 import { formatRoundsCount, formatSeriesCount, formatWeight } from "@/features/strength/lib/format-set";
+import type { SessionOrigin } from "@/features/strength/lib/session-origin";
 import type { SessionType } from "@/features/strength/types";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 
@@ -29,20 +30,22 @@ interface SessionListItemProps {
   // none: just type + metrics. top-sets: per-exercise heaviest-set list
   // (capped), used by both dashboard and history now.
   detail?: "none" | "top-sets";
+  // Where the card's Link was rendered from — rides the history state so
+  // back/delete on the session page can return here. See session-origin.ts.
+  origin: SessionOrigin;
 }
 
 const TOP_SETS_SHOWN = 3;
 
-export function SessionListItem({ session, detail = "none" }: SessionListItemProps) {
+export function SessionListItem({ session, detail = "none", origin }: SessionListItemProps) {
   const label = SESSION_TYPE_LABEL_PL[session.type as SessionType] ?? session.type;
   const exercises = session.exercises ?? [];
   const isLive = session.endedAt === null;
 
   // Headline is an explicit session title if set, else the day's first
-  // exercise; extraCount is how many more exercises hide behind the "+N".
+  // exercise.
   const hasTitle = session.title != null && session.title !== "";
   const headline = hasTitle ? session.title : exercises[0]?.name;
-  const extraCount = hasTitle ? exercises.length : Math.max(0, exercises.length - 1);
 
   const totalSets = exercises.reduce((sum, e) => sum + e.setCount, 0);
   const countLabel =
@@ -58,7 +61,12 @@ export function SessionListItem({ session, detail = "none" }: SessionListItemPro
 
   return (
     <li>
-      <Link to="/sessions/$sessionId" params={{ sessionId: session.id }} className="block">
+      <Link
+        to="/sessions/$sessionId"
+        params={{ sessionId: session.id }}
+        state={{ sessionOrigin: origin }}
+        className="block"
+      >
         <Card className={`transition-colors hover:bg-accent/50 ${isLive ? "ring-primary/50" : ""}`}>
           <CardContent className="py-3">
             <div className="flex items-center gap-3">
@@ -69,10 +77,7 @@ export function SessionListItem({ session, detail = "none" }: SessionListItemPro
               <div className="w-px self-stretch bg-border" />
               <div className="min-w-0 flex-1 space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <p className="truncate font-semibold text-sm leading-tight">
-                    {headline ?? label}
-                    {extraCount > 0 && <span className="text-muted-foreground"> +{extraCount}</span>}
-                  </p>
+                  <p className="truncate font-semibold text-sm leading-tight">{headline ?? label}</p>
                   {isLive && <StatusBadge endedAt={null} />}
                 </div>
                 <p className="text-muted-foreground text-xs">

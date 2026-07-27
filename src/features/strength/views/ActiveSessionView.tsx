@@ -1,8 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
+import { getRouteApi, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import dayjs from "dayjs";
 import { NotebookPen, RotateCcw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { NotesDrawer } from "@/features/strength/components/NotesDrawer";
 import { StepDrawer } from "@/features/strength/components/StepDrawer";
 import { RestStepRow, SupersetRow } from "@/features/strength/components/StepRows";
 import { SESSION_TYPE_LABEL_PL_ADJ } from "@/features/strength/constants";
+import { readSessionOrigin, SESSION_ORIGIN_TARGET, type SessionOrigin } from "@/features/strength/lib/session-origin";
 import { currentRound } from "@/features/strength/lib/step-progress";
 import { swapExerciseInStep } from "@/features/strength/server/movements";
 import { createSession, deleteSession, endSession, updateSessionNotes } from "@/features/strength/server/sessions";
@@ -40,6 +41,16 @@ export function ActiveSessionView() {
   const router = useRouter();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  // SSR never sees history.state, so the initial (and hydration) render must
+  // assume the fallback; promote to the real origin once, after mount, from
+  // the state snapshot present at that point. Empty deps: this is a one-shot
+  // promotion, not a subscription — later location changes must not re-read it.
+  const [origin, setOrigin] = useState<SessionOrigin>("historia");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once promotion by design — must not re-read origin on later location changes.
+  useEffect(() => {
+    setOrigin(readSessionOrigin(location.state));
+  }, []);
   const [picker, setPicker] = useState<PickerMode | null>(null);
   const [endOpen, setEndOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -63,7 +74,11 @@ export function ActiveSessionView() {
       const result = await createSession({
         data: { type: session.type, date: dayjs().format("YYYY-MM-DD"), fromTemplateSessionId: session.id },
       });
-      navigate({ to: "/sessions/$sessionId", params: { sessionId: result.sessionId } });
+      navigate({
+        to: "/sessions/$sessionId",
+        params: { sessionId: result.sessionId },
+        state: { sessionOrigin: origin },
+      });
     } catch (err) {
       setCopyError(getErrorMessage(err, "Nie udało się utworzyć sesji."));
       setCopying(false);
@@ -73,7 +88,7 @@ export function ActiveSessionView() {
   return (
     <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
       <header className={`flex items-center ${isEnded ? "justify-between" : "justify-end"} pt-2`}>
-        {isEnded && <BackLink to="/sessions" label="Historia" />}
+        {isEnded && <BackLink to={SESSION_ORIGIN_TARGET[origin].to} label={SESSION_ORIGIN_TARGET[origin].label} />}
         <span className="text-muted-foreground text-xs">
           {new Date(session.date).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
         </span>
@@ -259,7 +274,7 @@ export function ActiveSessionView() {
         onConfirm={async () => {
           await deleteSession({ data: { sessionId: session.id } });
           queryClient.invalidateQueries({ queryKey: ["history"] });
-          navigate({ to: "/sessions" });
+          navigate({ to: SESSION_ORIGIN_TARGET[origin].to });
         }}
       />
 

@@ -9,20 +9,30 @@ import { EXERCISE_CATEGORY_LABEL } from "@/features/strength/constants";
 import { restoreExercise } from "@/features/strength/server/exercises";
 import type { ManagedExercise } from "@/features/strength/types";
 import { BackLink } from "@/shared/components/BackLink";
+import { SearchInput } from "@/shared/components/SearchInput";
 import { Spinner } from "@/shared/components/Spinner";
 
 const route = getRouteApi("/_shell/exercises/");
 
 type Editor = { open: boolean; exercise: ManagedExercise | null };
 
+function exerciseMatches(exercise: ManagedExercise, q: string): boolean {
+  if (exercise.namePl.toLowerCase().includes(q)) return true;
+  return exercise.aliases.some((alias) => alias.toLowerCase().includes(q));
+}
+
 export function ExercisesView() {
   const catalogue = route.useLoaderData();
   const router = useRouter();
   const [editor, setEditor] = useState<Editor>({ open: false, exercise: null });
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
-  const active = catalogue.filter((e) => !e.isArchived);
-  const archived = catalogue.filter((e) => e.isArchived);
+  const q = query.trim().toLowerCase();
+  const filtered = q ? catalogue.filter((e) => exerciseMatches(e, q)) : catalogue;
+  const active = filtered.filter((e) => !e.isArchived);
+  const archived = filtered.filter((e) => e.isArchived);
+  const noMatches = q !== "" && filtered.length === 0;
 
   const handleRestore = async (exerciseId: string) => {
     setRestoringId(exerciseId);
@@ -47,7 +57,7 @@ export function ExercisesView() {
         Twój katalog — zmiany widoczne w wyszukiwarce, planie i statystykach.
       </p>
 
-      {active.length === 0 ? (
+      {catalogue.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
             <Dumbbell className="size-8 text-muted-foreground/60" strokeWidth={1.5} />
@@ -55,56 +65,77 @@ export function ExercisesView() {
           </CardContent>
         </Card>
       ) : (
-        <ul className="overflow-hidden rounded-xl border bg-card">
-          {active.map((ex) => (
-            <li key={ex.id} className="border-b last:border-b-0">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
-                onClick={() => setEditor({ open: true, exercise: ex })}
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-sm">{ex.namePl}</p>
-                  <p className="text-muted-foreground text-xs">
-                    {EXERCISE_CATEGORY_LABEL[ex.category]}
-                    {ex.aliases.length > 0 && ` · ${ex.aliases.join(", ")}`}
-                  </p>
-                </div>
-                {ex.isMainLift && (
-                  <span className="shrink-0 rounded-full border border-ember/40 px-2 py-0.5 font-medium text-ember text-xs">
-                    bój główny
-                  </span>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+        <>
+          <SearchInput
+            placeholder="Szukaj: nazwa lub alias…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
 
-      {archived.length > 0 && (
-        <section className="mt-2 flex flex-col gap-2">
-          <h2 className="font-semibold text-muted-foreground text-sm">Zarchiwizowane</h2>
-          <ul className="overflow-hidden rounded-xl border bg-card">
-            {archived.map((ex) => (
-              <li key={ex.id} className="flex items-center justify-between gap-3 border-b px-4 py-3 last:border-b-0">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-muted-foreground text-sm line-through">{ex.namePl}</p>
-                  <p className="text-muted-foreground text-xs">{EXERCISE_CATEGORY_LABEL[ex.category]}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0"
-                  disabled={restoringId !== null}
-                  onClick={() => handleRestore(ex.id)}
-                >
-                  {restoringId === ex.id ? <Spinner size="sm" /> : <ArchiveRestore className="size-3.5" />}
-                  Przywróć
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
+          {noMatches ? (
+            <p className="py-4 text-center text-muted-foreground text-sm">
+              Brak ćwiczeń pasujących do „{query.trim()}”.
+            </p>
+          ) : (
+            <>
+              {active.length > 0 && (
+                <ul className="overflow-hidden rounded-xl border bg-card">
+                  {active.map((ex) => (
+                    <li key={ex.id} className="border-b last:border-b-0">
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
+                        onClick={() => setEditor({ open: true, exercise: ex })}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-sm">{ex.namePl}</p>
+                          <p className="text-muted-foreground text-xs">
+                            {EXERCISE_CATEGORY_LABEL[ex.category]}
+                            {ex.aliases.length > 0 && ` · ${ex.aliases.join(", ")}`}
+                          </p>
+                        </div>
+                        {ex.isMainLift && (
+                          <span className="shrink-0 rounded-full border border-ember/40 px-2 py-0.5 font-medium text-ember text-xs">
+                            bój główny
+                          </span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {archived.length > 0 && (
+                <section className="mt-2 flex flex-col gap-2">
+                  <h2 className="font-semibold text-muted-foreground text-sm">Zarchiwizowane</h2>
+                  <ul className="overflow-hidden rounded-xl border bg-card">
+                    {archived.map((ex) => (
+                      <li
+                        key={ex.id}
+                        className="flex items-center justify-between gap-3 border-b px-4 py-3 last:border-b-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-muted-foreground text-sm line-through">{ex.namePl}</p>
+                          <p className="text-muted-foreground text-xs">{EXERCISE_CATEGORY_LABEL[ex.category]}</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          disabled={restoringId !== null}
+                          onClick={() => handleRestore(ex.id)}
+                        >
+                          {restoringId === ex.id ? <Spinner size="sm" /> : <ArchiveRestore className="size-3.5" />}
+                          Przywróć
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </>
+          )}
+        </>
       )}
 
       <ExerciseEditorDrawer
