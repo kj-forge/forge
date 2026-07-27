@@ -65,18 +65,18 @@ describe("NAV_ITEMS", () => {
       "/",
       "/sessions",
       "/sessions/new",
-      "/stats",
       "/plan",
       "/goals",
+      "/stats",
       "/notes",
     ]);
     expect(NAV_ITEMS.map((i) => i.label)).toEqual([
       "Dziennik",
       "Historia",
       "Nowa",
-      "Statystyki",
       "Plan",
       "Cele",
+      "Statystyki",
       "Notatki",
     ]);
   });
@@ -84,7 +84,7 @@ describe("NAV_ITEMS", () => {
 
 describe("TAB_BAR_ITEMS", () => {
   test("five tabs with plan instead of cele", () => {
-    expect(TAB_BAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/stats", "/plan"]);
+    expect(TAB_BAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/sessions/new", "/plan", "/stats"]);
   });
 
   test("plan is a tab item, goals is not", () => {
@@ -95,7 +95,7 @@ describe("TAB_BAR_ITEMS", () => {
 
 describe("SIDEBAR_ITEMS", () => {
   test("no profil (avatar) and no nowa (CTA button)", () => {
-    expect(SIDEBAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/stats", "/plan", "/goals", "/notes"]);
+    expect(SIDEBAR_ITEMS.map((i) => i.to)).toEqual(["/", "/sessions", "/plan", "/goals", "/stats", "/notes"]);
   });
 });
 
@@ -103,9 +103,9 @@ describe("MANAGE_SECTIONS", () => {
   test("biblioteka + konto, in hub order", () => {
     expect(MANAGE_SECTIONS.map((s) => s.label)).toEqual(["Biblioteka", "Konto"]);
     expect(MANAGE_SECTIONS.flatMap((s) => s.items.map((i) => i.to))).toEqual([
+      "/goals",
       "/exercises",
       "/notes",
-      "/goals",
       "/me/konto",
     ]);
   });
