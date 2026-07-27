@@ -166,6 +166,7 @@ export function LastSessionTile({ sessions }: { sessions: DashboardData["session
     <Link
       to="/sessions/$sessionId"
       params={{ sessionId: last.id }}
+      state={{ sessionOrigin: "dziennik" }}
       className={`${TILE_CLASS} ${TILE_INTERACTIVE_CLASS}`}
     >
       <TileHeader icon={Clock} title="Ostatnia sesja" />
@@ -341,6 +342,7 @@ export function SessionsTile({
                 <Link
                   to="/sessions/$sessionId"
                   params={{ sessionId: s.id }}
+                  state={{ sessionOrigin: "dziennik" }}
                   className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-accent/60"
                 >
                   <span className="min-w-0">

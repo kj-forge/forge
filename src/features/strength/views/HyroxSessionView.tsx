@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { getRouteApi, useNavigate, useRouter } from "@tanstack/react-router";
+import { getRouteApi, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import {
   liveSegmentsToPersisted,
 } from "@/features/strength/components/HyroxSummaries";
 import { type HyroxLive, useHyroxLive } from "@/features/strength/components/useHyroxLive";
+import { readSessionOrigin, SESSION_ORIGIN_TARGET, type SessionOrigin } from "@/features/strength/lib/session-origin";
 import { deleteSession, updateSessionNotes } from "@/features/strength/server/sessions";
 import { addExerciseToStep } from "@/features/strength/server/steps";
 import { BackLink } from "@/shared/components/BackLink";
@@ -27,6 +28,7 @@ const route = getRouteApi("/_shell/sessions/$sessionId");
 function HyroxLiveScreen({
   live,
   notes,
+  origin,
   onRequestFinish,
   onSaveNotes,
   onDeleteSession,
@@ -34,6 +36,7 @@ function HyroxLiveScreen({
 }: {
   live: HyroxLive;
   notes: string | null;
+  origin: SessionOrigin;
   onRequestFinish: () => void;
   onSaveNotes: (notes: string) => Promise<void>;
   onDeleteSession: () => Promise<void>;
@@ -56,6 +59,7 @@ function HyroxLiveScreen({
           segments={liveSegmentsToPersisted(live.plan, live.state.segments)}
           notes={notes}
           isEnded={false}
+          origin={origin}
           onSaveNotes={onSaveNotes}
           onDeleteSession={onDeleteSession}
           onRequestFinish={onRequestFinish}
@@ -74,6 +78,16 @@ export function HyroxSessionView() {
   const router = useRouter();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  // SSR never sees history.state, so the initial (and hydration) render must
+  // assume the fallback; promote to the real origin once, after mount, from
+  // the state snapshot present at that point. Empty deps: this is a one-shot
+  // promotion, not a subscription — later location changes must not re-read it.
+  const [origin, setOrigin] = useState<SessionOrigin>("historia");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once promotion by design — must not re-read origin on later location changes.
+  useEffect(() => {
+    setOrigin(readSessionOrigin(location.state));
+  }, []);
   const isEnded = session.endedAt !== null;
   const live = useHyroxLive(session.id, steps, segments, { enabled: !isEnded });
   const [finishOpen, setFinishOpen] = useState(false);
@@ -96,14 +110,14 @@ export function HyroxSessionView() {
   const removeSession = async () => {
     await deleteSession({ data: { sessionId: session.id } });
     queryClient.invalidateQueries({ queryKey: ["history"] });
-    navigate({ to: "/sessions" });
+    navigate({ to: SESSION_ORIGIN_TARGET[origin].to });
   };
 
   if (steps.length === 0) {
     return (
       <main className="mx-auto flex min-h-full max-w-md flex-col gap-3 p-4 pb-0">
         <header className={`flex items-center ${isEnded ? "justify-between" : "justify-end"} pt-2`}>
-          {isEnded && <BackLink to="/sessions" label="Historia" />}
+          {isEnded && <BackLink to={SESSION_ORIGIN_TARGET[origin].to} label={SESSION_ORIGIN_TARGET[origin].label} />}
           <span className="text-muted-foreground text-xs">
             {new Date(session.date).toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long" })}
           </span>
@@ -145,6 +159,7 @@ export function HyroxSessionView() {
         segments={segments}
         notes={session.notes}
         isEnded
+        origin={origin}
         onSaveNotes={saveNotes}
         onDeleteSession={removeSession}
       />
@@ -177,6 +192,7 @@ export function HyroxSessionView() {
       <HyroxLiveScreen
         live={live}
         notes={session.notes}
+        origin={origin}
         onRequestFinish={() => setFinishOpen(true)}
         onSaveNotes={saveNotes}
         onDeleteSession={removeSession}

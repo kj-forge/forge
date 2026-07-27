@@ -379,18 +379,23 @@ function EntryCard({ entry, overlay = false }: { entry: ScheduleEntry; overlay?:
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5">
           {entry.sessionType === "STRENGTH" && <Dumbbell className="size-3 shrink-0 text-primary" />}
-          <span className="truncate font-medium text-sm">{entry.name}</span>
+          <span className="min-w-0 truncate font-medium text-sm">{entry.name}</span>
         </span>
-        {entry.intensity && (
-          <span
-            className={`shrink-0 rounded-full px-2 py-0.5 font-bold text-[10px] uppercase tracking-wide ${UNIT_INTENSITY_CLASS[entry.intensity]}`}
-          >
-            {UNIT_INTENSITY_LABEL[entry.intensity]}
+        <span className="flex shrink-0 items-center gap-1">
+          <span aria-label={DAY_SLOT_LABEL[entry.slot]} role="img">
+            {entry.slot === "MORNING" ? (
+              <Sun className="size-3 text-muted-foreground" />
+            ) : (
+              <Moon className="size-3 text-muted-foreground" />
+            )}
           </span>
-        )}
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-bold text-[10px] text-muted-foreground uppercase tracking-wide">
-          {entry.slot === "MORNING" ? <Sun className="size-3" /> : <Moon className="size-3" />}
-          {DAY_SLOT_LABEL[entry.slot]}
+          {entry.intensity && (
+            <span
+              className={`rounded-full px-2 py-0.5 font-bold text-[10px] uppercase tracking-wide ${UNIT_INTENSITY_CLASS[entry.intensity]}`}
+            >
+              {UNIT_INTENSITY_LABEL[entry.intensity]}
+            </span>
+          )}
         </span>
       </div>
       <p className="mt-0.5 truncate text-muted-foreground text-xs">

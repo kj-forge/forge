@@ -29,10 +29,10 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Dziennik", icon: Home, exact: true, inTabBar: true, inSidebar: true },
   { to: "/sessions", label: "Historia", icon: BookOpen, exact: true, inTabBar: true, inSidebar: true },
   { to: "/sessions/new", label: "Nowa", icon: Plus, exact: true, inTabBar: true, inSidebar: false },
-  // Non-exact: /stats/$slug details keep the Statystyki link active.
-  { to: "/stats", label: "Statystyki", icon: ChartNoAxesColumn, exact: false, inTabBar: true, inSidebar: true },
   { to: "/plan", label: "Plan", icon: CalendarDays, exact: true, inTabBar: true, inSidebar: true },
   { to: "/goals", label: "Cele", icon: Target, exact: true, inTabBar: false, inSidebar: true },
+  // Non-exact: /stats/$slug details keep the Statystyki link active.
+  { to: "/stats", label: "Statystyki", icon: ChartNoAxesColumn, exact: false, inTabBar: true, inSidebar: true },
   // Non-exact: the /notes/$noteId editor keeps the sidebar link active.
   { to: "/notes", label: "Notatki", icon: NotebookPen, exact: false, inTabBar: false, inSidebar: true },
 ];
@@ -58,9 +58,9 @@ export const MANAGE_SECTIONS: ManageSection[] = [
   {
     label: "Biblioteka",
     items: [
+      { to: "/goals", label: "Cele", icon: Target, sidebar: false },
       { to: "/exercises", label: "Ćwiczenia", icon: Dumbbell },
       { to: "/notes", label: "Notatki", icon: NotebookPen, sidebar: false },
-      { to: "/goals", label: "Cele", icon: Target, sidebar: false },
     ],
   },
   { label: "Konto", items: [{ to: "/me/konto", label: "Dane konta", icon: Settings }] },

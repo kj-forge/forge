@@ -94,7 +94,7 @@ export function SessionsListView() {
               </SectionHeader>
               <ul className="space-y-2">
                 {rows.map((s) => (
-                  <SessionListItem key={s.id} session={s} detail="top-sets" />
+                  <SessionListItem key={s.id} session={s} detail="top-sets" origin="historia" />
                 ))}
               </ul>
             </section>
