@@ -1,6 +1,6 @@
 # ADR-0020: Per-user exercise catalogue (copy-on-provision)
 
-- **Status:** Proposed
+- **Status:** Accepted (shipped; status reconciled 2026-07-27)
 - **Date:** 2026-07-16
 - **Deciders:** @kj-ninja
 - **Linear:** [FRG-18](https://linear.app/kj-forge/issue/FRG-18)

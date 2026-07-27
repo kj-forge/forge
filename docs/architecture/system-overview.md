@@ -2,6 +2,12 @@
 
 > Living document. Updated as the system evolves.
 >
+> **⚠ Known drift (2026-07-27):** the diagrams below still show layers that were
+> planned but never built — Electric SQL / TanStack DB / service worker (retired
+> by [ADR-0024](../adr/ADR-0024-retire-local-first-sync.md)) and the AI/voice
+> stack (not yet implemented). An as-is rewrite is the first deliverable of the
+> infrastructure epic's architecture audit.
+>
 > **Scope (post-audit 2026-05-16):** Forge is a **Hyrox athlete journal** with rehab tracking, daily wellness metrics (Sleep/HRV/HR Rest), AI-driven weekly summaries, and athlete↔coach sharing (P1+). Multi-tenant schema from day 1 (single-user UI in P0). For the data model see [data-model.md](data-model.md); for the re-framed scope rationale see [ADR-0009](../adr/ADR-0009-hyrox-data-model-rehab-tracking.md) and [ADR-0010](../adr/ADR-0010-multi-tenant-schema.md).
 
 ## Context (C4 level 1)

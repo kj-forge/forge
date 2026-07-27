@@ -22,7 +22,7 @@
 │ WAF                    Cloudflare WAF        OWASP baseline    Planned │
 │ Dependency scanning    Dependabot            free on public    Active  │
 │ Secret scanning        GitHub native         free on public    Active  │
-│ Static analysis        CodeQL                free on public    Paused  │
+│ Static analysis        CodeQL                free on public    Active  │
 │ Alerts                 Discord webhook       free              Planned │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -175,7 +175,7 @@ Each subsection here gets fleshed out as the corresponding tool lands.
 - [ ] Cloudflare → Security → Rate Limiting → add 5 rules per table above
 - [ ] Wire `db/audit-log-middleware.ts` to write `audit_log` on every mutation through Drizzle
 - [ ] Wire `app/lib/ai/wrap.ts` to write `ai_usage` on every Vercel AI SDK call
-- [ ] Re-enable `.github/workflows/codeql.yml` (currently paused)
+- [x] `.github/workflows/codeql.yml` active (PRs + weekly cron)
 - [ ] Document final dashboard URLs in this file
 
 ## References

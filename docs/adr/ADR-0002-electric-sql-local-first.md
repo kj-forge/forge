@@ -1,6 +1,6 @@
 # ADR-0002: Electric SQL + TanStack DB for local-first sync
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0024](ADR-0024-retire-local-first-sync.md)
 - **Date:** 2026-05-07
 - **Deciders:** @kj-ninja
 

@@ -9,12 +9,12 @@ ADRs are immutable once accepted. To change a decision, write a new ADR that sup
 | ID | Title | Status |
 | --- | --- | --- |
 | [ADR-0001](ADR-0001-tanstack-start-frontend.md) | TanStack Start as the web framework | Accepted |
-| [ADR-0002](ADR-0002-electric-sql-local-first.md) | Electric SQL + TanStack DB for local-first sync | Accepted |
+| [ADR-0002](ADR-0002-electric-sql-local-first.md) | Electric SQL + TanStack DB for local-first sync | Superseded by ADR-0024 |
 | [ADR-0003](ADR-0003-postgres-neon-drizzle.md) | Postgres on Neon with Drizzle ORM | Accepted |
 | [ADR-0004](ADR-0004-better-auth-strategy.md) | Better Auth with email magic link + Google OAuth | Accepted |
 | [ADR-0005](ADR-0005-shadcn-tailwind-mobile-first.md) | shadcn/ui + Tailwind v4, mobile-first PWA | Accepted |
 | [ADR-0006](ADR-0006-ai-stack.md) | Anthropic SDK + Vercel AI SDK + Deepgram for AI/voice | Accepted |
-| [ADR-0007](ADR-0007-cloudflare-pages-workers.md) | Cloudflare Pages + Workers for hosting | Accepted |
+| [ADR-0007](ADR-0007-cloudflare-pages-workers.md) | Cloudflare Pages + Workers for hosting | Superseded by ADR-0017 |
 | [ADR-0008](ADR-0008-linear-release-pipeline.md) | Linear release pipeline with main → staging → production | Accepted |
 | [ADR-0009](ADR-0009-hyrox-data-model-rehab-tracking.md) | Hyrox-specific data model + rehab tracking as first-class domain | Accepted |
 | [ADR-0010](ADR-0010-multi-tenant-schema.md) | Multi-tenant schema from day 1 (single-user UI in P0) | Accepted |
@@ -26,11 +26,12 @@ ADRs are immutable once accepted. To change a decision, write a new ADR that sup
 | [ADR-0016](ADR-0016-strength-logging-ux.md) | Strength session logging — UX, schema, server-fn architecture | Accepted |
 | [ADR-0017](ADR-0017-cloudflare-workers-deploy-pipeline.md) | Cloudflare Workers deploy pipeline + Workers-compatible runtime refactor | Accepted |
 | [ADR-0018](ADR-0018-folder-architecture.md) | Folder architecture — feature-first with thin routes | Accepted |
-| [ADR-0019](ADR-0019-app-shell-fixed-viewport.md) | App shell with a fixed viewport and inner scroll container | Proposed |
-| [ADR-0020](ADR-0020-per-user-exercise-catalogue.md) | Per-user exercise catalogue (copy-on-provision) | Proposed |
+| [ADR-0019](ADR-0019-app-shell-fixed-viewport.md) | App shell with a fixed viewport and inner scroll container | Accepted |
+| [ADR-0020](ADR-0020-per-user-exercise-catalogue.md) | Per-user exercise catalogue (copy-on-provision) | Accepted |
 | [ADR-0021](ADR-0021-training-plans-with-units-and-schedule-overrides.md) | Training plans as unit libraries with weekday activation and per-date schedule overrides | Accepted |
-| [ADR-0022](ADR-0022-session-steps-and-rounds.md) | Session steps & rounds — circuit logging on multi-block sessions | Proposed |
-| [ADR-0023](ADR-0023-hyrox-training-data-model.md) | Hyrox training data model — segment timeline, repeated stations, type-driven view | Proposed |
+| [ADR-0022](ADR-0022-session-steps-and-rounds.md) | Session steps & rounds — circuit logging on multi-block sessions | Accepted |
+| [ADR-0023](ADR-0023-hyrox-training-data-model.md) | Hyrox training data model — segment timeline, repeated stations, type-driven view | Accepted |
+| [ADR-0024](ADR-0024-retire-local-first-sync.md) | Retire the local-first sync architecture (Electric SQL) | Accepted |
 
 ## How to add an ADR
 

@@ -22,21 +22,14 @@ export default defineConfig({
     tailwindcss(),
     // VitePWA before tanstackStart so it sees the client build output
     VitePWA({
-      // PR-3 scope: manifest only (makes the app installable to home screen).
-      // Service worker / offline shell will be added later, alongside the
-      // Electric SQL local-first sync work — that's the natural moment to
-      // wire Workbox + the runtime cache + the sync queue together.
-      //
-      // We tried `strategies: 'generateSW'` (default) and `'injectManifest'`
-      // during PR-3; both produced manifest.webmanifest but no sw.js under
-      // TanStack Start's dual client/server build pipeline. Reported issues
-      // exist in the ecosystem; revisit when adding Electric.
+      // Manifest only (installable to home screen) — the full PWA scope by
+      // design, no service worker / offline shell. See ADR-0024.
       injectRegister: false,
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
         name: "Forge",
         short_name: "Forge",
-        description: "Hybrid strength training PWA. Local-first with Postgres + Electric SQL, AI coach.",
+        description: "Hybrid strength training PWA. Hyrox journal with rehab tracking and AI coach.",
         theme_color: "#0a0a0a",
         background_color: "#0a0a0a",
         display: "standalone",

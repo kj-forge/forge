@@ -1,6 +1,6 @@
 # ADR-0019: App shell with a fixed viewport and inner scroll container
 
-- **Status:** Proposed
+- **Status:** Accepted (shipped; status reconciled 2026-07-27)
 - **Date:** 2026-07-13
 - **Deciders:** @kj-ninja
 - **Linear:** [FRG-11](https://linear.app/kj-forge/issue/FRG-11)

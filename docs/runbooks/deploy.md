@@ -108,7 +108,7 @@ Or open a PR `main → production` in the GitHub UI and merge it — same effect
 
 ### 1.8 First deploy (manual seeding optional)
 
-The GitHub Actions workflow assumes Workers Secrets exist. The first push to `production` will create them via `cloudflare/wrangler-action@v3`'s `secrets:` mechanism — no separate seeding step needed.
+The GitHub Actions workflow assumes Workers Secrets exist. The first push to `production` will create them via `cloudflare/wrangler-action@v4`'s `secrets:` mechanism — no separate seeding step needed.
 
 If you ever need to seed manually (e.g., to test before promoting):
 
@@ -151,7 +151,7 @@ Three sequential jobs:
 
 1. **verify** — `bun install` + `bun run build` + lint + typecheck + unit tests. Fails fast on regressions that slipped past the PR gate.
 2. **migrate** — `bun run db:migrate` against the Neon production branch. Migrations applied before code deploys.
-3. **deploy** — `bun run build` (with `VITE_APP_URL` inlined) + `cloudflare/wrangler-action@v3` which syncs Workers Secrets and runs `wrangler deploy`.
+3. **deploy** — `bun run build` (with `VITE_APP_URL` inlined) + `cloudflare/wrangler-action@v4` which syncs Workers Secrets and runs `wrangler deploy`.
 
 ### Expected duration
 
@@ -294,7 +294,7 @@ If any fail, troubleshoot via §5 below or the Cloudflare dashboard logs (observ
 
 ### 5.6 Wrangler deploy fails with "Authentication error"
 
-**Symptom:** `cloudflare/wrangler-action@v3` step fails immediately with a 401 from the Cloudflare API.
+**Symptom:** `cloudflare/wrangler-action@v4` step fails immediately with a 401 from the Cloudflare API.
 
 **Cause:** `CLOUDFLARE_API_TOKEN` is missing, expired, or scoped wrong.
 

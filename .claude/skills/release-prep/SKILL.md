@@ -65,13 +65,12 @@ If anything looks like a real key (not just a variable name), **abort and rotate
 
 If any of these files changed, the user should review with extra care before promoting:
 
-- `db/migrations/*` — schema changes affect Electric SQL sync shapes; may need staging soak time
-- `app/lib/db/electric.ts` — sync shape changes can cause client cache invalidation
+- `db/migrations/*` — schema changes are the riskiest class of change; verify expand-then-contract
 - `.github/workflows/linear-release.yml` — release pipeline itself
 - `.github/workflows/ci.yml` — affects what gets blocked next time
 
 ```bash
-git diff origin/staging...origin/main --name-only | grep -E '(db/migrations|electric|linear-release|ci\.yml)'
+git diff origin/staging...origin/main --name-only | grep -E '(db/migrations|linear-release|ci\.yml)'
 ```
 
 #### Step A6: Open the promotion PR

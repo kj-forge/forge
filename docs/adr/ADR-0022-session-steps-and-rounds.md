@@ -1,6 +1,6 @@
 # ADR-0022: Session steps & rounds — circuit logging on multi-block sessions
 
-- **Status:** Proposed
+- **Status:** Accepted (shipped; status reconciled 2026-07-27)
 - **Date:** 2026-07-20
 - **Deciders:** @kj-ninja
 - **Linear:** [FRG-20](https://linear.app/kj-forge/issue/FRG-20)

@@ -30,7 +30,7 @@ Without `key`, React gets confused on reorder. Without a PK, the DB gets confuse
 | Multi-instance / branches | ✅ Mergeable | ❌ Conflicts |
 | Size | 16 bytes | 4–8 bytes |
 
-We pay a few microseconds per row for UUIDs and get a lot of flexibility (client-side generation matters for the offline-first Electric SQL sync that's planned in P1).
+We pay a few microseconds per row for UUIDs and get a lot of flexibility (e.g. IDs can be generated anywhere — client, server, or database — without coordination).
 
 **In Drizzle:**
 
@@ -331,7 +331,7 @@ The denormalized shape duplicates `userName`. It costs a few bytes per post but 
 **Why Forge does this on every owned row** (per [ADR-0010](../adr/ADR-0010-multi-tenant-schema.md) and [ADR-0012](../adr/ADR-0012-drizzle-conventions.md)):
 
 1. **Performance on common queries.** "Show me all sets for athlete X" is a single `WHERE athlete_id = X` + index hit, instead of a 3-table join.
-2. **Electric SQL local-first sync (P1).** Electric scopes its sync shapes by row. With `athlete_id` directly on each row, the scope is trivial: "sync rows where athlete_id matches the logged-in athlete." Without denormalization, every shape needs a join, which Electric supports but with a lot more complexity.
+2. **Row-scoped features stay trivial.** Anything that filters "rows belonging to athlete X" — exports, per-tenant caching, replication tooling — works without joins when the owner is stamped on every row. (This was originally motivated by Electric SQL sync shapes; that plan was retired in [ADR-0024](../adr/ADR-0024-retire-local-first-sync.md), but the property remains useful.)
 3. **Row-level security (future).** If we add Postgres RLS policies, "athletes see only their own data" becomes a one-line policy per table. Without `athlete_id` on the row, the policy needs joins.
 4. **Defense in depth.** A bug in the app layer that leaks data across athletes is easier to catch when every row carries the owner — a missing `WHERE athlete_id = ?` is obvious in code review.
 5. **Audit / export simplicity.** "Give me everything for this athlete" is one query per table; no multi-hop traversal.

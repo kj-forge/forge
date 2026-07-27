@@ -1,6 +1,6 @@
 # ADR-0007: Cloudflare Pages + Workers for hosting
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0017](ADR-0017-cloudflare-workers-deploy-pipeline.md)
 - **Date:** 2026-05-07
 - **Deciders:** @kj-ninja
 

@@ -256,7 +256,7 @@ A separate confirm drawer (not a modal — drawer for consistency with the rest 
 | Cardio / compromised-run logging? | Own epic |
 | Daily wellness / journal? | Own epic |
 | Coach dashboard / multi-athlete? | Monetisation epic (P1+) |
-| Push notifications for unfinished sessions? | After PWA service worker lands (Electric SQL epic) |
+| Push notifications for unfinished sessions? | Not planned — PWA is manifest-only, no service worker (ADR-0024) |
 | Voice logging "siady 4×5 100kg drugi set ciężko"? | AI / conversational logging epic (P1) |
 
 ## 9. Where this fits in the docs
