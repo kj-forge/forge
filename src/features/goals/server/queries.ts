@@ -79,5 +79,3 @@ export async function loadActiveGoals(athleteId: string) {
     return { ...r, currentBest };
   });
 }
-
-export type ActiveGoal = Awaited<ReturnType<typeof loadActiveGoals>>[number];

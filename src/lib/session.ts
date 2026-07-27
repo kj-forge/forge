@@ -24,5 +24,3 @@ export const getSession = createServerFn({ method: "GET" }).handler(async () => 
   const headers = new Headers(getRequestHeaders() as HeadersInit);
   return auth.api.getSession({ headers });
 });
-
-export type SessionPayload = Awaited<ReturnType<typeof getSession>>;

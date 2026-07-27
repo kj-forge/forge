@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, ilike, like, or, sql } from "drizzle-orm";
+import { and, eq, ilike, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { parseInput } from "@/lib/validate";
@@ -57,24 +57,6 @@ export const listAllExercises = createServerFn({ method: "GET" }).handler(async 
     .from(exercises)
     .where(and(eq(exercises.athleteId, athleteId), eq(exercises.isArchived, false)))
     .orderBy(exercises.namePl);
-});
-
-export const getRecentExercises = createServerFn({ method: "GET" }).handler(async () => {
-  const { athleteId } = await getCurrentAthleteOrThrow();
-  return db
-    .select({
-      id: exercises.id,
-      slug: exercises.slug,
-      namePl: exercises.namePl,
-      category: exercises.category,
-      lastUsed: sql<Date>`MAX(${blockMovements.createdAt})`.as("last_used"),
-    })
-    .from(blockMovements)
-    .innerJoin(exercises, eq(blockMovements.exerciseId, exercises.id))
-    .where(and(eq(blockMovements.athleteId, athleteId), eq(exercises.isArchived, false)))
-    .groupBy(exercises.id, exercises.slug, exercises.namePl, exercises.category)
-    .orderBy(desc(sql`MAX(${blockMovements.createdAt})`))
-    .limit(10);
 });
 
 // ============================================================================

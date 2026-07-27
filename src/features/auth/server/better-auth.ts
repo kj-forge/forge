@@ -122,6 +122,3 @@ function extractIp(headers: Headers | null | undefined): string | undefined {
   if (xff) return xff.split(",")[0]?.trim();
   return undefined;
 }
-
-export type Auth = typeof auth;
-export type Session = Auth["$Infer"]["Session"];

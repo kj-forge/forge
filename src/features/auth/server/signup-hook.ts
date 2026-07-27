@@ -7,9 +7,8 @@
 // `runSignupTransaction()` directly against a real Postgres connection.
 // ============================================================================
 
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
-import { db } from "../../../../db/client";
 import { createPool } from "../../../../db/pool";
 import { athletePublicProfiles, athletes, auditLog } from "../../../../db/schema";
 
@@ -208,31 +207,6 @@ export async function runSignupTransaction(args: RunSignupTransactionArgs): Prom
   } finally {
     await end();
   }
-}
-
-// Idempotent backfill for orphan users (user row exists, athlete row missing).
-// Defence-in-depth: signup hook should normally cover this, but partial
-// failures (network blip mid-RPC, manual `DELETE FROM athletes`, restore from
-// a partial backup) can still produce orphans. Safe to call on every login.
-//
-// Read goes through the HTTP `db` client (single statement, no transaction
-// needed) — avoids the 50-150ms WebSocket handshake on the hot login path.
-export async function ensureAthlete(
-  userId: string,
-  audit?: AuditMetadata,
-): Promise<{ athleteId: string; username: string; created: boolean }> {
-  const existing = await db
-    .select({ id: athletes.id, username: athletes.username })
-    .from(athletes)
-    .where(eq(athletes.userId, userId))
-    .limit(1);
-
-  if (existing.length > 0) {
-    return { athleteId: existing[0].id, username: existing[0].username, created: false };
-  }
-
-  const result = await runSignupTransaction({ userId, audit });
-  return { ...result, created: true };
 }
 
 // Postgres unique-violation error code per SQLSTATE.

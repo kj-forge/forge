@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getCurrentAthleteOrThrow } from "@/features/auth/server/current-athlete";
 import { parseInput } from "@/lib/validate";
 import { db } from "../../../../db/client";
-import { blockMovements, sessionBlocks, sessions, sets } from "../../../../db/schema";
+import { blockMovements, sets } from "../../../../db/schema";
 import { bestSet, isNewPR, type PrCandidate } from "../lib/pr";
 
 const addSetInput = z
@@ -113,95 +113,4 @@ export const updateSet = createServerFn({ method: "POST" })
       .returning({ id: sets.id });
     if (!row) throw new Error("Nie znaleziono serii.");
     return row;
-  });
-
-const progressionInput = z.object({ exerciseId: z.uuid() });
-
-export const suggestProgression = createServerFn({ method: "GET" })
-  .inputValidator((data: unknown) => parseInput(progressionInput, data))
-  .handler(async ({ data }) => {
-    const { athleteId } = await getCurrentAthleteOrThrow();
-
-    // Two-step lookup: first find the SINGLE most recent completed session
-    // that contains this exercise, then fetch only its sets. The previous
-    // single-query implementation used `LIMIT 20 ORDER BY sets.createdAt`,
-    // which silently spanned multiple sessions and mixed their RPE values
-    // into the heuristic — see workflow review HIGH #1.
-    const [lastSession] = await db
-      .selectDistinct({ id: sessions.id })
-      .from(sessions)
-      .innerJoin(sessionBlocks, eq(sessionBlocks.sessionId, sessions.id))
-      .innerJoin(blockMovements, eq(blockMovements.blockId, sessionBlocks.id))
-      .where(
-        and(
-          eq(sessions.athleteId, athleteId),
-          eq(blockMovements.exerciseId, data.exerciseId),
-          sql`${sessions.endedAt} IS NOT NULL`,
-        ),
-      )
-      .orderBy(desc(sessions.endedAt))
-      .limit(1);
-
-    if (!lastSession) {
-      return { shouldProgress: false, reason: "Brak historii dla tego ćwiczenia." };
-    }
-
-    const recentSets = await db
-      .select({
-        reps: sets.reps,
-        weightKg: sets.weightKg,
-        rpe: sets.rpe,
-        kind: sets.kind,
-        setNumber: sets.setNumber,
-      })
-      .from(sets)
-      .innerJoin(blockMovements, eq(sets.blockMovementId, blockMovements.id))
-      .innerJoin(sessionBlocks, eq(blockMovements.blockId, sessionBlocks.id))
-      .where(
-        and(
-          eq(sets.athleteId, athleteId),
-          eq(blockMovements.exerciseId, data.exerciseId),
-          eq(sessionBlocks.sessionId, lastSession.id),
-        ),
-      )
-      .orderBy(desc(sets.setNumber));
-
-    if (recentSets.length === 0) {
-      return { shouldProgress: false, reason: "Brak serii w poprzedniej sesji." };
-    }
-
-    const workingSets = recentSets.filter((s) => s.kind !== "WARMUP");
-    if (workingSets.length === 0) {
-      return { shouldProgress: false, reason: "Brak serii roboczych w historii." };
-    }
-
-    const rpedSets = workingSets.filter((s) => s.rpe !== null);
-    if (rpedSets.length === 0) {
-      return {
-        shouldProgress: false,
-        reason: "Brak danych RPE — zaloguj RPE w następnych seriach, żeby dostać sugestię.",
-      };
-    }
-
-    const maxRpe = Math.max(...rpedSets.map((s) => s.rpe ?? 0));
-    if (maxRpe <= 8) {
-      const lastWeight = rpedSets[0]?.weightKg ?? null;
-      if (lastWeight !== null) {
-        return {
-          shouldProgress: true,
-          suggestedDelta: { weightKg: 2.5 },
-          reason: `RPE ≤ 8 we wszystkich seriach roboczych (max ${maxRpe}) — czas na +2.5 kg.`,
-        };
-      }
-      return {
-        shouldProgress: true,
-        suggestedDelta: { reps: 1 },
-        reason: `RPE ≤ 8 we wszystkich seriach roboczych (max ${maxRpe}) — czas na +1 powtórzenie.`,
-      };
-    }
-
-    return {
-      shouldProgress: false,
-      reason: `Max RPE = ${maxRpe} — utrzymaj obecny ciężar, dopracuj formę.`,
-    };
   });
