@@ -66,7 +66,10 @@ export const auth = betterAuth({
       // Better Auth gives us the ready-to-click `url`. We just deliver it.
       // Token expiry is 5 minutes by default — fine for magic links.
       sendMagicLink: async ({ email, url }) => {
-        await resend.emails.send({
+        // resend-node returns errors as `{ error }` instead of throwing —
+        // without this check a failed send is invisible and the user still
+        // lands on /login/check-email waiting for an email that never left.
+        const { error } = await resend.emails.send({
           from: env.RESEND_FROM_EMAIL,
           to: email,
           subject: "Zaloguj się do Forge",
@@ -77,6 +80,10 @@ export const auth = betterAuth({
             <p>Link wygasa po 5 minutach. Jeśli to nie Ty prosiłeś o logowanie — zignoruj tę wiadomość.</p>
           `,
         });
+        if (error) {
+          console.error("[auth] magic-link send failed", { name: error.name, message: error.message });
+          throw new Error("Magic-link email delivery failed");
+        }
       },
     }),
     // tanstackStartCookies MUST be last — it wraps cookie-setting endpoints to
