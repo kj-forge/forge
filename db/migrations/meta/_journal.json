@@ -141,6 +141,13 @@
       "when": 1785095455243,
       "tag": "0019_retire-chin-up",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1785126756639,
+      "tag": "0020_purge-unused-chin-up",
+      "breakpoints": true
     }
   ]
 }
